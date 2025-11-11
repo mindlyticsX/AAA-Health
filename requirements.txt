@@ -1,4 +1,6 @@
 streamlit
-google-cloud-aiplatform
+google-cloud-aiplatform==1.38.1
+google-auth
+Pillow
 pandas
-matplotlib
+protobuf==3.20.3
