@@ -22,6 +22,11 @@ with col2:
     </h4>
     <p><em>Powered by MindlyticsX | Curated by Sydney Singh</em></p>
     <p><strong>Understanding Health — Tailored for You.</strong></p>
+    <hr style="margin: 0.8em 0; border: none; border-top: 1px solid #444;">
+    <p style="font-size:14px; color:gray; text-align:left;">
+    <em>Built with Vertex AI • Data Owned by You • Powered by AAA</em>
+    </p>
+
     """, unsafe_allow_html=True)
 
 
