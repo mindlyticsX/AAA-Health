@@ -11,14 +11,19 @@ st.set_page_config(
 )
 
 # === HEADER WITH LOGO + TITLE ===
+# === HEADER WITH LOGO + TITLE ===
 col1, col2 = st.columns([1, 4])
 with col1:
     st.image("assets/logo.png", width=80)
 with col2:
-    st.markdown("### ★ Artigellence Augmentation Aggregator — Health Module★")
-    st.caption("Powered by MindlyticsX")
+    st.markdown("""
+    <h4 style="text-align:left;">
+    ⭐ <strong>Artigellience Augmentation Aggregator (AAA)</strong> — Health Module ⭐
+    </h4>
+    <p><em>Powered by MindlyticsX | Curated by Sydney Singh</em></p>
+    <p><strong>Understanding Health — Tailored for You.</strong></p>
+    """, unsafe_allow_html=True)
 
-st.divider()
 
 # === USER INPUT ===
 st.subheader("▼ Enter a health prompt below")
