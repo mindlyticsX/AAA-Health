@@ -75,13 +75,21 @@ with col3:
     st.link_button("💬 Community", "https://chat.whatsapp.com/IsaVnhlyiMLD7mQuAZ3s5m")
 
 # === DISCLAIMER FOOTER ===
-st.markdown("---")
-st.markdown(
-    """
-    <div style='text-align: center; font-size: 14px; color: gray;'>
-        © 2025 MindlyticsX · All rights reserved.<br>
-        <b>Disclaimer:</b> This dashboard is for educational use only. No medical advice is provided.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+import streamlit as st
+
+# --- Footer & Vision Tagline ---
+# === DISCLAIMER + FOOTER + TAGLINE ===
+st.markdown("""
+<hr style="margin-top:2em; margin-bottom:1em; border: none; border-top: 1px solid #333;">
+
+<div style="text-align: center; line-height: 1.6;">
+  <p><strong>⭐ Artigellience Augmentation Aggregator (AAA)</strong> — Health Module ⭐</p>
+  <p><em>Powered by MindlyticsX | Curated by Sydney Singh</em></p>
+  <p style="font-weight:600;">Understanding Health — Tailored for You.</p>
+  <p style="font-size:13px; color:#999; margin-top:0.5em;">
+    🧠 The Orchestration Layer of Edge AI — As We Move from AI to AGI to ASI
+  </p>
+</div>
+""", unsafe_allow_html=True)
+
+
