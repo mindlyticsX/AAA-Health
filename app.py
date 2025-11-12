@@ -79,17 +79,33 @@ import streamlit as st
 
 # --- Footer & Vision Tagline ---
 # === DISCLAIMER + FOOTER + TAGLINE ===
+# === Optional Fade-in Animation & Glow Effect ===
+# === DISCLAIMER + FOOTER + TAGLINE ===
 st.markdown("""
 <hr style="margin-top:2em; margin-bottom:1em; border: none; border-top: 1px solid #333;">
 
-<div style="text-align: center; line-height: 1.6;">
-  <p><strong>⭐ Artigellience Augmentation Aggregator (AAA)</strong> — Health Module ⭐</p>
+<div style="text-align: center; line-height: 1.6; animation: fadeIn 1.6s ease-in-out;">
+  <p style="font-size:16px; font-weight:600;">
+    ⭐ Artigellience Augmentation Aggregator (AAA) — Health Module ⭐
+  </p>
   <p><em>Powered by MindlyticsX | Curated by Sydney Singh</em></p>
   <p style="font-weight:600;">Understanding Health — Tailored for You.</p>
-  <p style="font-size:13px; color:#999; margin-top:0.5em;">
+  <p style="font-size:13px; color:#bbb; margin-top:0.5em; text-shadow: 0px 0px 6px rgba(0, 200, 255, 0.25);">
     🧠 The Orchestration Layer of Edge AI — As We Move from AI to AGI to ASI
   </p>
+  <p style="margin-top:1em; font-size:13px; color:gray;">
+    ⚕️ <b>Disclaimer:</b> This dashboard is for educational use only. No medical advice is provided.
+  </p>
 </div>
+
+<style>
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(10px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+</style>
 """, unsafe_allow_html=True)
+
+
 
 
