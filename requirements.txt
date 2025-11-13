@@ -4,3 +4,5 @@ google-auth
 Pillow
 pandas
 protobuf==3.20.3
+google-generativeai
+
