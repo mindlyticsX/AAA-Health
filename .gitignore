@@ -1,0 +1,19 @@
+# Ignore Streamlit secrets and credentials
+.streamlit/secrets.toml
+
+# Ignore Python environment files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore service account keys
+*.json
+
+# Ignore IDE/editor folders
+.vscode/
+.idea/
+
+# Ignore local environment files
+.env
+.env.local
