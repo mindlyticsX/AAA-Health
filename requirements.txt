@@ -1,8 +1,5 @@
-streamlit
-google-cloud-aiplatform==1.38.1
-google-auth
-Pillow
-pandas
-protobuf==3.20.3
-google-generativeai
-
+streamlit==1.39.0
+google-generativeai==0.7.2
+python-dotenv==1.0.1
+Pillow==10.3.0
+pandas==2.2.2
