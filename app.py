@@ -11,7 +11,12 @@ st.set_page_config(
 )
 
 st.title("💎 AAA - Health | Gemini Test")
-st.write("This is a simple test to confirm Gemini API + Streamlit are working correctly.")
+st.write(
+    "This is your *baseline* AAA-Health checker to confirm Gemini API + Streamlit are working correctly.\n\n"
+    "Next: we will gradually transform this into the real AAA-Health module (Health Vault, Logs, etc.), "
+    "but for now this page is only for testing questions."
+)
+st.write("---")
 
 # -------------------------------------------------
 # 2. LOAD GEMINI API KEY FROM SECRETS
