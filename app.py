@@ -28,25 +28,24 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 # ============================================================
 
 def aaa_header():
-    logo_path = "assets/logo.png"
-    if os.path.exists(logo_path):
-        st.markdown(
-            f"""
-            <div style="width:100%; text-align:center; margin-top:10px; margin-bottom:5px;">
-                <img src="{logo_path}" style="width:150px;">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.markdown(
-            """
-            <div style="width:100%; text-align:center; margin-top:10px; margin-bottom:5px;">
-                <span style="color:#888; font-size:20px;">[Logo Missing: assets/logo.png]</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    import streamlit as st
+    import base64
+
+    # Read the logo file in binary
+    with open("assets/logo.png", "rb") as f:
+        data = f.read()
+
+    # Convert to base64 string
+    encoded = base64.b64encode(data).decode()
+
+    # Build HTML with embedded base64 image
+    html = f"""
+    <div style="width:100%; text-align:center; margin-top:10px;">
+        <img src="data:image/png;base64,{encoded}" style="width:150px;">
+    </div>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def aaa_footer():
