@@ -24,20 +24,17 @@ st.set_page_config(
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # ============================================================
-# HEADER + FOOTER
+# HEADER + FOOTER  (FINAL WORKING VERSION)
 # ============================================================
 
 def aaa_header():
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Use Streamlit's image function (ALWAYS works in Codespaces)
     logo_path = "assets/logo.png"
+
     if os.path.exists(logo_path):
-        st.markdown(
-            f"""
-            <div style="width:100%; text-align:center; margin-top:10px; margin-bottom:5px;">
-                <img src="{logo_path}" style="width:150px;">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.image(logo_path, width=140)
     else:
         st.markdown(
             """
@@ -47,6 +44,8 @@ def aaa_header():
             """,
             unsafe_allow_html=True
         )
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
 
 def aaa_footer():
