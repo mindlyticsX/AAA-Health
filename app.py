@@ -714,13 +714,10 @@ def main():
 
     choice = st.sidebar.radio("Navigation", list(pages.keys()))
 
-    pages[choice]()   # run page
+    pages[choice]()   # load the selected page
 
-    if choice == "🩺 Health Log":
-        aaa_disclaimer()
+    # Always show disclaimer (bottom of page)
+    aaa_disclaimer()
 
-    aaa_footer()   # footer ONCE globally
-
-
-if __name__ == "__main__":
-    main()
+    # Footer once
+    aaa_footer()
