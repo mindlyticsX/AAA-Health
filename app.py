@@ -64,6 +64,31 @@ def aaa_footer():
         unsafe_allow_html=True
     )
 
+# ============================================================
+# DISCLAIMER (GLOBAL)
+# ============================================================
+
+def aaa_disclaimer():
+    st.markdown("""
+        <div style="
+            margin-top: 40px;
+            padding: 18px;
+            background: rgba(15, 23, 42, 0.45);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            font-size: 13px;
+            line-height: 1.5;
+        ">
+            <strong>Disclaimer:</strong><br>
+            AAA-Health is an informational tool designed to help users organise,
+            store, summarise, and understand their own health data.
+            It does <strong>not</strong> diagnose, treat, or replace professional
+            medical advice.<br><br>
+            Always consult a qualified healthcare professional for any questions
+            related to medical conditions or emergencies.
+        </div>
+    """, unsafe_allow_html=True)
 
 # ============================================================
 # JSON HELPERS
