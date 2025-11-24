@@ -874,70 +874,6 @@ def page_merged():
 
 
 # ============================================================
-# STEP 27 — ADVANCED HEALTH INSIGHTS ENGINE
-# ============================================================
-
-def page_insights():
-    aaa_header()
-    st.subheader("💡 Insights AI — Advanced Health Pattern Analysis")
-
-    # Load all data
-    logs = load_json(HEALTH_LOG_FILE, [])
-    ocr = load_json(OCR_DATA_FILE, [])
-    snapshots = load_json(SNAPSHOT_DATA_FILE, [])
-    merged = merge_all_health_data()
-
-    # Validation
-    if not logs and not ocr:
-        st.info("Not enough data to generate insights yet.")
-        aaa_footer()
-        return
-
-    st.markdown("This module analyses **all your health data together**:")
-
-    st.markdown("""
-    - 🗓 Daily Health Log  
-    - 📄 OCR Processed Files  
-    - 🗃 Vault File Metadata  
-    - 📷 Snapshots  
-    - 🔍 Pattern Detection  
-    - 📈 Trend Analysis  
-    - 🧠 AI Health Interpretation  
-    """)
-
-    if st.button("⚡ Generate Deep Insights"):
-        with st.spinner("Analysing your health data using Gemini…"):
-
-            prompt = f"""
-You are an elite AI medical analysis engine.
-
-Analyse the following FULL HEALTH DATASET:
-
-{json.dumps(merged, indent=2)}
-
-Return structured insights with:
-
-1. **Recent Trends (7–30 day pattern view)**
-2. **Correlations** between symptoms, files, logs, time of day.
-3. **Risk Flags** — highlight anything unusual or worsening.
-4. **Potential Causes** based on combined patterns.
-5. **What to Monitor Next** (clear, simple, actionable).
-6. **Suggested Questions for a Doctor**.
-7. **A 3-line Overall Summary** for non-technical users.
-
-Be concise but intelligent. Do NOT give medical diagnosis. Just pattern analysis.
-"""
-
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content(prompt)
-
-            st.success("Insights generated successfully!")
-            st.write(response.text)
-
-    aaa_footer()
-
-
-# ============================================================
 # STEP 26 — HEALTH INSIGHTS (AI SUMMARY OF ALL DATA)
 # ============================================================
 
@@ -952,7 +888,6 @@ def page_insights():
 
     if not merged_data:
         st.warning("No data found to analyse.")
-        aaa_footer()
         return
 
     if st.button("✨ Generate AI Insights"):
@@ -974,8 +909,6 @@ def page_insights():
         except Exception as e:
             st.error(f"AI Insights failed: {e}")
 
-    aaa_footer()
-
 
 # ============================================================
 # STEP 28 — SUMMARY REPORT (AUTO PDF GENERATION)
@@ -986,9 +919,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 
 def generate_summary_pdf(merged_data, output_path="summary_report.pdf"):
-    """
-    Creates a simple 1-page PDF summary report.
-    """
     try:
         c = canvas.Canvas(output_path, pagesize=letter)
 
@@ -1042,7 +972,6 @@ def page_summary_report():
 
     st.info("This generates a quick PDF report combining logs, OCR and Vault file overview.")
 
-    # Pull merged data
     merged = merge_all_health_data()
 
     if st.button("📥 Generate Summary PDF"):
@@ -1057,7 +986,10 @@ def page_summary_report():
                     mime="application/pdf"
                 )
 
-    aaa_footer()
+
+# ============================================================
+# MAIN APP ENTRY
+# ============================================================
 
 def main():
     st.sidebar.title("💎 AAA — Health Intelligence")
@@ -1077,10 +1009,9 @@ def main():
     }
 
     choice = st.sidebar.radio("Navigation", list(pages.keys()))
-    
-    # Run selected page
-    pages[choice]()
+    pages[choice]()  # Run selected page
 
-    # Always show disclaimer + footer at bottom
+    # Only ONE footer + disclaimer
     aaa_disclaimer()
     aaa_footer()
+
