@@ -67,44 +67,43 @@ def aaa_footer():
 
 def aaa_disclaimer():
     st.markdown(
-"""
-<div style="
-    margin-top: 40px;
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.55);
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.12);
-    color: #e2e8f0;
-    font-size: 14px;
-    line-height: 1.6;
-">
+        """
+        <div style="
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.55);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e2e8f0;
+            font-size: 14px;
+            line-height: 1.6;
+        ">
+            <h3 style="color:#ff4d4d; margin-top:0; margin-bottom:15px;">
+                Disclaimer & Privacy Notice
+            </h3>
 
-    <h3 style="color:#ff4d4d; margin-top:0; margin-bottom:15px;">
-        Disclaimer & Privacy Notice
-    </h3>
+            <b>1. Health Disclaimer</b><br>
+            AAA-Health helps users organise, store, summarise, and better
+            understand their own health documents, notes, and medical records.<br>
+            It does <b>NOT</b> diagnose conditions or replace professional
+            medical advice.<br>
+            Always consult a qualified healthcare professional for medical concerns.
 
-    <b>1. Health Disclaimer</b><br>
-    AAA-Health helps users organise, store, summarise, and better understand their
-    own health documents, notes, and medical records.<br>
-    It does <b>NOT</b> diagnose conditions or replace professional medical advice.<br>
-    Always consult a qualified healthcare professional for medical concerns.
+            <br><br>
 
-    <br><br>
+            <b>2. Privacy & Data Ownership</b><br>
+            • All uploaded files, logs, OCR results, and summaries stay fully under the user's control.<br>
+            • No data is shared with any third party.<br>
+            • AAA uses Edge-AI processing — models analyse your data but do NOT store it.<br>
+            • You can delete, restore, or create snapshots of your data anytime.
 
-    <b>2. Privacy & Data Ownership</b><br>
-    • All uploaded files, logs, OCR results, and summaries stay fully under the user's control.<br>
-    • No data is shared with any third party.<br>
-    • AAA uses Edge-AI processing — models analyse your data but do NOT store it.<br>
-    • You can delete, restore, or create snapshots of your data anytime.
+            <br><br>
 
-    <br><br>
-
-    <b>3. Your Consent</b><br>
-    By using AAA-Health, you agree to responsibly manage and review your own records,
-    and use AI-generated insights only as supportive information.
-
-</div>
-""",
+            <b>3. Your Consent</b><br>
+            By using AAA-Health, you agree to responsibly manage and review
+            your own records, and use AI-generated insights only as supportive information.
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
