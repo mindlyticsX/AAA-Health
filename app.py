@@ -1059,9 +1059,6 @@ def page_summary_report():
 
     aaa_footer()
 
-# =======================
-# NAVIGATION
-# =======================
 def main():
     st.sidebar.title("💎 AAA — Health Intelligence")
 
@@ -1075,18 +1072,15 @@ def main():
         "📊 Merged View": page_merged,
         "🔮 Insights AI": page_insights,
         "📂 Vault Manager": page_vault_manager,
-        "🗑 Recycle Bin": page_recycle_bin,   # ✅ STEP-25 ADDED HERE
-        "Insights AI": page_insights,
+        "🗑 Recycle Bin": page_recycle_bin,
         "Summary Report (PDF)": page_summary_report,
     }
 
     choice = st.sidebar.radio("Navigation", list(pages.keys()))
+    
+    # Run selected page
     pages[choice]()
 
-
-# ============================================================
-# RUN APP
-# ============================================================
-
-if __name__ == "__main__":
-    main()
+    # Always show disclaimer + footer at bottom
+    aaa_disclaimer()
+    aaa_footer()
