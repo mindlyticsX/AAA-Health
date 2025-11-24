@@ -68,47 +68,63 @@ def aaa_footer():
 def aaa_disclaimer():
     st.markdown(
         """
-        <div style="
-            margin-top:40px;
-            padding:28px;
-            background:rgba(15,23,42,0.55);
-            border-radius:14px;
-            border:1px solid rgba(255,255,255,0.12);
-            color:#e2e8f0;
-            font-size:15px;
-            line-height:1.75;
-        ">
-            <h3 style="color:#ff4d4d; margin:0 0 20px 0; font-size:24px;">
-                Disclaimer & Privacy Notice
-            </h3>
+        <style>
+            .aaa-box {
+                margin-top: 50px;
+                padding: 30px;
+                background: linear-gradient(145deg, rgba(22,30,48,0.85), rgba(15,23,42,0.85));
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.08);
+                color: #dbeafe;
+                font-family: 'Inter', sans-serif;
+                box-shadow: 0 0 20px rgba(0,0,0,0.35);
+            }
+            .aaa-title {
+                font-size: 26px;
+                font-weight: 800;
+                color: #ff6b6b;
+                margin-bottom: 18px;
+                text-align: center;
+            }
+            .aaa-section-title {
+                font-size: 18px;
+                font-weight: 700;
+                margin-top: 25px;
+                margin-bottom: 8px;
+                color: #f1f5f9;
+            }
+            .aaa-text {
+                font-size: 15px;
+                line-height: 1.75;
+                color: #e2e8f0;
+            }
+        </style>
 
-            <h4 style="color:#f8fafc; font-size:18px; margin-bottom:6px;">
-                1. Health Disclaimer
-            </h4>
-            <p style="margin-top:0;">
-                AAA-Health helps users organise, store, summarise, and better understand
-                their personal health documents, notes, and medical records.
-                It does <b>NOT</b> diagnose conditions or replace professional medical advice.
-                Always consult a qualified healthcare professional for medical concerns.
-            </p>
+        <div class="aaa-box">
+            <div class="aaa-title">Disclaimer & Privacy Notice</div>
 
-            <h4 style="color:#f8fafc; font-size:18px; margin-top:25px; margin-bottom:6px;">
-                2. Privacy & Data Ownership
-            </h4>
-            <ul style="margin-left:20px; padding-left:0;">
-                <li>All uploaded files, logs, OCR results, and summaries remain fully under the user's control.</li>
-                <li>No data is ever shared with any third party.</li>
-                <li>AAA uses Edge-AI processing — models analyse your data but do <b>NOT</b> store it.</li>
-                <li>You can delete, restore, or create snapshots of your data anytime.</li>
-            </ul>
+            <div class="aaa-section-title">1. Health Disclaimer</div>
+            <div class="aaa-text">
+                AAA-Health helps you organise, store, and understand your personal
+                medical documents and notes. It does <b>not</b> diagnose, predict,
+                or replace professional medical advice. Always consult a qualified
+                healthcare professional for any medical concerns.
+            </div>
 
-            <h4 style="color:#f8fafc; font-size:18px; margin-top:25px; margin-bottom:6px;">
-                3. Your Consent
-            </h4>
-            <p style="margin-top:0;">
-                By using AAA-Health, you agree to responsibly manage and review your own records,
-                and use AI-generated insights only as supportive information.
-            </p>
+            <div class="aaa-section-title">2. Privacy & Data Ownership</div>
+            <div class="aaa-text">
+                All files, logs, OCR results, summaries, and snapshots remain fully under
+                your control. Nothing is shared with any external party.
+                Data is processed using secure Edge-AI — models analyse your data but do
+                <b>not</b> store it. You may delete or restore your data at any time.
+            </div>
+
+            <div class="aaa-section-title">3. Your Consent</div>
+            <div class="aaa-text">
+                By using AAA-Health, you agree to review and manage your records
+                responsibly and treat all AI-generated information as supportive,
+                not authoritative.
+            </div>
         </div>
         """,
         unsafe_allow_html=True
