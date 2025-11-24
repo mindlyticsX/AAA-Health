@@ -78,7 +78,8 @@ def aaa_disclaimer():
             font-size: 14px;
             line-height: 1.6;
         ">
-            <h3 style="color:#ff4d4d; margin-top:0; margin-bottom:12px;">
+
+            <h3 style="color:#ff4d4d; margin-top:0; margin-bottom:15px;">
                 Disclaimer & Privacy Notice
             </h3>
 
@@ -87,20 +88,21 @@ def aaa_disclaimer():
             own health documents, notes, and medical records.<br>
             It does <b>NOT</b> diagnose conditions or replace professional medical advice.<br>
             Always consult a qualified healthcare professional for medical concerns.
-            
+
             <br><br>
 
             <b>2. Privacy & Data Ownership</b><br>
             • All uploaded files, logs, OCR results, and summaries stay fully under the user's control.<br>
             • No data is shared with any third party.<br>
-            • AAA uses Edge-AI processing — meaning models analyse your data but do NOT store it.<br>
+            • AAA uses Edge-AI processing — models analyse your data but do NOT store it.<br>
             • You can delete, restore, or create snapshots of your data anytime.
-            
+
             <br><br>
 
             <b>3. Your Consent</b><br>
             By using AAA-Health, you agree to responsibly manage and review your own records,
             and use AI-generated insights only as supportive information.
+
         </div>
         """,
         unsafe_allow_html=True
