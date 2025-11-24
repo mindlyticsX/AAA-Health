@@ -66,69 +66,31 @@ def aaa_footer():
 # ============================================================
 
 def aaa_disclaimer():
-    st.markdown(
-        """
-        <style>
-            .aaa-box {
-                margin-top: 50px;
-                padding: 30px;
-                background: linear-gradient(145deg, rgba(22,30,48,0.85), rgba(15,23,42,0.85));
-                border-radius: 16px;
-                border: 1px solid rgba(255,255,255,0.08);
-                color: #dbeafe;
-                font-family: 'Inter', sans-serif;
-                box-shadow: 0 0 20px rgba(0,0,0,0.35);
-            }
-            .aaa-title {
-                font-size: 26px;
-                font-weight: 800;
-                color: #ff6b6b;
-                margin-bottom: 18px;
-                text-align: center;
-            }
-            .aaa-section-title {
-                font-size: 18px;
-                font-weight: 700;
-                margin-top: 25px;
-                margin-bottom: 8px;
-                color: #f1f5f9;
-            }
-            .aaa-text {
-                font-size: 15px;
-                line-height: 1.75;
-                color: #e2e8f0;
-            }
-        </style>
+    with st.expander("🔒 Legal · Privacy · Consent"):
+        st.markdown(
+            """
+            **1. Health Disclaimer**  
+            AAA-Health helps users organise, store and understand their
+            personal health information. It does **NOT** diagnose, predict,
+            or replace professional medical advice.  
+            Always consult a qualified healthcare provider for any concern.
 
-        <div class="aaa-box">
-            <div class="aaa-title">Disclaimer & Privacy Notice</div>
+            ---
 
-            <div class="aaa-section-title">1. Health Disclaimer</div>
-            <div class="aaa-text">
-                AAA-Health helps you organise, store, and understand your personal
-                medical documents and notes. It does <b>not</b> diagnose, predict,
-                or replace professional medical advice. Always consult a qualified
-                healthcare professional for any medical concerns.
-            </div>
+            **2. Privacy & Data Ownership**  
+            • All uploaded files, logs and summaries stay fully under the user's control.  
+            • Nothing is shared with any third party.  
+            • Edge-AI models process your data but **do not store** anything.  
+            • You may delete or restore your data at any time.
 
-            <div class="aaa-section-title">2. Privacy & Data Ownership</div>
-            <div class="aaa-text">
-                All files, logs, OCR results, summaries, and snapshots remain fully under
-                your control. Nothing is shared with any external party.
-                Data is processed using secure Edge-AI — models analyse your data but do
-                <b>not</b> store it. You may delete or restore your data at any time.
-            </div>
+            ---
 
-            <div class="aaa-section-title">3. Your Consent</div>
-            <div class="aaa-text">
-                By using AAA-Health, you agree to review and manage your records
-                responsibly and treat all AI-generated information as supportive,
-                not authoritative.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            **3. Consent**  
+            By using AAA-Health, you agree to responsibly review your
+            own records, and treat AI-generated summaries as supportive
+            information only.
+            """
+        )
 
 
 # ============================================================
