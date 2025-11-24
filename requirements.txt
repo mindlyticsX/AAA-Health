@@ -4,4 +4,4 @@ python-dotenv
 Pillow==10.3.0
 pandas==2.2.2
 pymupdf
-
+reportlab
