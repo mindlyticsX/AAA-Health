@@ -230,7 +230,7 @@ def page_vault_manager():
 
         with st.expander(file_name):
 
-            # Preview PDF
+            # PDF Preview
             if file_name.lower().endswith(".pdf"):
                 try:
                     pdf = fitz.open(file_path)
@@ -252,7 +252,7 @@ def page_vault_manager():
                 except Exception as e:
                     st.error(f"Preview error: {e}")
 
-            # Preview Image
+            # Image Preview
             elif file_name.lower().endswith((".png", ".jpg", ".jpeg")):
                 st.image(file_path, use_column_width=True)
 
@@ -720,3 +720,8 @@ def main():
 
     # Footer once
     aaa_footer()
+
+
+# Entry point
+if __name__ == "__main__":
+    main()
