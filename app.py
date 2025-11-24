@@ -95,7 +95,7 @@ def aaa_disclaimer():
             • No data is shared with any third party.<br>
             • AAA uses Edge-AI processing — meaning models analyse your data but do NOT store it.<br>
             • You can delete, restore, or create snapshots of your data anytime.
-
+            
             <br><br>
 
             <b>3. Your Consent</b><br>
