@@ -40,17 +40,17 @@ for d in [VAULT_DIR, SNAPSHOT_DIR, PHOTO_DIR, RECYCLE_BIN_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # ============================================================
-# HEADER + FOOTER (FINAL DISCLAIMER)
+# HEADER + FOOTER (PREMIUM STREAMLIT VERSION — NO HTML RISKS)
 # ============================================================
 
-FINAL_DISCLAIMER = """
-AAA — Health Intelligence provides AI-assisted insights.
-It does not replace professional medical, financial or legal advice.
-Always consult certified experts for critical decisions.
-"""
+FINAL_DISCLAIMER_TEXT = (
+    "AAA — Health Intelligence provides AI-assisted insights.\n"
+    "It does not replace professional medical, financial or legal advice.\n"
+    "Always consult certified experts for critical decisions."
+)
 
 def aaa_header():
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")  # spacing
     logo_path = "assets/logo.png"
 
     if os.path.exists(logo_path):
@@ -58,34 +58,36 @@ def aaa_header():
     else:
         st.warning("⚠️ Missing: assets/logo.png")
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.write("")  # spacing
 
 
 def aaa_footer():
-    st.markdown(
-        f"""
-        <br><br>
-        <div style="
-            background:rgba(148,163,184,0.10);
-            padding:20px 24px;
-            border-radius:12px;
-            max-width:850px;
-            margin:0 auto 30px auto;
-            text-align:center;
-            line-height:1.6;
-        ">
-            <p style="color:#e2e8f0; font-size:15px; margin:0;">
-                {FINAL_DISCLAIMER}
-            </p>
-        </div>
+    import streamlit as st
 
-        <div style="text-align:center; padding:25px;">
-            <p style="color:#e2e8f0; font-size:22px; font-weight:700; margin:0;">
+    # Subtle grey rounded box like Apple settings panels
+    with st.container():
+        st.markdown("### ")
+        st.markdown(
+            "<div style='padding:20px; background-color:rgba(148,163,184,0.10); "
+            "border-radius:12px; text-align:center; color:#e2e8f0;'>"
+            f"{FINAL_DISCLAIMER_TEXT.replace(chr(10), '<br>')}"
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+    st.markdown("### ")
+
+    # Signature block — clean & safe
+    st.markdown(
+        """
+        <div style='text-align:center; padding:10px 0 30px 0;'>
+            <span style='color:#e2e8f0; font-size:20px; font-weight:600;'>
                 Crafted by <b>Rajdeep Singh</b> — Artigellence Augmentation Aggregator
-            </p>
-            <p style="color:#94a3b8; font-size:18px; margin-top:10px;">
+            </span>
+            <br>
+            <span style='color:#94a3b8; font-size:16px;'>
                 Edge-AI Orchestration Layer • Gemini • Vertex AI
-            </p>
+            </span>
         </div>
         """,
         unsafe_allow_html=True
