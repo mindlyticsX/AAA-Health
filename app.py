@@ -1,6 +1,5 @@
 # ============================================================
-# AAA — HEALTH INTELLIGENCE (FINAL CLEAN VERSION)
-# Footer only once (global). No duplicates.
+# AAA — HEALTH INTELLIGENCE (MVP • CLEAN VERSION • FINAL)
 # ============================================================
 
 import streamlit as st
@@ -9,89 +8,88 @@ import os
 import shutil
 from datetime import datetime
 from google import generativeai as genai
-import fitz  # PyMuPDF
-
+import fitz   # PyMuPDF for PDF rendering
+import base64
+from fpdf import FPDF
 
 # ============================================================
-# CONFIG
+# STREAMLIT CONFIG
 # ============================================================
 
 st.set_page_config(
-    page_title="💎 AAA — Health Intelligence (MVP)",
+    page_title="💎 AAA — Health Intelligence",
     page_icon="💎",
     layout="wide",
 )
 
+# GEMINI API KEY
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
+# ============================================================
+# DIRECTORIES
+# ============================================================
+
+HEALTH_LOG_FILE = "health_log.json"
+VAULT_DIR = "vault_files"
+OCR_DATA_FILE = "ocr_results.json"
+SNAPSHOT_DIR = "snapshots"
+PHOTO_DIR = "photos"
+RECYCLE_BIN_DIR = "recycle_bin"
+
+for d in [VAULT_DIR, SNAPSHOT_DIR, PHOTO_DIR, RECYCLE_BIN_DIR]:
+    os.makedirs(d, exist_ok=True)
 
 # ============================================================
-# HEADER + FOOTER
+# HEADER + FOOTER (FINAL DISCLAIMER)
 # ============================================================
+
+FINAL_DISCLAIMER = """
+AAA — Health Intelligence provides AI-assisted insights.
+It does not replace professional medical, financial or legal advice.
+Always consult certified experts for critical decisions.
+"""
 
 def aaa_header():
-    import base64
-    with open("assets/logo.png", "rb") as f:
-        encoded = base64.b64encode(f.read()).decode()
+    st.markdown("<br>", unsafe_allow_html=True)
+    logo_path = "assets/logo.png"
 
-    st.markdown(
-        f"""
-        <div style="width:100%; text-align:center; margin-top:10px;">
-            <img src="data:image/png;base64,{encoded}" style="width:150px;">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=130)
+    else:
+        st.warning("⚠️ Missing: assets/logo.png")
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
 
 def aaa_footer():
     st.markdown(
-        """
+        f"""
         <br><br>
+        <div style="
+            background:rgba(148,163,184,0.10);
+            padding:20px 24px;
+            border-radius:12px;
+            max-width:850px;
+            margin:0 auto 30px auto;
+            text-align:center;
+            line-height:1.6;
+        ">
+            <p style="color:#e2e8f0; font-size:15px; margin:0;">
+                {FINAL_DISCLAIMER}
+            </p>
+        </div>
+
         <div style="text-align:center; padding:25px;">
             <p style="color:#e2e8f0; font-size:22px; font-weight:700; margin:0;">
-                Crafted with precision by <b>Rajdeep Singh</b> — Artigellence Augmentation Aggregator
+                Crafted by <b>Rajdeep Singh</b> — Artigellence Augmentation Aggregator
             </p>
             <p style="color:#94a3b8; font-size:18px; margin-top:10px;">
-                Powered by Edge-AI Orchestration Layer • Gemini • Vertex AI
+                Edge-AI Orchestration Layer • Gemini • Vertex AI
             </p>
         </div>
         """,
         unsafe_allow_html=True
     )
-
-
-# ============================================================
-# DISCLAIMER
-# ============================================================
-
-def aaa_disclaimer():
-    with st.expander("🔒 Legal · Privacy · Consent"):
-        st.markdown(
-            """
-            **1. Health Disclaimer**  
-            AAA-Health helps users organise, store and understand their
-            personal health information. It does **NOT** diagnose, predict,
-            or replace professional medical advice.  
-            Always consult a qualified healthcare provider for any concern.
-
-            ---
-
-            **2. Privacy & Data Ownership**  
-            • All uploaded files, logs and summaries stay fully under the user's control.  
-            • Nothing is shared with any third party.  
-            • Edge-AI models process your data but **do not store** anything.  
-            • You may delete or restore your data at any time.
-
-            ---
-
-            **3. Consent**  
-            By using AAA-Health, you agree to responsibly review your
-            own records, and treat AI-generated summaries as supportive
-            information only.
-            """
-        )
-
 
 # ============================================================
 # JSON HELPERS
@@ -106,55 +104,12 @@ def load_json(path, default):
     except:
         return default
 
-
 def save_json(path, data):
     with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
-
 # ============================================================
-# CONSTANTS + DIRECTORIES
-# ============================================================
-
-HEALTH_LOG_FILE = "health_log.json"
-OCR_DATA_FILE = "ocr_results.json"
-VAULT_DIR = "vault_files"
-PHOTO_DIR = "photos"
-SNAPSHOT_DIR = "snapshots"
-RECYCLE_DIR = "recycle_bin"
-
-for d in [VAULT_DIR, PHOTO_DIR, SNAPSHOT_DIR, RECYCLE_DIR]:
-    os.makedirs(d, exist_ok=True)
-
-
-# ============================================================
-# MERGE HEALTH DATA
-# ============================================================
-
-def merge_all_health_data():
-    health_log = load_json(HEALTH_LOG_FILE, [])
-    ocr_results = load_json(OCR_DATA_FILE, [])
-
-    vault_files = []
-    for f in os.listdir(VAULT_DIR):
-        file_path = os.path.join(VAULT_DIR, f)
-        if os.path.isfile(file_path):
-            vault_files.append({
-                "filename": f,
-                "path": file_path,
-                "timestamp": datetime.fromtimestamp(os.path.getmtime(file_path)).strftime("%Y-%m-%d %H:%M:%S")
-            })
-
-    return {
-        "health_log": health_log,
-        "ocr_results": ocr_results,
-        "vault_files": vault_files,
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-
-
-# ============================================================
-# PAGE FUNCTIONS (NO FOOTERS INSIDE)
+# PAGE 1 — HEALTH LOG
 # ============================================================
 
 def page_health_log():
@@ -162,7 +117,7 @@ def page_health_log():
     st.subheader("🧿 Daily Health Log")
 
     date = st.date_input("Date")
-    notes = st.text_area("Notes / Symptoms / Observations")
+    notes = st.text_area("Notes / Symptoms / Observations", height=150)
 
     if st.button("Save Entry"):
         log = load_json(HEALTH_LOG_FILE, [])
@@ -174,16 +129,20 @@ def page_health_log():
         save_json(HEALTH_LOG_FILE, log)
         st.success("Entry saved successfully!")
 
-    st.write("### Previous Log Entries")
-    log = load_json(HEALTH_LOG_FILE, [])
-    for entry in reversed(log):
-        with st.expander(entry["date"]):
+    st.write("### Previous Entries")
+    for entry in reversed(load_json(HEALTH_LOG_FILE, [])):
+        with st.expander(f"{entry['date']}"):
             st.write(entry["notes"])
 
+    aaa_footer()
+
+# ============================================================
+# PAGE 2 — HEALTH VAULT
+# ============================================================
 
 def page_vault():
     aaa_header()
-    st.subheader("📁 Health Vault")
+    st.subheader("🗂️ Health Vault")
 
     uploaded = st.file_uploader("Upload Image/PDF", type=["png", "jpg", "jpeg", "pdf"])
     if uploaded:
@@ -192,233 +151,55 @@ def page_vault():
             f.write(uploaded.getbuffer())
         st.success(f"{uploaded.name} saved!")
 
-    st.write("### Stored Files")
     files = os.listdir(VAULT_DIR)
+    st.write("### Stored Files")
+
     if not files:
-        st.info("No files yet.")
+        st.info("No files uploaded yet.")
     else:
         for f in files:
             st.write(f)
 
+    aaa_footer()
 
-def page_vault_manager():
-    aaa_header()
-    st.subheader("📂 Vault Manager")
-
-    files = os.listdir(VAULT_DIR)
-    if not files:
-        st.info("No stored files.")
-        return
-
-    for file_name in files:
-        file_path = os.path.join(VAULT_DIR, file_name)
-
-        with st.expander(file_name):
-
-            # PDF Preview
-            if file_name.lower().endswith(".pdf"):
-                try:
-                    pdf = fitz.open(file_path)
-                    total_pages = len(pdf)
-                    st.write(f"PDF Pages: {total_pages}")
-
-                    pg = st.number_input(
-                        f"Page for {file_name}",
-                        min_value=1,
-                        max_value=total_pages,
-                        value=1,
-                        step=1,
-                        key=f"pg_{file_name}"
-                    )
-                    page = pdf[pg - 1]
-                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                    st.image(pix.tobytes("png"), use_column_width=True)
-                    pdf.close()
-                except Exception as e:
-                    st.error(f"Preview error: {e}")
-
-            # Image Preview
-            elif file_name.lower().endswith((".png", ".jpg", ".jpeg")):
-                st.image(file_path, use_column_width=True)
-
-            # OCR
-            st.write("### 🔍 OCR")
-            if st.button(f"Run OCR on {file_name}", key=f"ocr_{file_name}"):
-                try:
-                    extracted = ""
-
-                    if file_name.lower().endswith(".pdf"):
-                        doc = fitz.open(file_path)
-                        for i, page in enumerate(doc):
-                            pix = page.get_pixmap()
-                            img = pix.tobytes("png")
-                            response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                                ["Extract ALL text.", img]
-                            )
-                            extracted += f"\n\n--- PAGE {i+1} ---\n{response.text}"
-
-                    else:
-                        with open(file_path, "rb") as f:
-                            img = f.read()
-                        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                            ["Extract ALL text.", img]
-                        )
-                        extracted = response.text
-
-                    ocr_log = load_json(OCR_DATA_FILE, [])
-                    ocr_log.append({
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "filename": file_name,
-                        "text": extracted
-                    })
-                    save_json(OCR_DATA_FILE, ocr_log)
-
-                    st.success("OCR completed!")
-                    st.text_area("Extracted Text", extracted, height=250)
-
-                except Exception as e:
-                    st.error(f"OCR failed: {e}")
-
-            # Summary
-            st.write("### 🧠 Summary")
-            if st.button(f"Generate Summary for {file_name}", key=f"summ_{file_name}"):
-                try:
-                    summary = ""
-
-                    if file_name.lower().endswith(".pdf"):
-                        doc = fitz.open(file_path)
-                        for i, page in enumerate(doc):
-                            pix = page.get_pixmap()
-                            img = pix.tobytes("png")
-                            response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                                ["Summarize clearly for patient:", img]
-                            )
-                            summary += f"\n\n--- PAGE {i+1} ---\n{response.text}"
-
-                    else:
-                        with open(file_path, "rb") as f:
-                            img = f.read()
-                        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                            ["Summarize clearly for patient:", img]
-                        )
-                        summary = response.text
-
-                    st.text_area("Summary", summary, height=250)
-
-                except Exception as e:
-                    st.error(f"Summary failed: {e}")
-
-            # Delete
-            if st.button(f"🗑 Delete {file_name}", key=f"del_{file_name}"):
-                shutil.move(file_path, os.path.join(RECYCLE_DIR, file_name))
-                st.success("Moved to Recycle Bin.")
-                st.experimental_rerun()
-
-            # Rename
-            new_base = st.text_input(
-                f"Rename {file_name} (without extension)",
-                value=os.path.splitext(file_name)[0],
-                key=f"rename_input_{file_name}"
-            )
-
-            if st.button(f"✏️ Apply Rename for {file_name}", key=f"rename_btn_{file_name}"):
-                ext = os.path.splitext(file_name)[1]
-                new_name = new_base.strip() + ext
-                new_path = os.path.join(VAULT_DIR, new_name)
-                if os.path.exists(new_path):
-                    st.error("File exists.")
-                else:
-                    os.rename(file_path, new_path)
-                    st.success("Renamed.")
-                    st.experimental_rerun()
-
-
-def page_recycle_bin():
-    aaa_header()
-    st.subheader("🗑 Recycle Bin")
-
-    files = os.listdir(RECYCLE_DIR)
-    if not files:
-        st.info("Recycle Bin empty.")
-        return
-
-    for f in files:
-        file_path = os.path.join(RECYCLE_DIR, f)
-        with st.expander(f):
-
-            st.write("Deleted On:", datetime.fromtimestamp(
-                os.path.getmtime(file_path)
-            ).strftime("%Y-%m-%d %H:%M:%S"))
-
-            # PDF preview
-            if f.lower().endswith(".pdf"):
-                try:
-                    pdf = fitz.open(file_path)
-                    total = len(pdf)
-                    pg = st.number_input(
-                        f"Page — {f}",
-                        min_value=1,
-                        max_value=total,
-                        value=1,
-                        step=1,
-                        key=f"rb_{f}"
-                    )
-                    page = pdf[pg - 1]
-                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                    st.image(pix.tobytes("png"), use_column_width=True)
-                    pdf.close()
-                except:
-                    st.error("Preview failed.")
-
-            elif f.lower().endswith((".png", ".jpg", ".jpeg")):
-                st.image(file_path, use_column_width=True)
-
-            if st.button(f"♻ Restore {f}", key=f"restore_{f}"):
-                shutil.move(file_path, os.path.join(VAULT_DIR, f))
-                st.success("Restored.")
-                st.experimental_rerun()
-
-            if st.button(f"❌ Delete Permanently {f}", key=f"perm_{f}"):
-                os.remove(file_path)
-                st.success("Deleted.")
-                st.experimental_rerun()
-
+# ============================================================
+# PAGE 3 — PDF PREVIEW
+# ============================================================
 
 def page_pdf_preview():
     aaa_header()
     st.subheader("📄 PDF Preview")
 
     pdfs = [f for f in os.listdir(VAULT_DIR) if f.lower().endswith(".pdf")]
+
     if not pdfs:
-        st.info("No PDFs found.")
+        st.info("No PDF files found.")
+        aaa_footer()
         return
 
     selected = st.selectbox("Select PDF", pdfs)
-    path = os.path.join(VAULT_DIR, selected)
+    pdf_path = os.path.join(VAULT_DIR, selected)
 
     try:
-        pdf = fitz.open(path)
-        st.write(f"Total pages: {len(pdf)}")
+        doc = fitz.open(pdf_path)
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap()
+            st.image(pix.tobytes(), caption=f"Page {i+1}", use_container_width=True)
+    except:
+        st.error("Failed to load PDF.")
 
-        pg = st.number_input(
-            "Page",
-            min_value=1, max_value=len(pdf),
-            value=1, step=1
-        )
+    aaa_footer()
 
-        page = pdf[pg - 1]
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        st.image(pix.tobytes("png"), use_column_width=True)
-
-    except Exception as e:
-        st.error(f"Preview failed: {e}")
-
+# ============================================================
+# PAGE 4 — OCR (Gemini)
+# ============================================================
 
 def page_ocr():
     aaa_header()
-    st.subheader("🔍 Advanced OCR")
+    st.subheader("🔍 OCR Extraction (Gemini)")
 
-    file = st.file_uploader("Upload Image/PDF", type=["png", "jpg", "jpeg", "pdf"])
+    file = st.file_uploader("Upload image or PDF", type=["png", "jpg", "jpeg", "pdf"])
+
     if file:
         st.info("Processing…")
 
@@ -426,95 +207,117 @@ def page_ocr():
         with open(temp_path, "wb") as f:
             f.write(file.getbuffer())
 
-        extracted = ""
+        extracted_text = ""
 
-        # PDF
         if file.name.lower().endswith(".pdf"):
             doc = fitz.open(temp_path)
             for i, page in enumerate(doc):
                 pix = page.get_pixmap()
-                img = pix.tobytes("png")
+                img_bytes = pix.tobytes("png")
                 response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                    ["Extract ALL text.", img]
+                    ["Extract ALL text. No summary.", img_bytes]
                 )
-                extracted += f"\n\n--- PAGE {i+1} ---\n{response.text}"
-
-        # Image
+                extracted_text += f"\n\n--- PAGE {i+1} ---\n" + response.text
         else:
-            img = file.getvalue()
             response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                ["Extract ALL text.", img]
+                ["Extract ALL text. No summary.", file.getvalue()]
             )
-            extracted = response.text
+            extracted_text = response.text
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ocr_log = load_json(OCR_DATA_FILE, [])
         ocr_log.append({
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": timestamp,
             "filename": file.name,
-            "text": extracted
+            "text": extracted_text
         })
         save_json(OCR_DATA_FILE, ocr_log)
 
-        st.text_area("Extracted Text", extracted, height=300)
+        st.success("OCR Complete!")
+        st.text_area("Extracted Text", extracted_text, height=300)
 
     st.write("### Previous OCR Results")
     for entry in load_json(OCR_DATA_FILE, []):
         with st.expander(f"{entry['timestamp']} — {entry['filename']}"):
             st.text(entry["text"])
 
+    aaa_footer()
+
+# ============================================================
+# PAGE 5 — SNAPSHOTS
+# ============================================================
+
+def save_snapshot():
+    snap = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "health_log": load_json(HEALTH_LOG_FILE, []),
+        "ocr": load_json(OCR_DATA_FILE, []),
+    }
+    name = f"snapshot_{snap['timestamp'].replace(':','-').replace(' ','_')}.json"
+    with open(os.path.join(SNAPSHOT_DIR, name), "w") as f:
+        json.dump(snap, f, indent=4)
+    return name
 
 def page_snapshots():
     aaa_header()
-    st.subheader("📸 Data Snapshots")
+    st.subheader("📸 Snapshots")
 
     if st.button("💾 Create Snapshot"):
-        snap = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
-            "health_log": load_json(HEALTH_LOG_FILE, []),
-            "ocr": load_json(OCR_DATA_FILE, []),
-        }
-
-        name = f"snapshot_{snap['timestamp']}.json"
-        path = os.path.join(SNAPSHOT_DIR, name)
-
-        with open(path, "w") as f:
-            json.dump(snap, f, indent=4)
-
+        name = save_snapshot()
         st.success(f"Snapshot saved: {name}")
         st.experimental_rerun()
 
     snaps = sorted(os.listdir(SNAPSHOT_DIR))
     if not snaps:
         st.info("No snapshots.")
+        aaa_footer()
         return
 
     for snap in snaps:
         with st.expander(snap):
             path = os.path.join(SNAPSHOT_DIR, snap)
-            with open(path, "r") as f:
-                data = json.load(f)
+            data = load_json(path, {})
 
             st.json(data)
 
-            c1, c2 = st.columns(2)
-
-            with c1:
-                if st.button(f"Restore {snap}", key=f"restore_{snap}"):
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(f"Restore {snap}", key=f"rs_{snap}"):
                     save_json(HEALTH_LOG_FILE, data["health_log"])
                     save_json(OCR_DATA_FILE, data["ocr"])
-                    st.success("Restored.")
+                    st.success("Restored!")
                     st.experimental_rerun()
 
-            with c2:
-                if st.button(f"Delete {snap}", key=f"delete_{snap}"):
+            with col2:
+                if st.button(f"Delete {snap}", key=f"del_{snap}"):
                     os.remove(path)
-                    st.warning("Deleted.")
+                    st.warning("Deleted!")
                     st.experimental_rerun()
 
+    aaa_footer()
+
+# ============================================================
+# GLOBAL AI SUMMARY STATE (Shared Page-6 <-> Page-9)
+# ============================================================
+
+if "ai_summary" not in st.session_state:
+    st.session_state["ai_summary"] = ""
+
+def save_ai_summary(text: str):
+    if text and isinstance(text, str) and text.strip():
+        st.session_state["ai_summary"] = text
+
+def get_ai_summary() -> str:
+    val = st.session_state.get("ai_summary", "")
+    return val if isinstance(val, str) else ""
+
+# ============================================================
+# PAGE 6 — AI SUMMARY
+# ============================================================
 
 def page_summary():
     aaa_header()
-    st.subheader("🧠 AI Summary Report")
+    st.subheader("🧠 AI Summary")
 
     logs = load_json(HEALTH_LOG_FILE, [])
     ocr = load_json(OCR_DATA_FILE, [])
@@ -522,37 +325,79 @@ def page_summary():
     log_choice = st.selectbox(
         "Select Health Log",
         list(range(len(logs))),
-        format_func=lambda i: logs[i]["date"] if logs else "None"
+        format_func=lambda i: logs[i]["date"]
     ) if logs else None
 
     ocr_choice = st.selectbox(
         "Select OCR Entry",
         list(range(len(ocr))),
-        format_func=lambda i: ocr[i]["filename"] if ocr else "None"
+        format_func=lambda i: ocr[i]["filename"]
     ) if ocr else None
 
     if st.button("Generate Summary"):
-        parts = []
-
-        if log_choice is not None:
-            parts.append(f"HEALTH LOG:\n{logs[log_choice]}")
-
-        if ocr_choice is not None:
-            parts.append(f"OCR TEXT:\n{ocr[ocr_choice]['text']}")
-
-        if not parts:
-            st.error("Nothing selected.")
+        if log_choice is None and ocr_choice is None:
+            st.error("Please select at least one.")
             return
 
-        combined = "\n\n".join(parts)
+        parts = []
+        if log_choice is not None:
+            parts.append(f"HEALTH LOG:\n{logs[log_choice]}")
+        if ocr_choice is not None:
+            parts.append(f"OCR:\n{ocr[ocr_choice]['text']}")
 
-        model = genai.GenerativeModel("gemini-2.0-flash") 
-        response = model.generate_content(
-            f"Create a structured medical summary:\n{combined}"
+        prompt = "\n\n".join(parts)
+
+        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
+            f"""
+Convert the following into a clean, structured medical summary.
+
+### 🧠 Medical Summary  
+**Date:** (Infer from data)
+
+---
+
+### 1. Key Symptoms  
+• ...
+
+### 2. Risk Markers  
+• ...
+
+### 3. Trends  
+• ...
+
+### 4. Observations from OCR  
+• ...
+
+### 5. Recommendations  
+• ...
+
+RAW TEXT:
+{prompt}
+            """
         )
 
-        st.markdown(response.text)
+        st.success("Summary Ready")
 
+        st.markdown("""
+        <div style="
+            background:rgba(255,255,255,0.04);
+            padding:20px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.08);
+            box-shadow:0 4px 12px rgba(0,0,0,0.35);
+        ">
+        """, unsafe_allow_html=True)
+
+        st.markdown(response.text)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        save_ai_summary(response.text)
+
+    aaa_footer()
+
+# ============================================================
+# PAGE 7 — MERGED VIEW
+# ============================================================
 
 def page_merged():
     aaa_header()
@@ -578,7 +423,8 @@ def page_merged():
         })
 
     if not combined:
-        st.info("No data.")
+        st.info("No data available.")
+        aaa_footer()
         return
 
     combined.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -587,126 +433,268 @@ def page_merged():
         with st.expander(f"{item['timestamp']} — {item['type']}"):
             st.write(item["content"])
 
+    aaa_footer()
+
+# ============================================================
+# PAGE 8 — AI INSIGHTS
+# ============================================================
 
 def page_insights():
     aaa_header()
-    st.subheader("🔮 Insights AI")
+    st.subheader("📊 AI Insights")
 
-    st.info("Generates personalised health insights based on ALL data.")
+    logs = load_json(HEALTH_LOG_FILE, [])
+    ocr = load_json(OCR_DATA_FILE, [])
 
-    merged = merge_all_health_data()
+    if st.button("Generate Insights"):
+        combined = []
 
-    if st.button("✨ Generate AI Insights"):
-        try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content([
-                "Analyse full health data and produce structured insights.",
-                json.dumps(merged)
-            ])
-            st.markdown(response.text)
-        except Exception as e:
-            st.error(f"Failed: {e}")
+        for l in logs:
+            combined.append(f"[Health Log] {l['date']}: {l['notes']}")
 
+        for o in ocr:
+            combined.append(f"[OCR] {o['timestamp']}: {o['text']}")
+
+        prompt = f"""
+You are a medical insights engine.
+Analyze the following and extract:
+
+1. Patterns & Trends
+2. Correlations
+3. Risks
+4. Recommended Actions
+
+DATA:
+{combined}
+"""
+
+        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(prompt)
+
+        st.session_state["insights_result"] = response.text
+        st.success("Insights Ready")
+
+    result = st.session_state.get("insights_result", "")
+    if result:
+        st.markdown(result)
+
+    aaa_footer()
 
 # ============================================================
-# SUMMARY PDF
+# PAGE 9 — SUMMARY REPORT (PDF EXPORT)
 # ============================================================
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
+def create_pdf_report(summary_text, logs, ocr):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
 
-def generate_summary_pdf(merged_data, output_path="summary_report.pdf"):
-    try:
-        c = canvas.Canvas(output_path, pagesize=letter)
+    pdf.set_font("Arial", "B", 20)
+    pdf.multi_cell(0, 12, "AAA — Health Intelligence Report")
+    pdf.ln(4)
 
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(1 * inch, 10.5 * inch, "AAA – Health Summary Report")
+    pdf.set_font("Arial", "", 12)
+    pdf.multi_cell(0, 8, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    pdf.ln(6)
 
-        c.setFont("Helvetica", 10)
-        c.drawString(1 * inch, 10.1 * inch, f"Generated: {merged_data.get('generated_at', '')}")
+    pdf.set_font("Arial", "B", 16)
+    pdf.multi_cell(0, 10, "AI Summary")
+    pdf.set_font("Arial", "", 12)
+    pdf.multi_cell(0, 7, summary_text)
+    pdf.ln(6)
 
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(1 * inch, 9.6 * inch, "1. Health Log Count")
-        c.setFont("Helvetica", 10)
-        c.drawString(1 * inch, 9.35 * inch, f"{len(merged_data.get('health_log', []))} entries")
+    pdf.set_font("Arial", "B", 16)
+    pdf.multi_cell(0, 10, "Health Logs")
+    pdf.set_font("Arial", "", 12)
 
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(1 * inch, 8.8 * inch, "2. OCR Extracted")
-        c.setFont("Helvetica", 10)
-        c.drawString(1 * inch, 8.55 * inch, f"{len(merged_data.get('ocr_results', []))} files")
+    for entry in logs:
+        pdf.multi_cell(0, 7, f"{entry['date']} — {entry['notes']}")
+        pdf.ln(2)
 
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(1 * inch, 8.05 * inch, "3. Vault Files")
-        c.setFont("Helvetica", 10)
-        c.drawString(1 * inch, 7.8 * inch, f"{len(merged_data.get('vault_files', []))} uploaded")
+    pdf.ln(4)
 
-        c.setFont("Helvetica-Oblique", 10)
-        c.drawString(1 * inch, 1 * inch,
-                     "Crafted by Rajdeep Singh — Artigellence Augmentation Aggregator")
-        c.drawString(1 * inch, 0.8 * inch,
-                     "Powered by Edge-AI Orchestration Layer • Gemini • Vertex AI")
+    pdf.set_font("Arial", "B", 16)
+    pdf.multi_cell(0, 10, "OCR Extracted Text")
+    pdf.set_font("Arial", "", 12)
 
-        c.save()
-        return True
+    for entry in ocr:
+        pdf.multi_cell(0, 7, f"{entry['filename']}:\n{entry['text']}")
+        pdf.ln(3)
 
-    except Exception as e:
-        st.error(f"PDF failed: {e}")
-        return False
+    return pdf.output(dest="S").encode("latin-1")
 
 
 def page_summary_report():
     aaa_header()
-    st.subheader("📄 Summary Report (PDF)")
+    st.subheader("📘 Summary Report (PDF)")
 
-    merged = merge_all_health_data()
+    logs = load_json(HEALTH_LOG_FILE, [])
+    ocr = load_json(OCR_DATA_FILE, [])
+    summary = get_ai_summary()
 
-    if st.button("📥 Generate Summary PDF"):
-        ok = generate_summary_pdf(merged)
-        if ok:
-            st.success("PDF generated!")
-            with open("summary_report.pdf", "rb") as f:
-                st.download_button(
-                    label="⬇️ Download PDF",
-                    data=f,
-                    file_name="AAA_Summary_Report.pdf",
-                    mime_type="application/pdf"
-                )
+    st.markdown("### 🧠 AI Summary")
+    st.markdown(summary if summary else "No summary generated yet.")
 
+    if st.button("⬇️ Export Full PDF Report"):
+        pdf_bytes = create_pdf_report(summary, logs, ocr)
+        b64 = base64.b64encode(pdf_bytes).decode()
+
+        href = f"""
+        <a href="data:application/octet-stream;base64,{b64}" download="AAA_Health_Report.pdf">
+        <button style="
+            background:#0284c7;
+            color:white;
+            padding:12px 24px;
+            border-radius:8px;
+            border:none;
+            cursor:pointer;">
+            Download PDF
+        </button>
+        </a>
+        """
+
+        st.markdown(href, unsafe_allow_html=True)
+
+    aaa_footer()
 
 # ============================================================
-# MAIN APP (Footer only once)
+# PAGE B1 — VAULT MANAGER PRO
+# ============================================================
+
+def file_metadata(path):
+    stat = os.stat(path)
+    size_kb = round(stat.st_size / 1024, 2)
+    modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    return size_kb, modified
+
+def page_vault_manager():
+    aaa_header()
+    st.subheader("🗂️ Vault Manager Pro")
+
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+
+    if not files:
+        st.info("Nothing in Vault.")
+        aaa_footer()
+        return
+
+    for f in files:
+        path = os.path.join(VAULT_DIR, f)
+        size_kb, modified = file_metadata(path)
+
+        with st.expander(f"{f} — {size_kb} KB"):
+            st.write(f"📅 Modified: {modified}")
+
+            if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                st.image(path, use_container_width=True)
+
+            if f.lower().endswith(".pdf"):
+                try:
+                    doc = fitz.open(path)
+                    page = doc.load_page(0)
+                    pix = page.get_pixmap()
+                    st.image(pix.tobytes(), caption="Page 1", use_container_width=True)
+                except:
+                    st.warning("Cannot preview PDF.")
+
+            st.write("---")
+
+            new_name = st.text_input(f"Rename {f}", value=f, key=f"rename_{f}")
+            if st.button(f"Apply Rename for {f}", key=f"btn_{f}"):
+                os.rename(path, os.path.join(VAULT_DIR, new_name))
+                st.success("Renamed!")
+                st.experimental_rerun()
+
+            if st.button(f"Delete {f}", key=f"del_{f}"):
+                trash_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{f}"
+                shutil.move(path, os.path.join(RECYCLE_BIN_DIR, trash_name))
+                st.warning(f"Moved to Recycle Bin as {trash_name}")
+                st.experimental_rerun()
+
+    aaa_footer()
+
+# ============================================================
+# PAGE — RECYCLE BIN
+# ============================================================
+
+def restore_from_recycle_bin(name):
+    shutil.move(os.path.join(RECYCLE_BIN_DIR, name), os.path.join(VAULT_DIR, name))
+
+def delete_permanently(name):
+    os.remove(os.path.join(RECYCLE_BIN_DIR, name))
+
+def page_recycle_bin():
+    aaa_header()
+    st.subheader("🗑 Recycle Bin")
+
+    files = os.listdir(RECYCLE_BIN_DIR)
+
+    if not files:
+        st.info("Recycle Bin empty.")
+        aaa_footer()
+        return
+
+    for f in files:
+        path = os.path.join(RECYCLE_BIN_DIR, f)
+        size_kb, modified = file_metadata(path)
+
+        with st.expander(f"{f} — {size_kb} KB"):
+            st.write(f"📅 Modified: {modified}")
+
+            if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                st.image(path, use_container_width=True)
+
+            if f.lower().endswith(".pdf"):
+                try:
+                    doc = fitz.open(path)
+                    page = doc.load_page(0)
+                    pix = page.get_pixmap()
+                    st.image(pix.tobytes(), caption="Page 1", use_container_width=True)
+                except:
+                    st.warning("Cannot preview PDF.")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button(f"♻ Restore {f}", key=f"rs_{f}"):
+                    restore_from_recycle_bin(f)
+                    st.success("Restored!")
+                    st.experimental_rerun()
+
+            with col2:
+                if st.button(f"❌ Delete Permanently {f}", key=f"dp_{f}"):
+                    delete_permanently(f)
+                    st.warning("Deleted permanently.")
+                    st.experimental_rerun()
+
+    aaa_footer()
+
+# ============================================================
+# NAVIGATION
 # ============================================================
 
 def main():
-
-    st.sidebar.markdown("### 💎 AAA — Health Intelligence")
+    st.sidebar.title("💎 AAA — Health Intelligence")
 
     pages = {
-        "🩺 Health Log": page_health_log,
-        "📂 Health Vault": page_vault,
+        "🧿 Health Log": page_health_log,
+        "🗂 Health Vault": page_vault,
+        "📁 Vault Manager": page_vault_manager,
         "📄 PDF Preview": page_pdf_preview,
         "🔍 OCR": page_ocr,
-        "🗂 Snapshots": page_snapshots,
-        "🤖 Summary AI": page_summary,
-        "📊 Merged View": page_merged,
-        "📡 Insights AI": page_insights,
-        "📁 Vault Manager": page_vault_manager,
+        "📸 Snapshots": page_snapshots,
+        "🧠 Summary AI": page_summary,
+        "🔗 Merged View": page_merged,
+        "📊 Insights AI": page_insights,
+        "📘 Summary Report": page_summary_report,
         "🗑 Recycle Bin": page_recycle_bin,
-        "📘 Summary Report (PDF)": page_summary_report,
     }
 
     choice = st.sidebar.radio("Navigation", list(pages.keys()))
+    pages[choice]()
 
-    pages[choice]()   # load the selected page
+# ============================================================
+# RUN APP
+# ============================================================
 
-    # Always show disclaimer (bottom of page)
-    aaa_disclaimer()
-
-    # Footer once
-    aaa_footer()
-
-
-# Entry point
 if __name__ == "__main__":
     main()
