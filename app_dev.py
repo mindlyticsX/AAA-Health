@@ -1,6 +1,6 @@
 # ============================================================
-# AAA — HEALTH INTELLIGENCE (MVP DEV VERSION)
-# CLEAN FINAL FILE — NO DUPLICATION — READY FOR DEPLOYMENT
+# AAA — HEALTH INTELLIGENCE (DEV VERSION)
+# FULL CLEAN IMPORT BLOCK + STRIPE + MONETIZATION READY
 # ============================================================
 
 import streamlit as st
@@ -9,151 +9,486 @@ import os
 import shutil
 from datetime import datetime
 from google import generativeai as genai
-import fitz     # PyMuPDF
+import fitz        # PyMuPDF for PDF rendering
 import base64
 from fpdf import FPDF
+import stripe      # Stripe for checkout sessions
 
 # ============================================================
-# CONFIG & SECRETS
+# PATHS & DIRECTORIES
 # ============================================================
 
-st.set_page_config(
-    page_title="💎 AAA — Health Intelligence (DEV)",
-    page_icon="💎",
-    layout="wide",
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "aaa_health_data")
+VAULT_DIR = os.path.join(DATA_DIR, "vault_files")
+SNAPSHOT_DIR = os.path.join(DATA_DIR, "snapshots")
+RECYCLE_BIN_DIR = os.path.join(DATA_DIR, "recycle_bin")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(VAULT_DIR, exist_ok=True)
+os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+os.makedirs(RECYCLE_BIN_DIR, exist_ok=True)
+os.makedirs(ASSETS_DIR, exist_ok=True)
 
-# ============================================================
-# DIRECTORIES
-# ============================================================
-
-HEALTH_LOG_FILE = "health_log.json"
-VAULT_DIR = "vault_files"
-OCR_DATA_FILE = "ocr_results.json"
-SNAPSHOT_DIR = "snapshots"
-PHOTO_DIR = "photos"
-RECYCLE_BIN_DIR = "recycle_bin"
-
-for d in [VAULT_DIR, SNAPSHOT_DIR, PHOTO_DIR, RECYCLE_BIN_DIR]:
-    os.makedirs(d, exist_ok=True)
+HEALTH_LOG_FILE = os.path.join(DATA_DIR, "health_log.json")
+OCR_DATA_FILE = os.path.join(DATA_DIR, "ocr_results.json")
+PHOTO_DATA_FILE = os.path.join(DATA_DIR, "photo_data.json")
+MERGED_DATA_FILE = os.path.join(DATA_DIR, "merge_health_data.py")
+AI_SUMMARY_FILE = os.path.join(DATA_DIR, "ai_summary.json")
+SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
 
 # ============================================================
-# HEADER + FOOTER
+# STRIPE CONFIG (PLACEHOLDERS - WIRED LATER)
 # ============================================================
 
-def aaa_header():
-    st.markdown("<br>", unsafe_allow_html=True)
-    logo_path = "assets/logo.png"
+STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
+STRIPE_PRICE_AU = st.secrets.get("STRIPE_PRICE_AU", "")
+STRIPE_PRICE_IN = st.secrets.get("STRIPE_PRICE_IN", "")
+STRIPE_PRICE_US = st.secrets.get("STRIPE_PRICE_US", "")
 
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=130)
-    else:
-        st.warning("⚠️ Missing: assets/logo.png")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-
-def aaa_footer():
-    st.markdown(
-        """
-        <br><br>
-        <div style="
-            background:rgba(148,163,184,0.08);
-            padding:18px 24px;
-            border-radius:12px;
-            max-width:800px;
-            margin:0 auto;
-            text-align:center;
-        ">
-            <p style="color:#cbd5e1; font-size:15px;">
-                <b>AAA — Health Intelligence</b> provides AI-assisted insights.
-                It does <b>not</b> replace professional medical or legal advice.
-            </p>
-        </div>
-
-        <div style="text-align:center; padding:25px;">
-            <p style="color:#e2e8f0; font-size:20px; font-weight:700;">
-                Crafted by <b>Rajdeep Singh</b> — Artigellence Augmentation Aggregator
-            </p>
-            <p style="color:#94a3b8; font-size:16px;">
-                Edge-AI Orchestration Layer • Gemini • Vertex AI
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 # ============================================================
-# JSON UTILITIES
+# GEMINI CONFIG
+# ============================================================
+
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# ============================================================
+# JSON HELPERS
 # ============================================================
 
 def load_json(path, default):
     if not os.path.exists(path):
         return default
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except:
+    except Exception:
         return default
 
 def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        st.error(f"Error saving data: {e}")
 
 # ============================================================
-# PAGE 1 — HEALTH LOG
+# PDF UTILITIES
+# ============================================================
+
+def extract_text_any(path):
+    """Extract rough text from PDF or image using PyMuPDF."""
+    text_chunks = []
+    if path.lower().endswith(".pdf"):
+        try:
+            with fitz.open(path) as doc:
+                for page in doc:
+                    text_chunks.append(page.get_text())
+        except Exception as e:
+            st.error(f"Error reading PDF: {e}")
+    else:
+        # For images, just store a placeholder - real OCR is done elsewhere
+        text_chunks.append("Image file uploaded. OCR text is stored separately.")
+    return "\n".join(text_chunks)
+
+# ============================================================
+# GEMINI - GENERIC CALLER
+# ============================================================
+
+def call_gemini(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        return "⚠️ Gemini API key is missing. Please configure it in Streamlit secrets."
+
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+        return response.text or "(No response text)"
+    except Exception as e:
+        return f"Error calling Gemini: {e}"
+
+# ============================================================
+# GLOBAL STYLING
+# ============================================================
+
+APP_CSS = """
+<style>
+    .main {
+        background-color: #020617;
+    }
+    .stApp {
+        background-color: #020617;
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+</style>
+"""
+
+st.set_page_config(
+    page_title="AAA — Health Intelligence (DEV)",
+    page_icon="💎",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+st.markdown(APP_CSS, unsafe_allow_html=True)
+
+# ============================================================
+# GLOBAL DISCLAIMER TEXT
+# ============================================================
+
+FINAL_DISCLAIMER_TEXT = """
+AAA — Health Intelligence provides AI-assisted insights.  
+It does not replace professional medical, financial, or legal advice.  
+Always consult certified experts for critical decisions.
+"""
+
+# ============================================================
+# GLOBAL UI — HEADER + FOOTER (COPIED FROM STABLE app.py)
+# ============================================================
+
+def aaa_header():
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        logo_path = os.path.join("assets", "logo.png")
+        if os.path.exists(logo_path):
+            st.image(logo_path, use_column_width=False, width=220)
+        else:
+            st.write("AAA — Artigellence Augmentation Aggregator")
+
+def aaa_footer():
+    st.markdown(
+        """
+        <br><br>
+        <div style='text-align:center; color:#9ca3af; font-size:14px;'>
+            AAA — Health Intelligence provides AI-assisted insights.<br>
+            It does not replace professional medical, financial, or legal advice.<br>
+            Always consult certified experts for critical decisions.
+        </div>
+        <br><br>
+        <div style='text-align:center; color:#e5e7eb; font-size:14px; font-weight:500;'>
+            Crafted by Rajdeep Singh — Artigellence Augmentation Aggregator<br>
+            <span style='font-size:13px; color:#9ca3af;'>
+                Edge-AI Orchestration Layer • Gemini • Vertex AI
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ============================================================
+# SUBSCRIPTION MODE (DEMO TOGGLE)
+# ============================================================
+
+def get_mode():
+    if "subscription_mode" not in st.session_state:
+        st.session_state["subscription_mode"] = "free"
+
+    with st.sidebar:
+        st.markdown("### 🔐 Subscription Mode (Demo)")
+        mode = st.radio(
+            "Select mode:",
+            ["free", "premium"],
+            index=0 if st.session_state["subscription_mode"] == "free" else 1,
+            key="subscription_mode_radio",
+        )
+        st.session_state["subscription_mode"] = mode
+
+    return st.session_state["subscription_mode"]
+
+def is_premium():
+    return st.session_state.get("subscription_mode", "free") == "premium"
+
+# ============================================================
+# PAYWALL SCREEN
+# ============================================================
+
+def paywall_screen():
+    st.markdown("<br>", unsafe_allow_html=True)
+    col = st.container()
+    with col:
+        st.markdown(
+            """
+            <div style="
+                background: radial-gradient(circle at top, #1f2937, #020617);
+                border-radius: 24px;
+                padding: 40px 32px;
+                text-align: center;
+                border: 1px solid rgba(148,163,184,0.35);
+                box-shadow: 0 22px 45px rgba(15,23,42,0.85);
+                max-width: 520px;
+                margin: 0 auto;
+            ">
+                <div style="font-size:16px; letter-spacing:0.18em; text-transform:uppercase; color:#60a5fa; margin-bottom:10px;">
+                    AAA — Health Intelligence
+                </div>
+                <h2 style="font-size:26px; margin-bottom:12px; color:#e5e7eb; font-weight:600;">
+                    Artigellence Premium — Health Intelligence
+                </h2>
+                <p style="font-size:14px; color:#cbd5f5; margin-bottom:24px;">
+                    Unlock full AAA Health Intelligence including:
+                </p>
+                <div style="text-align:left; display:inline-block; font-size:14px; color:#e5e7eb; margin-bottom:24px; line-height:1.7;">
+                    ✔ Full AI Medical Summaries<br>
+                    ✔ Deep Medical Insights &amp; Trends<br>
+                    ✔ PDF Health Reports &amp; Snapshots<br>
+                    ✔ Merged AI View (Doctor + Lab + Notes)<br>
+                    ✔ Early Access to AAA Finance &amp; Law<br>
+                    ✔ Premium Serene Frequency Indicators
+                </div>
+                <div style="font-size:13px; color:#9ca3af; opacity:0.9; margin-bottom:20px;">
+                    Upgrade to experience the complete power of Artigellence.
+                </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.button("A$10 / month", use_container_width=True)
+        with c2:
+            st.button("₹100 / month", use_container_width=True)
+        with c3:
+            st.button("$10 / month", use_container_width=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# CTA BANNER — MONETIZATION PROMPT
+# ============================================================
+
+def monetization_cta():
+    st.markdown(
+        """
+        <div style="
+            margin-top:30px;
+            padding:20px 22px;
+            border-radius:18px;
+            background:linear-gradient(90deg,#0f172a,#020617);
+            border:1px solid rgba(148,163,184,0.35);
+            color:#e5e7eb;
+            text-align:center;
+        ">
+            <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
+                🚀 Artigellence Premium — Upgrade for Full Intelligence
+            </div>
+            <div style="font-size:13px; color:#cbd5f5;">
+                Get unlimited AI summaries, deep insights, PDF health reports, snapshots, merged view and early access to AAA Finance &amp; Law.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ============================================================
+# PAYWALL HELPER — LOCK ANY FEATURE
+# ============================================================
+
+def feature_locked():
+    st.warning("⚠️ This feature is available for Premium members.")
+    st.markdown("### 👉 Please upgrade to unlock full access.")
+    paywall_screen()
+
+# ============================================================
+# PAGE 1 — HEALTH LOG  (with Ask Gemini)
 # ============================================================
 
 def page_health_log():
     aaa_header()
-    st.subheader("🧿 Daily Health Log")
+    st.subheader("🩺 Health Log")
 
-    date = st.date_input("Date")
-    notes = st.text_area("Notes / Symptoms / Observations", height=150)
+    logs = load_json(HEALTH_LOG_FILE, [])
+    today_str = datetime.now().strftime("%Y-%m-%d")
 
-    if st.button("Save Entry"):
-        log = load_json(HEALTH_LOG_FILE, [])
-        log.append({
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "date": str(date),
-            "notes": notes
-        })
-        save_json(HEALTH_LOG_FILE, log)
-        st.success("Entry saved!")
+    note = st.text_area("Write or paste your health notes:", height=160, key="health_log_text")
 
-    st.write("### Previous Entries")
-    for entry in reversed(load_json(HEALTH_LOG_FILE, [])):
-        with st.expander(f"{entry['date']}"):
-            st.write(entry["notes"])
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        date_str = st.date_input("Date", datetime.now()).strftime("%Y-%m-%d")
+    with col2:
+        st.write("")
+
+    if st.button("Save Log Entry"):
+        entry = {
+            "date": date_str,
+            "note": note.strip(),
+            "timestamp": datetime.now().isoformat(),
+        }
+        logs.append(entry)
+        save_json(HEALTH_LOG_FILE, logs)
+        st.success("Health log entry saved.")
+
+    st.markdown("---")
+    st.markdown("### Previous Entries")
+
+    if logs:
+        for entry in reversed(logs[-5:]):
+            with st.expander(entry["date"]):
+                st.write(entry["note"])
+    else:
+        st.info("No entries yet.")
+
+    monetization_cta()
+
+    st.markdown("---")
+    st.markdown("### 🤖 Ask Gemini — AAA Health Intelligence")
+    query = st.text_input("Type your question:", key="ask_gemini_question")
+
+    if st.button("Ask Gemini", type="primary"):
+        if not query.strip():
+            st.warning("Please type a question first.")
+        else:
+            with st.spinner("Thinking with AAA Health Intelligence…"):
+                combined_context = ""
+                if logs:
+                    recent = logs[-3:]
+                    combined_context += "Recent health notes:\n"
+                    for e in recent:
+                        combined_context += f"- {e['date']}: {e['note']}\n"
+
+                prompt = f"""
+You are AAA — Health Intelligence, an AI assistant built on top of medical models.
+
+USER QUESTION:
+{query}
+
+USER CONTEXT (may be partial / user-written notes):
+{combined_context}
+
+1. Give a kind, clear, layman-friendly explanation.
+2. Highlight possible risk markers as bullet points.
+3. Suggest 3–5 follow-up questions the user could ask their doctor.
+4. Always include a disclaimer that this is not medical advice and they must consult a licensed physician.
+"""
+                answer = call_gemini(prompt)
+                st.markdown(answer)
 
     aaa_footer()
 
 # ============================================================
-# PAGE 2 — HEALTH VAULT
+# PAGE 2 — HEALTH VAULT (UPLOAD)
 # ============================================================
 
-def page_vault():
+def page_health_vault():
     aaa_header()
-    st.subheader("🗂️ Health Vault")
+    st.subheader("📥 Health Vault")
 
-    uploaded = st.file_uploader("Upload Image/PDF", type=["png", "jpg", "jpeg", "pdf"])
-    if uploaded:
-        save_path = os.path.join(VAULT_DIR, uploaded.name)
-        with open(save_path, "wb") as f:
-            f.write(uploaded.getbuffer())
-        st.success(f"{uploaded.name} saved!")
+    uploaded_files = st.file_uploader(
+        "Upload medical PDFs or images",
+        type=["pdf", "png", "jpg", "jpeg"],
+        accept_multiple_files=True,
+    )
 
-    files = os.listdir(VAULT_DIR)
-    st.write("### Stored Files")
+    if uploaded_files:
+        for uf in uploaded_files:
+            path = os.path.join(VAULT_DIR, uf.name)
+            with open(path, "wb") as f:
+                f.write(uf.getbuffer())
+            st.success(f"Saved: {uf.name}")
 
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    st.markdown("### Stored Files")
     if not files:
-        st.info("No files uploaded.")
+        st.info("No files in the vault yet.")
     else:
         for f in files:
-            st.write(f)
+            st.write(f"• {f}")
 
+    monetization_cta()
+    aaa_footer()
+
+# ============================================================
+# VAULT MANAGER PRO
+# ============================================================
+
+def file_metadata(path):
+    stat = os.stat(path)
+    return round(stat.st_size / 1024, 2), datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+def page_vault_manager():
+    aaa_header()
+    st.subheader("📁 Vault Manager Pro")
+
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+
+    if not files:
+        st.info("Vault is empty.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    for f in files:
+        p = os.path.join(VAULT_DIR, f)
+        size, modified = file_metadata(p)
+
+        with st.expander(f"{f} — {size} KB — {modified}"):
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                    st.image(p)
+                elif f.lower().endswith(".pdf"):
+                    st.write("PDF file stored.")
+
+            with col2:
+                if st.button(f"🗑 Move to Recycle Bin: {f}", key=f"mv_{f}"):
+                    dest = os.path.join(RECYCLE_BIN_DIR, f)
+                    shutil.move(p, dest)
+                    st.success("Moved to Recycle Bin.")
+                    st.experimental_rerun()
+
+            with col3:
+                if st.button(f"❌ Delete Permanently: {f}", key=f"rm_{f}"):
+                    os.remove(p)
+                    st.warning("Deleted permanently.")
+                    st.experimental_rerun()
+
+    monetization_cta()
+    aaa_footer()
+
+# ============================================================
+# RECYCLE BIN PAGE
+# ============================================================
+
+def page_recycle_bin():
+    aaa_header()
+    st.subheader("🗑 Recycle Bin")
+
+    files = [f for f in os.listdir(RECYCLE_BIN_DIR) if os.path.isfile(os.path.join(RECYCLE_BIN_DIR, f))]
+
+    if not files:
+        st.info("Recycle Bin is empty.")
+        aaa_footer()
+        return
+
+    for f in files:
+        p = os.path.join(RECYCLE_BIN_DIR, f)
+        size, modified = file_metadata(p)
+
+        with st.expander(f"{f} — {size} KB — {modified}"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button(f"♻ Restore {f}", key=f"restore_{f}"):
+                    restore_path = os.path.join(VAULT_DIR, f)
+                    shutil.move(p, restore_path)
+                    st.success("Restored successfully.")
+                    st.experimental_rerun()
+
+            with col2:
+                if st.button(f"❌ Delete Permanently {f}", key=f"delete_{f}"):
+                    os.remove(p)
+                    st.warning("Deleted permanently.")
+                    st.experimental_rerun()
+
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
@@ -164,531 +499,415 @@ def page_pdf_preview():
     aaa_header()
     st.subheader("📄 PDF Preview")
 
-    pdfs = [f for f in os.listdir(VAULT_DIR) if f.lower().endswith(".pdf")]
-    if not pdfs:
-        st.info("No PDF files in Vault.")
+    files = [f for f in os.listdir(VAULT_DIR) if f.lower().endswith(".pdf")]
+    if not files:
+        st.info("No PDFs found in Vault.")
         aaa_footer()
         return
 
-    selected = st.selectbox("Select PDF", pdfs)
-    pdf_path = os.path.join(VAULT_DIR, selected)
+    selected = st.selectbox("Select PDF to preview:", files)
+    if selected:
+        path = os.path.join(VAULT_DIR, selected)
+        with open(path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode("utf-8")
 
-    try:
-        doc = fitz.open(pdf_path)
-        for i, page in enumerate(doc):
-            pix = page.get_pixmap()
-            st.image(pix.tobytes(), caption=f"Page {i+1}")
-    except:
-        st.error("Failed to load PDF.")
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700" type="application/pdf"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
 
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 4 — OCR (GEMINI)
+# PAGE 4 — OCR PLACEHOLDER (BASIC)
 # ============================================================
 
 def page_ocr():
     aaa_header()
-    st.subheader("🔍 OCR Extraction (Gemini)")
+    st.subheader("🔍 OCR & Text Extraction (Basic)")
 
-    file = st.file_uploader("Upload file", type=["png", "jpg", "jpeg", "pdf"])
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    if not files:
+        st.info("No files in Vault.")
+        aaa_footer()
+        return
 
-    if file:
-        st.info("Extracting text…")
+    selected = st.selectbox("Select file to extract text from:", files)
+    if st.button("Extract Text"):
+        path = os.path.join(VAULT_DIR, selected)
+        text = extract_text_any(path)
+        st.text_area("Extracted Text (rough):", value=text, height=300)
 
-        temp_path = os.path.join(PHOTO_DIR, file.name)
-        with open(temp_path, "wb") as f:
-            f.write(file.getbuffer())
-
-        extracted_text = ""
-
-        # PDF
-        if file.name.lower().endswith(".pdf"):
-            doc = fitz.open(temp_path)
-
-            for i, page in enumerate(doc):
-                pix = page.get_pixmap()
-                img_bytes = pix.tobytes("png")
-
-                response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                    ["Extract ALL text. No summary.", img_bytes]
-                )
-                extracted_text += f"\n\n--- PAGE {i+1} ---\n" + response.text
-
-        # IMAGE
-        else:
-            image_bytes = file.getvalue()
-            response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-                ["Extract ALL text. No summary.", image_bytes]
-            )
-            extracted_text = response.text
-
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ocr_log = load_json(OCR_DATA_FILE, [])
-        ocr_log.append({
-            "timestamp": timestamp,
-            "filename": file.name,
-            "text": extracted_text
-        })
-        save_json(OCR_DATA_FILE, ocr_log)
-
-        st.text_area("Extracted Text", extracted_text, height=300)
-
-    # Show history
-    st.write("### Previous OCR Results")
-    for entry in load_json(OCR_DATA_FILE, []):
-        with st.expander(f"{entry['timestamp']} — {entry['filename']}"):
-            st.text(entry["text"])
-
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
 # PAGE 5 — SNAPSHOTS
 # ============================================================
 
-def save_snapshot():
-    snap = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "health_log": load_json(HEALTH_LOG_FILE, []),
-        "ocr": load_json(OCR_DATA_FILE, []),
-    }
+def create_snapshot():
+    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    snap_path = os.path.join(SNAPSHOT_DIR, f"snapshot_{now}")
+    os.makedirs(snap_path, exist_ok=True)
 
-    name = f"snapshot_{snap['timestamp'].replace(':','-').replace(' ','_')}.json"
-    with open(os.path.join(SNAPSHOT_DIR, name), "w") as f:
-        json.dump(snap, f, indent=4)
-    return name
+    for fname in [HEALTH_LOG_FILE, OCR_DATA_FILE, PHOTO_DATA_FILE, AI_SUMMARY_FILE]:
+        if os.path.exists(fname):
+            shutil.copy(fname, snap_path)
 
 def page_snapshots():
     aaa_header()
-    st.subheader("📸 Snapshots")
+    st.subheader("🧊 Snapshots & Restore")
 
-    if st.button("💾 Create Snapshot"):
-        name = save_snapshot()
-        st.success(f"Snapshot saved: {name}")
-        st.experimental_rerun()
+    if st.button("Create Snapshot"):
+        create_snapshot()
+        st.success("Snapshot created.")
 
-    snaps = sorted(os.listdir(SNAPSHOT_DIR))
-    if not snaps:
+    folders = sorted([d for d in os.listdir(SNAPSHOT_DIR) if os.path.isdir(os.path.join(SNAPSHOT_DIR, d))])
+    st.markdown("### Existing Snapshots")
+    if not folders:
         st.info("No snapshots yet.")
-        aaa_footer()
-        return
+    else:
+        for d in folders:
+            with st.expander(d):
+                st.write("Contains backups of logs, OCR data and summaries.")
 
-    for snap in snaps:
-        with st.expander(snap):
-            path = os.path.join(SNAPSHOT_DIR, snap)
-            with open(path, "r") as f:
-                data = json.load(f)
-
-            st.json(data)
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button(f"Restore {snap}", key=f"restore_{snap}"):
-                    save_json(HEALTH_LOG_FILE, data["health_log"])
-                    save_json(OCR_DATA_FILE, data["ocr"])
-                    st.success("Restored!")
-                    st.experimental_rerun()
-
-            with col2:
-                if st.button(f"Delete {snap}", key=f"delete_{snap}"):
-                    os.remove(path)
-                    st.warning("Deleted!")
-                    st.experimental_rerun()
-
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
-# GLOBAL AI SUMMARY STATE (USED BY PAGE-6 & PAGE-9)
-# ============================================================
-
-if "ai_summary" not in st.session_state:
-    st.session_state["ai_summary"] = ""
-
-def save_ai_summary(text: str):
-    if isinstance(text, str) and text.strip():
-        st.session_state["ai_summary"] = text
-
-def get_ai_summary():
-    val = st.session_state.get("ai_summary", "")
-    return val if isinstance(val, str) else ""
-
-# ============================================================
-# PAGE 6 — AI SUMMARY
+# PAGE 6 — AI SUMMARY (BASIC — FREE DEMO)
 # ============================================================
 
 def page_summary():
     aaa_header()
-    st.subheader("🧠 AI Summary")
+    st.subheader("🧠 AI Summary (Demo)")
 
     logs = load_json(HEALTH_LOG_FILE, [])
     ocr = load_json(OCR_DATA_FILE, [])
 
     log_choice = st.selectbox(
-        "Select Health Log", list(range(len(logs))),
-        format_func=lambda i: logs[i]["date"]
+        "Select Health Log",
+        list(range(len(logs))) if logs else [],
+        format_func=lambda i: logs[i]["date"],
     ) if logs else None
 
     ocr_choice = st.selectbox(
-        "Select OCR Entry", list(range(len(ocr))),
-        format_func=lambda i: ocr[i]["filename"]
+        "Select OCR Entry",
+        list(range(len(ocr))) if ocr else [],
+        format_func=lambda i: ocr[i]["filename"],
     ) if ocr else None
 
     if st.button("Generate Summary"):
         if log_choice is None and ocr_choice is None:
-            st.error("Please select at least one.")
+            st.error("Select at least one source.")
+            aaa_footer()
             return
 
         parts = []
         if log_choice is not None:
-            parts.append(f"HEALTH LOG:\n{logs[log_choice]}")
+            parts.append(str(logs[log_choice]))
         if ocr_choice is not None:
-            parts.append(f"OCR:\n{ocr[ocr_choice]['text']}")
+            parts.append(ocr[ocr_choice]["text"])
 
-        prompt = "\n\n".join(parts)
+        prompt = f"""
+Convert the following into a structured, patient-friendly medical summary with:
+- Key Symptoms
+- Risk Markers
+- Trends
+- Observations
+- Recommendations
 
-        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(
-            f"""
-            Convert this into a structured medical summary.
+TEXT:
+{parts}
+"""
+        resp_text = call_gemini(prompt)
+        st.markdown(resp_text)
 
-            ### 🧠 Medical Summary
-            ### 1. Key Symptoms
-            ### 2. Risk Markers
-            ### 3. Trends
-            ### 4. Observations from OCR
-            ### 5. Recommendations
-
-            Raw Text:
-            {prompt}
-            """
-        )
-
-        st.markdown(response.text)
-        save_ai_summary(response.text)
-
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 7 — MERGED VIEW
+# PAGE 7 — MERGED VIEW (LOCKED)
 # ============================================================
 
 def page_merged():
     aaa_header()
-    st.subheader("🔗 Unified Merged View")
+    st.subheader("✨ Merged View (Doctor + Lab + Notes)")
 
-    logs = load_json(HEALTH_LOG_FILE, [])
-    ocr = load_json(OCR_DATA_FILE, [])
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
 
-    combined = []
-
-    for x in logs:
-        combined.append({
-            "timestamp": x["timestamp"],
-            "type": "Health Log",
-            "content": x["notes"]
-        })
-
-    for x in ocr:
-        combined.append({
-            "timestamp": x["timestamp"],
-            "type": f"OCR: {x['filename']}",
-            "content": x["text"]
-        })
-
-    combined.sort(key=lambda x: x["timestamp"], reverse=True)
-
-    for item in combined:
-        with st.expander(f"{item['timestamp']} — {item['type']}"):
-            st.write(item["content"])
-
+    st.info("Premium merged view will combine doctor notes, lab reports and personal logs into one layout.")
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 8 — INSIGHTS AI
+# PAGE 8 — SUMMARY AI (PREMIUM FEATURE)
 # ============================================================
 
-def page_insights():
+def page_summary_ai():
     aaa_header()
-    st.subheader("📊 AI Insights")
+    st.subheader("🧬 Summary AI (Premium)")
 
-    logs = load_json(HEALTH_LOG_FILE, [])
-    ocr = load_json(OCR_DATA_FILE, [])
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            Generate an intelligent medical summary from your uploaded PDF,
+            images, lab reports, and prescriptions.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    if not files:
+        st.warning("Upload files in the Vault to generate summaries.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    selected_file = st.selectbox("Select a file to summarize:", files)
+
+    if st.button("Generate Summary"):
+        with st.spinner("Analyzing with AAA Intelligence…"):
+            try:
+                path = os.path.join(VAULT_DIR, selected_file)
+                text = extract_text_any(path)
+                prompt = f"Give a clear, patient-friendly medical summary for:\n\n{text[:4000]}"
+                result = call_gemini(prompt)
+                st.success("Summary generated!")
+                st.write(result)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    monetization_cta()
+    aaa_footer()
+
+# ============================================================
+# PAGE 9 — INSIGHTS AI (PREMIUM FEATURE)
+# ============================================================
+
+def page_insights_ai():
+    aaa_header()
+    st.subheader("📊 Insights AI (Premium)")
+
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            Deep medical insight analysis including trends, risks, anomalies,
+            and personalized recommendations.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    if not files:
+        st.warning("No files found in Vault.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    selected_file = st.selectbox("Select file for insights:", files)
 
     if st.button("Generate Insights"):
-        combined = []
+        with st.spinner("Extracting insights using AAA Intelligence…"):
+            try:
+                path = os.path.join(VAULT_DIR, selected_file)
+                text = extract_text_any(path)
+                prompt = (
+                    "Provide detailed medical insights, anomalies, indicators, "
+                    "and actionable recommendations based on:\n\n"
+                    f"{text[:4000]}"
+                )
+                result = call_gemini(prompt)
+                st.success("Insights generated!")
+                st.write(result)
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-        for l in logs:
-            combined.append({
-                "type": "Health Log",
-                "date": l["date"],
-                "text": l["notes"]
-            })
-
-        for o in ocr:
-            combined.append({
-                "type": "OCR",
-                "date": o.get("timestamp", "Unknown"),
-                "text": o["text"]
-            })
-
-        insights_text = "Combined Health Data:\n\n"
-        for i in combined:
-            insights_text += f"- [{i['type']}] {i['date']}: {i['text']}\n"
-
-        prompt = f"""
-        Analyze the following health data and provide:
-
-        1. Patterns & Trends
-        2. Correlations
-        3. Risks
-        4. Recommended Actions
-
-        DATA:
-        {insights_text}
-        """
-
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
-
-        st.session_state["insights_result"] = response.text
-        st.success("Insights Ready!")
-
-    result = st.session_state.get("insights_result", "")
-    if result:
-        st.markdown(result)
-
+    monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 9 — SUMMARY REPORT (PDF)
+# PAGE 10 — SUMMARY REPORT (PDF EXPORT)
 # ============================================================
 
-def create_pdf_report(summary_text, logs, ocr):
-    pdf = FPDF()
+class PDFReport(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 14)
+        self.cell(0, 10, "AAA — Health Intelligence Summary Report", ln=True, align="C")
+        self.ln(4)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 8)
+        self.cell(0, 10, "AAA — Health Intelligence (Early Access)", 0, 0, "C")
+
+def generate_summary_pdf(text: str, output_path: str):
+    pdf = PDFReport()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-
-    pdf.set_font("Arial", "B", 20)
-    pdf.multi_cell(0, 12, "AAA — Health Intelligence Report")
-    pdf.ln(3)
-
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 7, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    pdf.ln(5)
-
-    pdf.set_font("Arial", "B", 16)
-    pdf.multi_cell(0, 10, "AI Summary")
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 7, summary_text)
-    pdf.ln(6)
-
-    pdf.set_font("Arial", "B", 16)
-    pdf.multi_cell(0, 10, "Health Logs")
-    pdf.set_font("Arial", "", 12)
-    for entry in logs:
-        pdf.multi_cell(0, 7, f"{entry['date']} — {entry['notes']}")
-    pdf.ln(6)
-
-    pdf.set_font("Arial", "B", 16)
-    pdf.multi_cell(0, 10, "OCR Extracted Text")
-    pdf.set_font("Arial", "", 12)
-    for entry in ocr:
-        pdf.multi_cell(0, 7, f"{entry['filename']}:\n{entry['text']}")
-        pdf.ln(2)
-
-    return pdf.output(dest="S").encode("latin-1")
-
+    pdf.set_font("Arial", size=11)
+    for line in text.split("\n"):
+        pdf.multi_cell(0, 6, line)
+    pdf.output(output_path)
 
 def page_summary_report():
     aaa_header()
     st.subheader("📘 Summary Report (PDF)")
 
-    logs = load_json(HEALTH_LOG_FILE, [])
-    ocr = load_json(OCR_DATA_FILE, [])
-
-    if st.button("✨ Generate AI Summary"):
-        data = {"logs": logs, "ocr": ocr}
-        prompt = f"""
-        Create a structured medical summary:
-        - Key concerns
-        - Trends
-        - Observations
-        - Recommendations
-
-        DATA:
-        {json.dumps(data, indent=2)}
-        """
-
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
-
-        st.session_state["ai_summary"] = response.text
-        st.success("AI Summary generated!")
-
-    summary = get_ai_summary()
-    st.markdown("### 🧠 AI Summary")
-    st.markdown(summary)
-
-    if st.button("⬇️ Export Full PDF"):
-        pdf_bytes = create_pdf_report(summary, logs, ocr)
-        b64 = base64.b64encode(pdf_bytes).decode()
-
-        href = f"""
-        <a href="data:application/pdf;base64,{b64}" download="AAA_Health_Report.pdf">
-            <button style="
-                background:#0ea5e9;
-                color:white;
-                padding:12px 24px;
-                border-radius:8px;
-                border:none;
-                font-size:16px;">
-                Download PDF Report
-            </button>
-        </a>
-        """
-        st.markdown(href, unsafe_allow_html=True)
-
-    aaa_footer()
-
-# ============================================================
-# PAGE — VAULT MANAGER PRO
-# ============================================================
-
-def file_metadata(path):
-    stat = os.stat(path)
-    size_kb = round(stat.st_size / 1024, 2)
-    modified = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-    return size_kb, modified
-
-def page_vault_manager():
-    aaa_header()
-    st.subheader("📁 Vault Manager")
-
-    files = os.listdir(VAULT_DIR)
-    files = [f for f in files if os.path.isfile(os.path.join(VAULT_DIR, f))]
-
-    if not files:
-        st.info("No files available.")
+    if not is_premium():
+        feature_locked()
         aaa_footer()
         return
 
-    for f in files:
-        path = os.path.join(VAULT_DIR, f)
-        size_kb, modified = file_metadata(path)
+    ai_summaries = load_json(AI_SUMMARY_FILE, [])
+    if not ai_summaries:
+        st.info("No AI summaries found. Generate some first in Summary AI.")
+        aaa_footer()
+        return
 
-        with st.expander(f"{f} — {size_kb}KB"):
-            st.write(f"📅 {modified}")
+    options = [f"{i+1}. {s['date']} — {s.get('title','Summary')}" for i, s in enumerate(ai_summaries)]
+    idx = st.selectbox("Choose a summary to export:", list(range(len(options))), format_func=lambda i: options[i])
 
-            if f.lower().endswith((".png", ".jpg", ".jpeg")):
-                st.image(path)
+    if st.button("Generate PDF Report"):
+        summary_text = ai_summaries[idx]["text"]
+        generate_summary_pdf(summary_text, SUMMARY_REPORT_PDF)
+        st.success("PDF report generated.")
 
-            elif f.lower().endswith(".pdf"):
-                try:
-                    doc = fitz.open(path)
-                    page = doc.load_page(0)
-                    pix = page.get_pixmap()
-                    st.image(pix.tobytes(), caption="Page 1 Preview")
-                except:
-                    st.warning("Cannot preview PDF.")
+        with open(SUMMARY_REPORT_PDF, "rb") as f:
+            st.download_button("Download Report", f, file_name="aaa_health_summary_report.pdf")
 
-            new_name = st.text_input(f"Rename {f}", value=f, key=f"rn_{f}")
-            if st.button(f"Apply Rename {f}", key=f"btn_rn_{f}"):
-                new_path = os.path.join(VAULT_DIR, new_name)
-                os.rename(path, new_path)
-                st.success("Renamed!")
-                st.experimental_rerun()
-
-            if st.button(f"Delete {f}", key=f"del_{f}"):
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                trash_name = f"{ts}__{f}"
-                shutil.move(path, os.path.join(RECYCLE_BIN_DIR, trash_name))
-                st.warning(f"Moved to Recycle Bin → {trash_name}")
-                st.experimental_rerun()
-
+    monetization_cta()
     aaa_footer()
 
+def save_ai_summary(text: str, title: str = "AAA Summary"):
+    summaries = load_json(AI_SUMMARY_FILE, [])
+    summaries.append(
+        {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "title": title,
+            "text": text,
+        }
+    )
+    save_json(AI_SUMMARY_FILE, summaries)
+
 # ============================================================
-# PAGE — RECYCLE BIN
+# PAGE 11 — SUBSCRIPTION PLANS (STRIPE PLACEHOLDER)
 # ============================================================
 
-def restore_from_recycle_bin(filename):
-    shutil.move(
-        os.path.join(RECYCLE_BIN_DIR, filename),
-        os.path.join(VAULT_DIR, filename)
+def page_subscription_plans():
+    aaa_header()
+    st.subheader("💎 AAA Subscription Plans")
+
+    st.markdown(
+        """
+        AAA Health gives you intelligent summaries of your medical files, personalized dashboards,
+        snapshots, recycle-bin safety, and continuous updates.
+
+        Below are the launch subscription options available for early users (5th Dec 2025).
+        """,
+        unsafe_allow_html=True,
     )
 
-def delete_permanently(filename):
-    os.remove(os.path.join(RECYCLE_BIN_DIR, filename))
+    st.markdown("### Free Tier")
+    st.markdown(
+        """
+        - Upload & store your PDFs/images  
+        - Basic Vault Manager  
+        - Basic Health Log entry  
+        - Limited AI summaries  
+        - Standard dashboard  
+        """,
+    )
 
-def page_recycle_bin():
-    aaa_header()
-    st.subheader("🗑 Recycle Bin")
+    st.markdown("### Premium — A$10 / month")
+    st.markdown(
+        """
+        - Unlimited AI summaries  
+        - Smart Dashboard + Tailored Health Indicators  
+        - Priority OCR + Advanced Extraction  
+        - Snapshot & Restore  
+        - Early Access Features  
+        - Support Circle (Trusted Family Access)  
+        """,
+    )
 
-    files = os.listdir(RECYCLE_BIN_DIR)
-    if not files:
-        st.info("Recycle Bin empty.")
-        aaa_footer()
-        return
+    st.markdown("### Premium India — ₹100 / month")
+    st.markdown(
+        """
+        - Unlimited AI summaries  
+        - Smart Dashboard + Tailored Indicators  
+        - OCR Boost + Fast Processing  
+        - Family/Support Circle  
+        - Continuous Updates  
+        """,
+    )
 
-    for f in files:
-        path = os.path.join(RECYCLE_BIN_DIR, f)
-        size_kb, modified = file_metadata(path)
+    st.markdown("### US / International — $10 / month")
+    st.markdown(
+        """
+        - Unlimited AI summaries  
+        - Advanced Insights + Highlight Extraction  
+        - Medical Frequency Insights (Serene Frequency)  
+        - Snapshot & Restore  
+        - Early Access to AAA Finance + Law (2026)  
+        """,
+    )
 
-        with st.expander(f"{f} — {size_kb}KB"):
-            st.write(f"📅 {modified}")
-
-            if f.lower().endswith((".png", ".jpg", ".jpeg")):
-                st.image(path)
-
-            elif f.lower().endswith(".pdf"):
-                try:
-                    doc = fitz.open(path)
-                    page = doc.load_page(0)
-                    pix = page.get_pixmap()
-                    st.image(pix.tobytes())
-                except:
-                    st.warning("Cannot preview PDF.")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button(f"♻ Restore {f}", key=f"restore_{f}"):
-                    restore_from_recycle_bin(f)
-                    st.success("Restored!")
-                    st.experimental_rerun()
-
-            with col2:
-                if st.button(f"❌ Delete Permanently {f}", key=f"delete_{f}"):
-                    delete_permanently(f)
-                    st.warning("Deleted.")
-                    st.experimental_rerun()
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.button("Upgrade A$10", use_container_width=True)
+    with c2:
+        st.button("Upgrade ₹100", use_container_width=True)
+    with c3:
+        st.button("Upgrade $10", use_container_width=True)
+    with c4:
+        st.button("Checkout coming soon…", use_container_width=True)
 
     aaa_footer()
 
 # ============================================================
-# NAVIGATION
+# MAIN NAVIGATION
 # ============================================================
 
 def main():
-    st.sidebar.title("💎 AAA — Health Intelligence (DEV)")
+    mode = get_mode()  # ensures sidebar radio is rendered
+
+    with st.sidebar:
+        st.markdown("### 💎 AAA — Health Intelligence (DEV)")
+        # Removed the extra duplicated "Navigate:" line here
 
     pages = {
-        "🧿 Health Log": page_health_log,
-        "🗂 Health Vault": page_vault,
+        "🩺 Health Log": page_health_log,
+        "📥 Health Vault": page_health_vault,
         "📁 Vault Manager": page_vault_manager,
+        "🗑 Recycle Bin": page_recycle_bin,
         "📄 PDF Preview": page_pdf_preview,
         "🔍 OCR": page_ocr,
-        "📸 Snapshots": page_snapshots,
-        "🧠 Summary AI": page_summary,
-        "🔗 Merged View": page_merged,
-        "📊 Insights AI": page_insights,
+        "🧠 Summary (Demo)": page_summary,
+        "✨ Merged View": page_merged,
+        "🧬 Summary AI": page_summary_ai,
+        "📊 Insights AI": page_insights_ai,
         "📘 Summary Report": page_summary_report,
-        "🗑 Recycle Bin": page_recycle_bin,
+        "💎 Subscription Plans": page_subscription_plans,
+        "🧊 Snapshots": page_snapshots,
     }
 
-    choice = st.sidebar.radio("Navigation", list(pages.keys()))
+    choice = st.sidebar.radio("Navigate:", list(pages.keys()))
     pages[choice]()
-
 
 # ============================================================
 # RUN
