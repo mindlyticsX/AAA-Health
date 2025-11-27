@@ -815,7 +815,7 @@ def page_subscription_plans():
 
     st.markdown("""
         <div style='text-align: center; margin-bottom: 20px;'>
-            <img src='https://raw.githubusercontent.com/mindlyticsx/aaa-health/main/assets/aaa_logo.png' 
+            <img src='https://raw.githubusercontent.com/mindlyticsx/AAA-Health/main/assets/aaa_logo.png' 
                  width='160'>
         </div>
         <h2 style='text-align:center;'>💎 AAA Subscription Plans</h2>
@@ -846,7 +846,7 @@ def page_subscription_plans():
     st.markdown("---")
 
     # ==========================
-    # PLAN 2 — HEALTH INTELLIGENCE (A$10 / ₹500 / $10)
+    # PLAN 2 — HEALTH INTELLIGENCE
     # ==========================
     st.markdown("### ⭐ Health Intelligence — A$10 / ₹500 / $10 per month")
     st.markdown("""
@@ -866,7 +866,7 @@ def page_subscription_plans():
     st.markdown("---")
 
     # ==========================
-    # PLAN 3 — AAA COMPLETE (A$29 / ₹1500 / $29)
+    # PLAN 3 — AAA COMPLETE
     # ==========================
     st.markdown("### 💼 AAA Complete — A$29 / ₹1500 / $29 per month")
     st.markdown("""
@@ -885,7 +885,7 @@ def page_subscription_plans():
     st.markdown("---")
 
     # ==========================
-    # PLAN 4 — ARTIGELLENCE ULTRA (A$99 / ₹5000 / $99)
+    # PLAN 4 — ARTIGELLENCE ULTRA
     # ==========================
     st.markdown("### 🚀 Artigellence Ultra — A$99 / ₹5000 / $99 per month")
     st.markdown("""
