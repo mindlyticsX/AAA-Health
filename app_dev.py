@@ -793,6 +793,7 @@ def page_summary_report():
     monetization_cta()
     aaa_footer()
 
+
 def save_ai_summary(text: str, title: str = "AAA Summary"):
     summaries = load_json(AI_SUMMARY_FILE, [])
     summaries.append(
@@ -803,6 +804,7 @@ def save_ai_summary(text: str, title: str = "AAA Summary"):
         }
     )
     save_json(AI_SUMMARY_FILE, summaries)
+
 
 # ============================================================
 # SUBSCRIPTION PLANS — NEW OPTIMISED VERSION (REPLACES OLD)
@@ -964,6 +966,7 @@ def page_premium():
     st.info("Premium payments will be enabled soon via Stripe, PayPal & UPI.")
 
     aaa_footer()
+
 
 # ============================================================
 # PHASE-2 HELPERS — HEALTH SCORE + AI SUMMARY
@@ -1582,3 +1585,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
