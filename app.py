@@ -793,6 +793,7 @@ def page_summary_report():
     monetization_cta()
     aaa_footer()
 
+
 def save_ai_summary(text: str, title: str = "AAA Summary"):
     summaries = load_json(AI_SUMMARY_FILE, [])
     summaries.append(
@@ -804,80 +805,109 @@ def save_ai_summary(text: str, title: str = "AAA Summary"):
     )
     save_json(AI_SUMMARY_FILE, summaries)
 
+
 # ============================================================
-# PAGE 11 — SUBSCRIPTION PLANS (STRIPE PLACEHOLDER)
+# SUBSCRIPTION PLANS — NEW OPTIMISED VERSION (REPLACES OLD)
 # ============================================================
 
 def page_subscription_plans():
     aaa_header()
-    st.subheader("💎 AAA Subscription Plans")
 
-    st.markdown(
-        """
-        AAA Health gives you intelligent summaries of your medical files, personalized dashboards,
-        snapshots, recycle-bin safety, and continuous updates.
+    st.markdown("""
+        <div style='text-align: center; margin-bottom: 20px;'>
+            <img src='https://raw.githubusercontent.com/mindlyticsx/aaa-health/main/assets/aaa_logo.png' 
+                 width='160'>
+        </div>
+        <h2 style='text-align:center;'>💎 AAA Subscription Plans</h2>
+        <p style='text-align:center; max-width: 720px; margin:auto;'>
+            Upgrade to unlock intelligent health summaries, tailored dashboards, snapshots, advanced OCR,
+            secure vault, cross-domain insights (Health + Finance + Law), and wellness features powered by
+            Serene Frequency & Secret Geometry Code.
+            <br><br>
+            Launch pricing starts from <strong>5th Dec 2025</strong>.
+        </p>
+    """, unsafe_allow_html=True)
 
-        Below are the launch subscription options available for early users (5th Dec 2025).
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("---")
 
-    st.markdown("### Free Tier")
-    st.markdown(
-        """
-        - Upload & store your PDFs/images  
-        - Basic Vault Manager  
-        - Basic Health Log entry  
-        - Limited AI summaries  
-        - Standard dashboard  
-        """,
-    )
+    # ==========================
+    # PLAN 1 — FREE TIER
+    # ==========================
+    st.markdown("### 🆓 Free Tier")
+    st.markdown("""
+    - Upload & store up to 10 PDFs/images per month  
+    - Basic Health Vault  
+    - Lite Dashboard  
+    - Limited AI summaries  
+    - Region detection  
+    - Daily health tips  
+    """)
 
-    st.markdown("### Premium — A$10 / month")
-    st.markdown(
-        """
-        - Unlimited AI summaries  
-        - Smart Dashboard + Tailored Health Indicators  
-        - Priority OCR + Advanced Extraction  
-        - Snapshot & Restore  
-        - Early Access Features  
-        - Support Circle (Trusted Family Access)  
-        """,
-    )
+    st.markdown("---")
 
-    st.markdown("### Premium India — ₹100 / month")
-    st.markdown(
-        """
-        - Unlimited AI summaries  
-        - Smart Dashboard + Tailored Indicators  
-        - OCR Boost + Fast Processing  
-        - Family/Support Circle  
-        - Continuous Updates  
-        """,
-    )
+    # ==========================
+    # PLAN 2 — HEALTH INTELLIGENCE (A$10 / ₹500 / $10)
+    # ==========================
+    st.markdown("### ⭐ Health Intelligence — A$10 / ₹500 / $10 per month")
+    st.markdown("""
+    - Unlimited AI summaries  
+    - Full Smart Dashboard  
+    - Tailored Health Indicators  
+    - Priority OCR + Advanced Extraction  
+    - Snapshot & Restore  
+    - Support Circle (Trusted Family Access)  
+    - Early access feature updates  
+    """)
 
-    st.markdown("### US / International — $10 / month")
-    st.markdown(
-        """
-        - Unlimited AI summaries  
-        - Advanced Insights + Highlight Extraction  
-        - Medical Frequency Insights (Serene Frequency)  
-        - Snapshot & Restore  
-        - Early Access to AAA Finance + Law (2026)  
-        """,
-    )
+    col1, _ = st.columns([1, 5])
+    with col1:
+        st.button("Upgrade — A$10 / ₹500 / $10", key="upgrade_10")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.button("Upgrade A$10", use_container_width=True)
-    with c2:
-        st.button("Upgrade ₹100", use_container_width=True)
-    with c3:
-        st.button("Upgrade $10", use_container_width=True)
-    with c4:
-        st.button("Checkout coming soon…", use_container_width=True)
+    st.markdown("---")
+
+    # ==========================
+    # PLAN 3 — AAA COMPLETE (A$29 / ₹1500 / $29)
+    # ==========================
+    st.markdown("### 💼 AAA Complete — A$29 / ₹1500 / $29 per month")
+    st.markdown("""
+    - Everything in A$10 tier  
+    - Finance Intelligence (Basic)  
+    - Law Intelligence (Basic)  
+    - Cross-domain insights (Health ➝ Finance ➝ Law)  
+    - Advanced recommendations  
+    - Enhanced family access  
+    """)
+
+    col2, _ = st.columns([1, 5])
+    with col2:
+        st.button("Upgrade — A$29 / ₹1500 / $29", key="upgrade_29")
+
+    st.markdown("---")
+
+    # ==========================
+    # PLAN 4 — ARTIGELLENCE ULTRA (A$99 / ₹5000 / $99)
+    # ==========================
+    st.markdown("### 🚀 Artigellence Ultra — A$99 / ₹5000 / $99 per month")
+    st.markdown("""
+    - Everything in A$29 tier  
+    - Serene Frequency Healing Dashboard  
+    - Secret Geometry Code Personal Blueprint  
+    - Edge-AI Wellness Node (2026)  
+    - 5-Member Family Account  
+    - Priority Model Access (New APIs / Kimi / Gemini / Grok / Claude)  
+    - VIP updates & early releases  
+    """)
+
+    col3, _ = st.columns([1, 5])
+    with col3:
+        st.button("Upgrade — A$99 / ₹5000 / $99", key="upgrade_99")
+
+    st.markdown("---")
+
+    st.info("Checkout & secure payment integration coming soon. All prices are early-access launch pricing.")
 
     aaa_footer()
+
 
 # ============================================================
 # PREMIUM / SUBSCRIPTION TEMPORARY PAGE
@@ -893,7 +923,7 @@ def page_premium():
     Premium subscribers will get:
 
     **🧠 Tailored Health Dashboard**
-    - Personalised insights
+    - Personalised insights  
     - Region-based intelligence  
     - Age & demographic adjustments  
     - Daily health score  
@@ -934,7 +964,9 @@ def page_premium():
     """)
 
     st.info("Premium payments will be enabled soon via Stripe, PayPal & UPI.")
+
     aaa_footer()
+
 
 # ============================================================
 # PHASE-2 HELPERS — HEALTH SCORE + AI SUMMARY
