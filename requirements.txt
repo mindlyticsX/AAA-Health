@@ -7,3 +7,4 @@ pymupdf
 fpdf2
 reportlab
 stripe
+matplotlib
