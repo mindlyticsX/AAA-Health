@@ -880,6 +880,643 @@ def page_subscription_plans():
     aaa_footer()
 
 # ============================================================
+# PREMIUM / SUBSCRIPTION TEMPORARY PAGE
+# ============================================================
+
+def page_premium():
+    aaa_header()
+    st.subheader("🌟 AAA Premium — Coming December 2025")
+
+    st.markdown("""
+    ### Unlock the Full AAA-Health Intelligence Experience
+
+    Premium subscribers will get:
+
+    **🧠 Tailored Health Dashboard**
+    - Personalised insights
+    - Region-based intelligence  
+    - Age & demographic adjustments  
+    - Daily health score  
+    - Alerts & early-warning patterns  
+
+    **📂 Multi-Modal Health Summary**
+    - PDFs, images, doctor notes  
+    - Medical reports  
+    - Voice notes  
+    - Continuous AI summaries  
+
+    **👪 Close-Circle Sharing**
+    - Share health updates with trusted family  
+    - Emergency access mode  
+
+    **🌍 Regional Awareness**
+    - Local health news  
+    - Seasonal disease patterns  
+    - Smart alerts  
+
+    **🔮 Future Features (included with Premium)**
+    - Biomarker timeline  
+    - Vital tracking dashboard  
+    - AI-linked Serene Frequency playlists  
+    - Secret Geometry Code energy balance insights  
+
+    ---
+
+    ### Launch Timeline
+    **Premium unlocks globally on:**  
+    **🗓 December 5th, 2025**
+
+    AAA is becoming the world’s first  
+    **Artigellence Augmentation Engine**  
+    for personal Health, Law, and Finance.
+
+    Stay tuned.
+    """)
+
+    st.info("Premium payments will be enabled soon via Stripe, PayPal & UPI.")
+    aaa_footer()
+
+# ============================================================
+# PHASE-2 HELPERS — HEALTH SCORE + AI SUMMARY
+# PHASE-3 STEP-1 — SCORE HISTORY + MATPLOTLIB TREND
+# ============================================================
+
+import json
+import os
+from datetime import datetime
+import google.generativeai as genai
+import matplotlib.pyplot as plt
+
+SCORE_HISTORY_FILE = "score_history.json"
+
+
+# -----------------------------
+# SIMPLE HEALTH SCORE V1
+# -----------------------------
+def compute_health_score(logs):
+    if not logs:
+        return 50  # neutral
+
+    score = 70  # base
+
+    positive_words = ["energetic", "slept well", "good", "better", "ok", "improved"]
+    negative_words = ["pain", "tightness", "headache", "dizzy", "fatigue"]
+
+    for entry in logs:
+        notes = entry.get("notes", "").lower()
+        for p in positive_words:
+            if p in notes:
+                score += 2
+        for n in negative_words:
+            if n in notes:
+                score -= 3
+
+    # recency boost
+    try:
+        last_date = datetime.strptime(logs[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+        days_ago = (datetime.now() - last_date).days
+        if days_ago <= 2:
+            score += 5
+    except:
+        pass
+
+    return max(1, min(score, 99))  # clamp
+
+
+# -----------------------------
+# AI SUMMARY USING GEMINI
+# -----------------------------
+def generate_ai_health_summary(logs, merged_data):
+    try:
+        combined_text = ""
+
+        for l in logs:
+            combined_text += f"Log ({l.get('timestamp')}): {l.get('notes', '')}\n"
+
+        for item in merged_data:
+            if item.get("type") == "summary":
+                combined_text += f"Summary: {item.get('text', '')}\n"
+            if item.get("type") == "photo":
+                combined_text += f"Photo metadata: {item.get('filename','')}\n"
+
+        prompt = f"""
+        You are a health summarization assistant.
+        Create a short, safe summary of the user's health patterns based on this data.
+        Avoid diagnosis. Avoid medical claims.
+        Keep it simple, optimistic, trend-based, and observation-only.
+
+        DATA:
+        {combined_text}
+        """
+
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+
+        return response.text
+
+    except Exception as e:
+        return f"AI Summary could not load: {e}"
+
+
+# ============================================================
+# PHASE-3 STEP-1 — SCORE HISTORY + TREND GRAPH
+# ============================================================
+
+def load_score_history():
+    if not os.path.exists(SCORE_HISTORY_FILE):
+        with open(SCORE_HISTORY_FILE, "w") as f:
+            json.dump({"history": []}, f, indent=4)
+        return []
+
+    try:
+        with open(SCORE_HISTORY_FILE) as f:
+            return json.load(f).get("history", [])
+    except:
+        return []
+
+
+def save_score_history(latest_score):
+    history = load_score_history()
+
+    history.append({
+        "score": latest_score,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+    history = history[-30:]
+
+    with open(SCORE_HISTORY_FILE, "w") as f:
+        json.dump({"history": history}, f, indent=4)
+
+    return history
+
+
+def plot_score_trend(history):
+    if not history:
+        return None
+
+    scores = [h["score"] for h in history]
+    timestamps = [h["timestamp"][5:16] for h in history]
+
+    fig, ax = plt.subplots(figsize=(6, 2.5))
+    ax.plot(scores, marker="o", linestyle="-")
+    ax.set_title("Health Score Trend (Last 30 updates)", fontsize=10)
+    ax.set_xlabel("Timeline", fontsize=8)
+    ax.set_ylabel("Score", fontsize=8)
+    ax.grid(True, linestyle="--", alpha=0.3)
+
+    fig.tight_layout()
+    return fig
+
+
+# ============================================================
+# AAA HEALTH INTELLIGENCE — DASHBOARD (PHASE-2 + PHASE-3)
+# ============================================================
+
+# ------------------------------------------------------------
+# HEALTH STATUS BAR (PHASE-3 STEP-5)
+# ------------------------------------------------------------
+def get_health_status(score, logs):
+    severe_keywords = ["pain", "pressure", "tightness", "bleeding", "faint", "severe"]
+    logs_text = " ".join([entry.get("notes", "").lower() for entry in logs]) if logs else ""
+
+    if any(w in logs_text for w in severe_keywords):
+        return "critical"
+
+    if score >= 70:
+        return "stable"
+    elif 55 <= score < 70:
+        return "attention"
+    return "critical"
+
+
+def render_health_status_bar(status):
+    if status == "stable":
+        color = "#0f3b2e"
+        label = "🟢 Stable"
+        desc = "Your health indicators look stable. No major concerns detected."
+    elif status == "attention":
+        color = "#b38800"
+        label = "🟡 Needs Attention"
+        desc = "Some parameters need attention. Keep monitoring closely."
+    else:
+        color = "#8b1a1a"
+        label = "🔴 Critical Alerts Detected"
+        desc = "Potential issues detected. Review logs or consult a professional."
+
+    st.markdown(f"""
+    <div style="
+        background-color:{color};
+        padding:18px;
+        border-radius:10px;
+        margin-bottom:20px;
+        border:1px solid rgba(255,255,255,0.2);
+    ">
+        <h3 style="margin:0; color:white; font-size:22px;">{label}</h3>
+        <p style="margin:5px 0 0 0; color:white; opacity:0.85;">{desc}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ------------------------------------------------------------
+# HEALTH PULSE SCORE — PHASE-3 STEP-8
+# ------------------------------------------------------------
+def generate_health_pulse(logs, health_score, trend, recent_note, file_count):
+    if not logs:
+        return ("⚪", "Not enough data — add your first log to activate your daily Health Pulse.")
+
+    text = recent_note.lower()
+    symptom_flags = ["pain", "tightness", "pressure", "headache", "fatigue", "dizzy"]
+    positive_flags = ["energetic", "better", "slept well", "good", "improved"]
+
+    has_negative = any(k in text for k in symptom_flags)
+    has_positive = any(k in text for k in positive_flags)
+
+    if has_negative and trend < 0:
+        return ("🔴", "Your health pulse is critical — recurring symptoms and a declining score detected.")
+
+    if has_negative and trend >= 0:
+        return ("🟡", "Your health pulse needs monitoring — discomfort indicators logged recently.")
+
+    if has_positive and trend > 0:
+        return ("🟢", "Your health pulse is stable today — positive markers outweigh negative ones.")
+
+    if trend > 0:
+        return ("🟢", "Your health pulse looks positive — score improving steadily.")
+
+    if len(logs) < 3:
+        return ("🟡", "Your health pulse is neutral — add more logs for a sharper daily insight.")
+
+    return ("⚪", "Your health pulse is stable — no significant changes detected today.")
+
+
+# ------------------------------------------------------------
+# DASHBOARD
+# ------------------------------------------------------------
+def page_dashboard():
+    aaa_header()
+    st.subheader("📊 AAA Health Intelligence — Tailored Dashboard (Beta)")
+    st.markdown("This is your personalised health overview. More data unlocks as you upload documents, logs, or summaries.")
+    st.markdown("")
+
+    # ------------------------------------------------------------
+    # LOAD HEALTH LOGS
+    # ------------------------------------------------------------
+    logs = []
+    if os.path.exists("health_log.json"):
+        try:
+            with open("health_log.json") as f:
+                logs = json.load(f)
+        except:
+            pass
+
+    # ------------------------------------------------------------
+    # LOAD MULTI-MODAL MERGED DATA
+    # ------------------------------------------------------------
+    merged_data = []
+    if os.path.exists("health_data.json"):
+        try:
+            with open("health_data.json") as f:
+                merged_data = json.load(f).get("data", [])
+        except:
+            pass
+
+    # ------------------------------------------------------------
+    # METRICS
+    # ------------------------------------------------------------
+    health_score = compute_health_score(logs)
+    last_update = logs[-1]["timestamp"] if logs else "—"
+    region = "Sydney, AU"
+
+    # Score history
+    score_history = save_score_history(health_score)
+    trend = 0
+    if len(score_history) >= 2:
+        trend = score_history[-1]["score"] - score_history[-2]["score"]
+
+    # ------------------------------------------------------------
+    # HEALTH STATUS BAR
+    # ------------------------------------------------------------
+    status = get_health_status(health_score, logs)
+    render_health_status_bar(status)
+
+    # ------------------------------------------------------------
+    # METRICS DISPLAY
+    # ------------------------------------------------------------
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Health Score", f"{health_score}", f"{trend:+}")
+
+    with col2:
+        st.metric("Last Update", last_update)
+
+    with col3:
+        st.metric("Region", region)
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # HEALTH PULSE (now logs exist, variables exist)
+    # ------------------------------------------------------------
+    recent_note = logs[-1]["notes"] if logs else ""
+    file_count = len(os.listdir("vault_files")) if os.path.exists("vault_files") else 0
+
+    pulse_icon, pulse_text = generate_health_pulse(
+        logs, health_score, trend, recent_note, file_count
+    )
+
+    st.markdown(f"""
+    <div style="
+        background-color:#0d1a2b;
+        padding:16px;
+        border-radius:10px;
+        margin-top:10px;
+        margin-bottom:25px;
+        border:1px solid rgba(255,255,255,0.15);
+    ">
+        <h3 style="margin:0; color:white; font-size:22px;">{pulse_icon} Health Pulse</h3>
+        <p style="margin-top:6px; color:white; opacity:0.85; font-size:16px;">
+            {pulse_text}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # TREND GRAPH
+    # ------------------------------------------------------------
+    st.markdown("### 📈 Health Score Trend")
+
+    fig = plot_score_trend(score_history)
+    if fig:
+        st.pyplot(fig)
+    else:
+        st.info("Trend graph will appear after more score updates.")
+
+    if trend > 0:
+        st.success(f"📈 Trend: Improving (+{trend})")
+    elif trend < 0:
+        st.error(f"📉 Trend: Declining ({trend})")
+    else:
+        st.warning("➡️ Trend: Stable")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # AI SUMMARY (Phase-2)
+    # ------------------------------------------------------------
+    st.markdown("### 🧠 AI Health Summary")
+    summary_text = generate_ai_health_summary(logs, merged_data)
+    st.info(summary_text)
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # DAILY SNAPSHOT
+    # ------------------------------------------------------------
+    st.markdown("### 🗂️ Daily Snapshot")
+
+    snapshot_date = last_update.split(" ")[0] if last_update != "—" else "—"
+    recent_note = logs[-1]["notes"] if logs else "No logs yet."
+    file_count = len(os.listdir("vault_files")) if os.path.exists("vault_files") else 0
+
+    col_a, col_b, col_c = st.columns(3)
+
+    with col_a:
+        st.markdown("#### 📅 Last Update")
+        st.info(snapshot_date)
+
+    with col_b:
+        st.markdown("#### 📝 Latest Note")
+        st.info(recent_note[:80] + ("..." if len(recent_note) > 80 else ""))
+
+    with col_c:
+        st.markdown("#### 📄 Documents")
+        st.info(f"{file_count} files")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # TODAY'S SIGNALS
+    # ------------------------------------------------------------
+    st.markdown("### 🌤️ Today’s Signals")
+
+    signals = []
+
+    if len(logs) >= 2:
+        t1 = datetime.strptime(logs[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+        t2 = datetime.strptime(logs[-2]["timestamp"], "%Y-%m-%d %H:%M:%S")
+        gap_hours = (t1 - t2).total_seconds() / 3600
+
+        if gap_hours <= 24:
+            signals.append("🟢 **Healthy logging frequency** — you added a log within 24 hours.")
+        else:
+            signals.append("🟡 **Low logging activity** — logs are spread out, insights may be less accurate.")
+    else:
+        signals.append("⚪ Not enough data to evaluate logging frequency.")
+
+    if logs:
+        note = logs[-1]["notes"].lower()
+        positive_markers = ["energetic", "better", "slept well", "okay", " improved"]
+        negative_markers = ["pain", "tightness", "headache", "fatigue", "dizzy"]
+
+        pos_flag = any(p in note for p in positive_markers)
+        neg_flag = any(n in note for n in negative_markers)
+
+        if pos_flag and not neg_flag:
+            signals.append("🟢 **Your last note looks positive** — good indicators reported.")
+        elif neg_flag and not pos_flag:
+            signals.append("🔴 **Discomfort indicators detected** — monitor closely.")
+        elif pos_flag and neg_flag:
+            signals.append("🟡 **Mixed signals** — some good signs, some discomfort.")
+        else:
+            signals.append("⚪ No clear sentiment detected in last note.")
+    else:
+        signals.append("⚪ No logs yet — start adding health notes for signals.")
+
+    if os.path.exists("vault_files"):
+        doc_count = len(os.listdir("vault_files"))
+        if doc_count > 0:
+            signals.append(f"🟢 **{doc_count} documents stored** — vault is active.")
+        else:
+            signals.append("🟡 Vault empty — upload lab reports or health files for deeper insights.")
+    else:
+        signals.append("⚪ Vault directory missing.")
+
+    for s in signals:
+        st.markdown(
+            f"""
+            <div style="
+                background-color:#0d233b;
+                padding:12px;
+                border-radius:8px;
+                margin-bottom:8px;
+                border:1px solid #1e3a5c;
+            ">
+            {s}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # WHY THESE SIGNALS MATTER
+    # ------------------------------------------------------------
+    st.markdown("### 🧠 Why These Signals Matter")
+
+    def generate_reasoning_layer(logs, recent_note, file_count):
+        reasons = []
+
+        if "headache" in recent_note.lower():
+            reasons.append("Headache often correlates with hydration levels or warm weather.")
+
+        if "tightness" in recent_note.lower():
+            reasons.append("Chest tightness patterns suggest exertion or hydration issues.")
+
+        if "slept well" in recent_note.lower() or "sleep" in recent_note.lower():
+            reasons.append("Good sleep strongly correlates with positive energy and appetite.")
+
+        if file_count > 0:
+            reasons.append(f"You have {file_count} documents stored — this helps AAA detect deeper patterns.")
+
+        if len(logs) < 7:
+            reasons.append("More logs over a longer period will produce stronger insights.")
+
+        if not reasons:
+            reasons.append("Signals look stable today. More data will unlock deeper personalised insights.")
+
+        return reasons
+
+    reasoning_items = generate_reasoning_layer(logs, recent_note, file_count)
+
+    for r in reasoning_items:
+        st.markdown(
+            f"""
+            <div style="
+                background-color:#0d233b;
+                padding:12px;
+                border-radius:8px;
+                margin-bottom:8px;
+                border:1px solid #1e3a5c;
+            ">
+            {r}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # EARLY WARNING INDICATORS
+    # ------------------------------------------------------------
+    st.markdown("### 🔍 Early Warning Indicators (Last 7 Days)")
+
+    recent_logs = logs[-7:] if len(logs) >= 7 else logs
+    text_blob = " ".join([l.get("notes", "") for l in recent_logs]).lower()
+    warnings = []
+
+    symptom_keywords = ["headache", "pain", "tightness", "pressure"]
+    symptom_count = sum(text_blob.count(k) for k in symptom_keywords)
+    if symptom_count >= 2:
+        warnings.append("⚠️ **Recurring symptoms detected** — monitor patterns.")
+
+    if len(recent_logs) <= 3:
+        warnings.append("⚠️ **Low logging frequency** — more logs improve accuracy.")
+
+    if "water" in text_blob or "hydration" in text_blob:
+        warnings.append("💧 **Hydration-related pattern noted** — keep tracking water.")
+
+    sleep_keywords = ["sleep", "tired", "fatigue"]
+    if any(k in text_blob for k in sleep_keywords):
+        if "good" not in text_blob:
+            warnings.append("😴 **Sleep irregularity signals** — mixed notes detected.")
+
+    doc_count = len(os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
+    if doc_count >= 5:
+        warnings.append("📄 **Multiple documents stored** — new reports may contain important info.")
+
+    if not warnings:
+        warnings.append("✅ **Everything looks stable** based on last 7 days of logs.")
+
+    for w in warnings:
+        st.markdown(
+            f"""
+            <div style="
+                background-color:#3b2f00;
+                padding:14px;
+                border-radius:8px;
+                margin-bottom:8px;
+                border:1px solid #604e00;
+            ">
+                {w}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # LAST 10 LOGS
+    # ------------------------------------------------------------
+    st.markdown("### 📅 Last 10 Health Logs")
+
+    if logs:
+        for entry in logs[-10:][::-1]:
+            st.markdown(
+                f"""
+                **📅 {entry.get('date','')} — {entry.get('timestamp','')}**
+
+                {entry.get('notes','')}
+                """
+            )
+    else:
+        st.warning("No logs found.")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # RECENT DOCUMENTS
+    # ------------------------------------------------------------
+    st.markdown("### 📂 Recent Documents")
+
+    recent_docs = []
+    if os.path.exists("vault_files"):
+        for fname in os.listdir("vault_files"):
+            p = os.path.join("vault_files", fname)
+            if os.path.isfile(p):
+                recent_docs.append({"name": fname})
+
+    if recent_docs:
+        for doc in recent_docs[:10]:
+            st.markdown(f"📄 **{doc['name']}**")
+    else:
+        st.warning("No documents found.")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # REGIONAL INSIGHTS
+    # ------------------------------------------------------------
+    st.markdown("### 🧭 Regional Insights")
+    st.info("Sydney health season: High pollen, warm weather, moderate UV. Flu season tapering.")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # CLOSE CIRCLE
+    # ------------------------------------------------------------
+    st.markdown("### 👪 Close Circle Sharing")
+    st.info("Add trusted family members to receive summaries (coming soon).")
+
+    aaa_footer()
+
+# ============================================================
 # MAIN NAVIGATION
 # ============================================================
 
@@ -888,9 +1525,9 @@ def main():
 
     with st.sidebar:
         st.markdown("### 💎 AAA — Health Intelligence (DEV)")
-        # Removed the extra duplicated "Navigate:" line here
 
     pages = {
+        "📊 Dashboard": page_dashboard,             # NEW — DASHBOARD PAGE
         "🩺 Health Log": page_health_log,
         "📥 Health Vault": page_health_vault,
         "📁 Vault Manager": page_vault_manager,
@@ -903,6 +1540,7 @@ def main():
         "📊 Insights AI": page_insights_ai,
         "📘 Summary Report": page_summary_report,
         "💎 Subscription Plans": page_subscription_plans,
+        "🌟 Premium (Coming Soon)": page_premium,   # NEW — PREMIUM PAGE
         "🧊 Snapshots": page_snapshots,
     }
 
