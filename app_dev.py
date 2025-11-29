@@ -1,5 +1,5 @@
 # ============================================================
-# AAA — HEALTH INTELLIGENCE (DEV VERSION)
+# AAA — HEALTH INTELLIGENCE (PRODUCTION VERSION)
 # FULL CLEAN IMPORT BLOCK + STRIPE + MONETIZATION READY
 # ============================================================
 
@@ -9,10 +9,10 @@ import os
 import shutil
 from datetime import datetime
 from google import generativeai as genai
-import fitz        # PyMuPDF for PDF rendering
+import fitz            # PyMuPDF for PDF rendering
 import base64
 from fpdf import FPDF
-import stripe      # Stripe for checkout sessions
+import stripe          # Stripe for future checkout integration
 
 # ============================================================
 # PATHS & DIRECTORIES
@@ -39,7 +39,7 @@ AI_SUMMARY_FILE = os.path.join(DATA_DIR, "ai_summary.json")
 SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
 
 # ============================================================
-# STRIPE CONFIG (PLACEHOLDERS - WIRED LATER)
+# STRIPE CONFIG (PLACEHOLDERS — CONNECTED LATER)
 # ============================================================
 
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
@@ -93,17 +93,16 @@ def extract_text_any(path):
         except Exception as e:
             st.error(f"Error reading PDF: {e}")
     else:
-        # For images, just store a placeholder - real OCR is done elsewhere
-        text_chunks.append("Image file uploaded. OCR text is stored separately.")
+        text_chunks.append("Image file uploaded. OCR text stored separately.")
     return "\n".join(text_chunks)
 
 # ============================================================
-# GEMINI - GENERIC CALLER
+# GEMINI GENERIC CALLER
 # ============================================================
 
 def call_gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
-        return "⚠️ Gemini API key is missing. Please configure it in Streamlit secrets."
+        return "⚠️ Gemini API key is missing. Configure it in Streamlit secrets."
 
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
@@ -132,13 +131,111 @@ APP_CSS = """
 """
 
 st.set_page_config(
-    page_title="AAA — Health Intelligence (DEV)",
+    page_title="AAA — Health Intelligence",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown(APP_CSS, unsafe_allow_html=True)
+
+# ============================================================
+# SUBSCRIPTION PRICING DICTIONARY (A$, USD, INR)
+# ============================================================
+
+SUBSCRIPTION_PLANS = {
+    "monthly": {
+        "AUD": 10,
+        "USD": 10,
+        "INR": 100
+    },
+    "yearly": {
+        "AUD": 95,
+        "USD": 95,
+        "INR": 950
+    }
+}
+
+def get_price(currency: str, cycle: str):
+    """Return price based on selected currency and billing cycle."""
+    try:
+        return SUBSCRIPTION_PLANS[cycle][currency]
+    except KeyError:
+        return None
+
+# ============================================================
+# SUBSCRIPTION STATE + PAYWALL LOGIC
+# ============================================================
+
+# Global toggle: free or premium (existing sidebar toggle drives this)
+def get_subscription_mode():
+    return st.session_state.get("subscription_mode", "free")
+
+
+def require_premium(feature_name: str):
+    """
+    Central paywall guard.
+    If user is free → show locked message + return False.
+    If user is premium → return True and allow the feature to run.
+    """
+    mode = get_subscription_mode()
+
+    if mode == "premium":
+        return True
+
+    # Render Lock UI
+    st.warning(f"🔒 **{feature_name} is a premium feature.**")
+    st.info(
+        "Upgrade to unlock all AI summaries, tailored dashboards, snapshots, "
+        "priority OCR, advanced extraction, support circle, and early-access features."
+    )
+
+    # Upgrade CTA (uses your pricing dictionary)
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown("### ⭐ Upgrade Now")
+    with col2:
+        st.markdown(
+            """
+            **Monthly:** A$10 / ₹100 / $10  
+            **Yearly:** A$95 / ₹950 / $95  
+            """
+        )
+        st.button("Upgrade to Premium")
+
+    return False
+
+# ============================================================
+# PREMIUM SUBSCRIPTION BANNER (TOP OF PAGE)
+# ============================================================
+
+def premium_banner():
+    """
+    Display a simple, elegant banner encouraging upgrade.
+    Shown only when user is on free tier.
+    """
+    mode = get_subscription_mode()
+    if mode == "premium":
+        return  # Premium users should not see banner
+
+    st.markdown(
+        """
+        <div style="
+            background: linear-gradient(90deg, #0ea5e9, #3b82f6, #2563eb);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+            font-size: 17px;
+            font-weight: 500;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        ">
+            ⭐ <b>Upgrade to AAA Premium</b> for unlimited summaries, full dashboards,
+            tailored insights, advanced OCR, snapshot restore and priority features.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ============================================================
 # GLOBAL DISCLAIMER TEXT
@@ -626,19 +723,107 @@ TEXT:
     aaa_footer()
 
 # ============================================================
-# PAGE 7 — MERGED VIEW (LOCKED)
+# PAGE — MERGED VIEW (PREMIUM FEATURE)
 # ============================================================
 
 def page_merged():
-    aaa_header()
-    st.subheader("✨ Merged View (Doctor + Lab + Notes)")
+    # 🔒 FIREWALL — FIRST LINE
+    check_firewall("Merged View", st.session_state.get("mode", "free"))
 
+    aaa_header()
+    st.subheader("✨ Merged View — Multi-Document Intelligence (Premium)")
+
+    # Premium check
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    st.info("Premium merged view will combine doctor notes, lab reports and personal logs into one layout.")
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
+            Compare multiple medical documents together — PDFs, reports, prescriptions,
+            scans, or lab results — and generate combined insights, patterns, and
+            cross-document trends using AAA Intelligence.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------------------------------------
+    # LOAD VAULT FILES
+    # ------------------------------------------------------------
+    files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
+
+    if not files:
+        st.warning("Upload at least 2 files in the Vault to use Merged View.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    selected_files = st.multiselect(
+        "Select 2–5 files for merged analysis:",
+        files,
+        max_selections=5
+    )
+
+    if len(selected_files) < 2:
+        st.info("Select at least 2 files to continue.")
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # GENERATE MERGED ANALYSIS
+    # ------------------------------------------------------------
+    if st.button("Generate Merged Intelligence"):
+        with st.spinner("Processing multiple documents with AAA Intelligence…"):
+            try:
+                extracted_texts = []
+                for f in selected_files:
+                    path = os.path.join(VAULT_DIR, f)
+                    extracted_texts.append(f"\n\n===== FILE: {f} =====\n" + extract_text_any(path))
+
+                combined_text = "\n".join(extracted_texts)
+
+                # Prompt
+                prompt = (
+                    "You are AAA Intelligence. Create a combined, structured, "
+                    "patient-friendly analysis from multiple uploaded medical documents.\n\n"
+                    "Break the output into these sections:\n"
+                    "1. Combined Key Findings (all files)\n"
+                    "2. Trends, Patterns & Relationships\n"
+                    "3. Risk Indicators & Warnings\n"
+                    "4. Contradictions / Missing Info\n"
+                    "5. Recommendations & Next Steps (simple explanation)\n\n"
+                    "Documents:\n"
+                    f"{combined_text[:12000]}"
+                )
+
+                # Call Gemini
+                result = call_gemini(prompt)
+
+                # Display styled card
+                st.markdown(
+                    """
+                    <div style="
+                        padding:20px;
+                        border-radius:12px;
+                        background-color:#0B1625;
+                        border-left:4px solid #D4A037;
+                        box-shadow:0 0 12px rgba(0,166,200,0.15);
+                    ">
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.write(result)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            except Exception as e:
+                st.error(f"Error: {e}")
+
     monetization_cta()
     aaa_footer()
 
@@ -647,9 +832,13 @@ def page_merged():
 # ============================================================
 
 def page_summary_ai():
+    # 🔒 FIREWALL — FIRST LINE
+    check_firewall("Summary AI", st.session_state.get("mode", "free"))
+
     aaa_header()
     st.subheader("🧬 Summary AI (Premium)")
 
+    # If not premium → lock the feature
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -658,31 +847,62 @@ def page_summary_ai():
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            Generate an intelligent medical summary from your uploaded PDF,
-            images, lab reports, and prescriptions.
+            Generate an intelligent, doctor-style medical summary from your uploaded
+            PDFs, images, lab reports, and prescriptions.  
+            AAA Intelligence creates a structured, patient-friendly summary with
+            findings, explanation, and next-step suggestions.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    # ------------------------------------------------------------
+    # LOAD FILES
+    # ------------------------------------------------------------
+    files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
+
     if not files:
-        st.warning("Upload files in the Vault to generate summaries.")
+        st.warning("Upload at least 1 file in the Vault to generate a summary.")
         monetization_cta()
         aaa_footer()
         return
 
     selected_file = st.selectbox("Select a file to summarize:", files)
 
+    # ------------------------------------------------------------
+    # GENERATE SUMMARY
+    # ------------------------------------------------------------
     if st.button("Generate Summary"):
         with st.spinner("Analyzing with AAA Intelligence…"):
             try:
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
-                prompt = f"Give a clear, patient-friendly medical summary for:\n\n{text[:4000]}"
+
+                prompt = (
+                    "Provide a clear, structured, patient-friendly medical summary. "
+                    "Break into sections:\n"
+                    "1. Key Findings\n"
+                    "2. What This Means (explain simply)\n"
+                    "3. Risk Indicators\n"
+                    "4. Missing Info To Check\n"
+                    "5. Recommended Next Steps\n\n"
+                    f"TEXT:\n{text[:4000]}"
+                )
+
                 result = call_gemini(prompt)
                 st.success("Summary generated!")
+
+                st.markdown(
+                    "<div style='padding:15px; border-radius:10px; "
+                    "background-color:#0B1625; box-shadow:0 0 8px rgba(0,166,200,0.15);'>",
+                    unsafe_allow_html=True,
+                )
                 st.write(result)
+                st.markdown("</div>", unsafe_allow_html=True)
+
             except Exception as e:
                 st.error(f"Error: {e}")
 
@@ -690,10 +910,74 @@ def page_summary_ai():
     aaa_footer()
 
 # ============================================================
-# PAGE 9 — INSIGHTS AI (PREMIUM FEATURE)
+# PAGE 9 — INSIGHTS AI (PREMIUM HYBRID ENGINE)
 # ============================================================
 
+def generate_insights_hybrid(file_text: str) -> str:
+    """AAA Hybrid Engine → Short Summary + Deep Insights (Structured)."""
+
+    prompt = f"""
+You are AAA — Health Intelligence.
+
+Analyze the following medical text and produce a **HYBRID INSIGHT REPORT** with two outputs:
+
+=====================================================================
+OUTPUT FORMAT (FOLLOW EXACTLY)
+=====================================================================
+
+SHORT_SUMMARY:
+- 3–5 bullet points
+- Simple, friendly, non-medical language
+- Easy for any user to understand
+
+DEEP_INSIGHTS:
+
+SECTION 1 — Key Findings:
+- 4–7 bullet points
+
+SECTION 2 — Trends & Patterns:
+- 3–5 bullet points
+
+SECTION 3 — Risks & Red Flags:
+- 2–4 bullet points
+
+SECTION 4 — Recommendations:
+- 3–6 bullet points
+
+=====================================================================
+
+TEXT TO ANALYZE:
+\"\"\"
+{file_text}
+\"\"\"
+
+Return ONLY the structured output.  
+No intro.  
+No explanation.  
+No extra text.
+"""
+
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    response = model.generate_content(prompt)
+    return response.text
+
+
+def save_insights_record(title: str, short_summary: str, deep_insights: str):
+    """Append insight record to insights.json"""
+    data = load_json(INSIGHTS_FILE, [])
+    data.append(
+        {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "title": title,
+            "short": short_summary,
+            "deep": deep_insights,
+        }
+    )
+    save_json(INSIGHTS_FILE, data)
+
+
 def page_insights_ai():
+    check_firewall("Insights AI", st.session_state.get("mode", "free"))
     aaa_header()
     st.subheader("📊 Insights AI (Premium)")
 
@@ -702,19 +986,14 @@ def page_insights_ai():
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            Deep medical insight analysis including trends, risks, anomalies,
-            and personalized recommendations.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Load files
+    files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
 
-    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     if not files:
-        st.warning("No files found in Vault.")
+        st.warning("No files found in your Vault.")
         monetization_cta()
         aaa_footer()
         return
@@ -722,78 +1001,278 @@ def page_insights_ai():
     selected_file = st.selectbox("Select file for insights:", files)
 
     if st.button("Generate Insights"):
-        with st.spinner("Extracting insights using AAA Intelligence…"):
+        with st.spinner("Analyzing with AAA Intelligence…"):
             try:
+                # Load & extract text
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
-                prompt = (
-                    "Provide detailed medical insights, anomalies, indicators, "
-                    "and actionable recommendations based on:\n\n"
-                    f"{text[:4000]}"
-                )
-                result = call_gemini(prompt)
-                st.success("Insights generated!")
-                st.write(result)
+
+                # AI Hybrid Output
+                ai_output = generate_insights_hybrid(text)
+
+                # Safe splitting
+                try:
+                    short_part = (
+                        ai_output.split("SHORT_SUMMARY:")[1]
+                                 .split("DEEP_INSIGHTS:")[0]
+                                 .strip()
+                    )
+                    deep_part = (
+                        ai_output.split("DEEP_INSIGHTS:")[1].strip()
+                    )
+                except Exception:
+                    short_part = "Unable to format short summary."
+                    deep_part = ai_output
+
+                # Save record in insights.json
+                save_insights_record(selected_file, short_part, deep_part)
+
+                st.success("Insights generated successfully!")
+
+                # Display
+                st.markdown("### 🟦 Short Summary")
+                st.markdown(short_part.replace("-", "• "))
+
+                st.markdown("### 🟫 Deep Insights")
+                st.markdown(deep_part.replace("-", "• "))
+
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error generating insights: {e}")
 
     monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 10 — SUMMARY REPORT (PDF EXPORT)
+# PAGE — INSIGHTS HISTORY (PREMIUM) — UPGRADED VERSION
 # ============================================================
 
-class PDFReport(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "AAA — Health Intelligence Summary Report", ln=True, align="C")
-        self.ln(4)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", "I", 8)
-        self.cell(0, 10, "AAA — Health Intelligence (Early Access)", 0, 0, "C")
-
-def generate_summary_pdf(text: str, output_path: str):
-    pdf = PDFReport()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Arial", size=11)
-    for line in text.split("\n"):
-        pdf.multi_cell(0, 6, line)
-    pdf.output(output_path)
-
-def page_summary_report():
+def page_insights_history():
+    check_firewall("Insights History", st.session_state.get("mode", "free"))
     aaa_header()
-    st.subheader("📘 Summary Report (PDF)")
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            📚 Insights History (Premium)
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Your previously generated health insights — deep analysis, trends, and summaries.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
 
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    ai_summaries = load_json(AI_SUMMARY_FILE, [])
-    if not ai_summaries:
+    # Load insights
+    insights = load_json(INSIGHTS_FILE, [])
+    if not insights:
+        st.info("No insights found. Generate insights first in Insights AI.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # AAA brand colors
+    card_bg = "#0B1625"          # Deep navy
+    teal = "#00A6C8"             # Teal
+    gold = "#D4A037"             # Metallic gold
+    soft_gold = "#F2C678"        # Accent gold
+
+    # Card styling
+    st.markdown(f"""
+        <style>
+        .aaa-card {{
+            background-color: {card_bg};
+            padding: 22px;
+            border-radius: 14px;
+            border-left: 4px solid {gold};
+            margin-bottom: 25px;
+            box-shadow: 0px 0px 15px rgba(0, 166, 200, 0.15);
+        }}
+        .aaa-title {{
+            color: {gold};
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }}
+        .aaa-date {{
+            color: {teal};
+            font-size: 14px;
+            margin-bottom: 12px;
+        }}
+        .aaa-section-title {{
+            color: {soft_gold};
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }}
+        .aaa-divider {{
+            height: 1px;
+            background-color: rgba(255,255,255,0.08);
+            margin: 12px 0;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Render cards (newest first)
+    for item in insights[::-1]:
+        title = item.get("title", "Insight")
+        date = item.get("date", "")
+        short = item.get("short", "")
+        deep = item.get("deep", "")
+
+        st.markdown("<div class='aaa-card'>", unsafe_allow_html=True)
+
+        # Title + Date
+        st.markdown(
+            f"<div class='aaa-title'>🧠 {title}</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div class='aaa-date'>📅 {date}</div>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<div class='aaa-divider'></div>", unsafe_allow_html=True)
+
+        # Short summary
+        st.markdown("<div class='aaa-section-title'>🔹 Short Summary</div>", unsafe_allow_html=True)
+        st.markdown(short.replace("-", "• "))
+
+        # Deep insights section
+        with st.expander("🔸 Deep Insights (Click to expand)"):
+            st.markdown(deep.replace("-", "• "))
+
+        st.markdown("<div class='aaa-divider'></div>", unsafe_allow_html=True)
+
+        # Export button
+        export_text = (
+            "AAA INSIGHTS REPORT\n"
+            f"Date: {date}\n"
+            f"Title: {title}\n\n"
+            "SHORT SUMMARY:\n"
+            f"{short}\n\n"
+            "DEEP INSIGHTS:\n"
+            f"{deep}"
+        )
+
+        st.download_button(
+            label="📥 Download as Text",
+            data=export_text,
+            file_name=f"aaa_insight_{date.replace(':','-').replace(' ','_')}.txt",
+            mime="text/plain",
+        )
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    monetization_cta()
+    aaa_footer()
+
+# ============================================================
+# PAGE 10 — SUMMARY REPORT (PREMIUM PDF EXPORT)
+# ============================================================
+
+from fpdf import FPDF
+
+class AAA_PDF(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 14)
+        self.set_text_color(0, 166, 200)  # AAA teal
+        self.cell(0, 10, "AAA — Health Intelligence Summary Report", ln=True, align="C")
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-18)
+        self.set_font("Arial", "I", 9)
+        self.set_text_color(180, 180, 180)
+        self.cell(0, 10, "Artigellence Augmentation Aggregator — Early Access", ln=True, align="C")
+
+
+def generate_pdf(text: str, title: str, date: str, output_path: str):
+    pdf = AAA_PDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Arial", "B", 13)
+    pdf.set_text_color(212, 160, 55)  # Gold
+    pdf.multi_cell(0, 10, title)
+    pdf.ln(3)
+
+    # Date
+    pdf.set_font("Arial", "", 11)
+    pdf.set_text_color(0, 166, 200)
+    pdf.cell(0, 8, f"Date: {date}", ln=True)
+    pdf.ln(5)
+
+    # Main Body
+    pdf.set_font("Arial", "", 11)
+    pdf.set_text_color(255, 255, 255)
+
+    for line in text.split("\n"):
+        pdf.multi_cell(0, 8, line)
+
+    pdf.output(output_path)
+
+
+def page_summary_report():
+    aaa_header()
+    st.subheader("📘 Summary Report (Premium PDF)")
+
+    # 🔒 Premium Lock
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    # Load summaries from your existing AI_SUMMARY_FILE
+    summaries = load_json(AI_SUMMARY_FILE, [])
+
+    if not summaries:
         st.info("No AI summaries found. Generate some first in Summary AI.")
         aaa_footer()
         return
 
-    options = [f"{i+1}. {s['date']} — {s.get('title','Summary')}" for i, s in enumerate(ai_summaries)]
-    idx = st.selectbox("Choose a summary to export:", list(range(len(options))), format_func=lambda i: options[i])
+    # Build dropdown
+    options = [
+        f"{i+1}. {s.get('date', '')} — {s.get('title', 'Summary')}"
+        for i, s in enumerate(summaries)
+    ]
 
-    if st.button("Generate PDF Report"):
-        summary_text = ai_summaries[idx]["text"]
-        generate_summary_pdf(summary_text, SUMMARY_REPORT_PDF)
-        st.success("PDF report generated.")
+    selected_idx = st.selectbox(
+        "Choose a summary to export:",
+        list(range(len(options))),
+        format_func=lambda i: options[i],
+    )
 
-        with open(SUMMARY_REPORT_PDF, "rb") as f:
-            st.download_button("Download Report", f, file_name="aaa_health_summary_report.pdf")
+    selected_summary = summaries[selected_idx]
+    text = selected_summary.get("text", "")
+    title = selected_summary.get("title", "AAA Summary")
+    date = selected_summary.get("date", "")
+
+    if st.button("📄 Generate PDF Report"):
+        try:
+            generate_pdf(text, title, date, SUMMARY_REPORT_PDF)
+            st.success("PDF report generated successfully.")
+
+            # Download button
+            with open(SUMMARY_REPORT_PDF, "rb") as f:
+                st.download_button(
+                    label="Download Report",
+                    data=f,
+                    file_name="AAA_Health_Summary_Report.pdf",
+                    mime="application/pdf",
+                )
+        except Exception as e:
+            st.error(f"Error generating PDF: {e}")
 
     monetization_cta()
     aaa_footer()
 
 
+# Saving function remains same (no changes)
 def save_ai_summary(text: str, title: str = "AAA Summary"):
     summaries = load_json(AI_SUMMARY_FILE, [])
     summaries.append(
@@ -807,163 +1286,229 @@ def save_ai_summary(text: str, title: str = "AAA Summary"):
 
 
 # ============================================================
-# SUBSCRIPTION PLANS — NEW OPTIMISED VERSION (REPLACES OLD)
+# PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
 def page_subscription_plans():
     aaa_header()
+    st.subheader("💎 AAA Premium — Unlock Full Health Intelligence")
 
-    st.markdown("""
-        <div style='text-align: center; margin-bottom: 20px;'>
-            <img src='https://raw.githubusercontent.com/mindlyticsx/aaa-health/main/assets/aaa_logo.png' 
-                 width='160'>
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
+            Upgrade to AAA Premium to access advanced AI-powered health insights,
+            deep report intelligence, professional summaries, and upcoming Finance
+            and Law intelligence modules. Designed to give you clarity, control,
+            and confidence.
         </div>
-        <h2 style='text-align:center;'>💎 AAA Subscription Plans</h2>
-        <p style='text-align:center; max-width: 720px; margin:auto;'>
-            Upgrade to unlock intelligent health summaries, tailored dashboards, snapshots, advanced OCR,
-            secure vault, cross-domain insights (Health + Finance + Law), and wellness features powered by
-            Serene Frequency & Secret Geometry Code.
-            <br><br>
-            Launch pricing starts from <strong>5th Dec 2025</strong>.
-        </p>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("---")
+    # -------------------------------
+    # FREE vs PREMIUM COMPARISON
+    # -------------------------------
+    st.markdown(
+        """
+        <style>
+            .plan-card {
+                background-color: #0B1523;
+                padding: 20px;
+                border-radius: 12px;
+                border: 1px solid #1f2b3a;
+                margin-bottom: 20px;
+            }
+            .gold-title {
+                color: #D4A037;
+                font-size: 20px;
+                font-weight: 600;
+            }
+            .teal {
+                color: #00A6C8;
+            }
+            .gold {
+                color: #F2C678;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # ==========================
-    # PLAN 1 — FREE TIER
-    # ==========================
-    st.markdown("### 🆓 Free Tier")
-    st.markdown("""
-    - Upload & store up to 10 PDFs/images per month  
-    - Basic Health Vault  
-    - Lite Dashboard  
-    - Limited AI summaries  
-    - Region detection  
-    - Daily health tips  
-    """)
+    # FREE PLAN
+    st.markdown(
+        """
+        <div class="plan-card">
+            <div class="gold-title">🆓 Free Plan</div>
+            <ul>
+                <li>Health Log (basic)</li>
+                <li>Upload PDF & Images</li>
+                <li>Basic OCR</li>
+                <li>Demo Summary (sample only)</li>
+                <li>Access to Dashboard</li>
+                <li>Snapshots</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("---")
+    # PREMIUM PLAN
+    st.markdown(
+        """
+        <div class="plan-card">
+            <div class="gold-title">💎 AAA Premium</div>
+            <ul>
+                <li class="teal">Advanced AI Summaries</li>
+                <li class="teal">Insights AI (Deep Medical Intelligence)</li>
+                <li class="teal">Insights History Viewer</li>
+                <li class="teal">Merged View (Multi-Document Intelligence)</li>
+                <li class="teal">PDF Summary Reports (Exportable)</li>
+                <li class="teal">Priority Model Processing</li>
+                <li class="gold">Coming December 2025: Rich Analytics Dashboard</li>
+                <li class="gold">Coming Jan–Feb 2026: Finance Intelligence</li>
+                <li class="gold">Coming Feb 2026: Law Intelligence</li>
+                <li class="gold">AI Nodes: Personal AI Agents</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # ==========================
-    # PLAN 2 — HEALTH INTELLIGENCE (A$10 / ₹500 / $10)
-    # ==========================
-    st.markdown("### ⭐ Health Intelligence — A$10 / ₹500 / $10 per month")
-    st.markdown("""
-    - Unlimited AI summaries  
-    - Full Smart Dashboard  
-    - Tailored Health Indicators  
-    - Priority OCR + Advanced Extraction  
-    - Snapshot & Restore  
-    - Support Circle (Trusted Family Access)  
-    - Early access feature updates  
-    """)
+    # -------------------------------
+    # PRICING BOX
+    # -------------------------------
+    st.markdown(
+        """
+        <div style="
+            background-color:#0B1523;
+            border: 1px solid #2c3e50;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 10px;
+        ">
+            <h3 style="color:#D4A037;">💎 Early Access Pricing</h3>
+            <p style="line-height:1.6;">
+                <span style="font-size:28px; color:#00A6C8;"><b>$10 / month</b></span><br>
+                <span style="color:#F2C678;">(Early access — pricing may change after launch)</span>
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    col1, _ = st.columns([1, 5])
-    with col1:
-        st.button("Upgrade — A$10 / ₹500 / $10", key="upgrade_10")
+    # CTA BUTTON
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("Upgrade to AAA Premium 💎"):
+        st.info("Subscription system coming soon — launching December 2025!")
 
-    st.markdown("---")
-
-    # ==========================
-    # PLAN 3 — AAA COMPLETE (A$29 / ₹1500 / $29)
-    # ==========================
-    st.markdown("### 💼 AAA Complete — A$29 / ₹1500 / $29 per month")
-    st.markdown("""
-    - Everything in A$10 tier  
-    - Finance Intelligence (Basic)  
-    - Law Intelligence (Basic)  
-    - Cross-domain insights (Health ➝ Finance ➝ Law)  
-    - Advanced recommendations  
-    - Enhanced family access  
-    """)
-
-    col2, _ = st.columns([1, 5])
-    with col2:
-        st.button("Upgrade — A$29 / ₹1500 / $29", key="upgrade_29")
-
-    st.markdown("---")
-
-    # ==========================
-    # PLAN 4 — ARTIGELLENCE ULTRA (A$99 / ₹5000 / $99)
-    # ==========================
-    st.markdown("### 🚀 Artigellence Ultra — A$99 / ₹5000 / $99 per month")
-    st.markdown("""
-    - Everything in A$29 tier  
-    - Serene Frequency Healing Dashboard  
-    - Secret Geometry Code Personal Blueprint  
-    - Edge-AI Wellness Node (2026)  
-    - 5-Member Family Account  
-    - Priority Model Access (New APIs / Kimi / Gemini / Grok / Claude)  
-    - VIP updates & early releases  
-    """)
-
-    col3, _ = st.columns([1, 5])
-    with col3:
-        st.button("Upgrade — A$99 / ₹5000 / $99", key="upgrade_99")
-
-    st.markdown("---")
-
-    st.info("Checkout & secure payment integration coming soon. All prices are early-access launch pricing.")
-
+    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PREMIUM / SUBSCRIPTION TEMPORARY PAGE
+# PAGE — PREMIUM (COMING SOON) — AAA GOLD–TEAL VERSION
 # ============================================================
 
 def page_premium():
     aaa_header()
-    st.subheader("🌟 AAA Premium — Coming December 2025")
+    
+    st.markdown(
+        """
+        <div style='text-align:center; margin-bottom:20px;'>
+            <img src='https://raw.githubusercontent.com/mindlyticsx/AAA-Health/main/assets/aaa_logo.png'
+                 width='140'>
+        </div>
+        <h2 style='text-align:center; color:#D4A037;'>🌟 Premium Features — Coming Soon</h2>
+        <p style='text-align:center; max-width:720px; margin:auto; line-height:1.6;'>
+            We’re building advanced <span style='color:#00A6C8;'>AAA Intelligence</span> features 
+            to help you take control of your Health, Finance, and Law data like never before.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("""
-    ### Unlock the Full AAA-Health Intelligence Experience
+    # -------------------------------
+    # PREMIUM FEATURE BLOCK
+    # -------------------------------
+    st.markdown(
+        """
+        <div style="
+            background-color:#0B1523;
+            border:1px solid #1f2b3a;
+            border-radius:12px;
+            padding:20px;
+            margin-top:25px;
+        ">
+            <h3 style="color:#D4A037;">💎 What Premium Will Unlock</h3>
+            <ul style="line-height:1.8;">
+                <li><span style='color:#00A6C8;'>Deep Health Intelligence Reports</span></li>
+                <li><span style='color:#00A6C8;'>Trends, Risks & Early Warnings</span></li>
+                <li><span style='color:#00A6C8;'>Multi-file Comparisons (Merged View)</span></li>
+                <li><span style='color:#00A6C8;'>Insights AI — Medical Reasoning</span></li>
+                <li><span style='color:#00A6C8;'>Insights History Viewer</span></li>
+                <li><span style='color:#00A6C8;'>Unlimited PDF & CSV Exports</span></li>
+                <li><span style='color:#00A6C8;'>AI-assisted Recommendations</span></li>
+                <li><span style='color:#00A6C8;'>Priority Model Processing</span></li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    Premium subscribers will get:
+    # -------------------------------
+    # ROADMAP BLOCK
+    # -------------------------------
+    st.markdown(
+        """
+        <div style="
+            background-color:#0B1523;
+            border:1px solid #2c3e50;
+            border-radius:12px;
+            padding:20px;
+            margin-top:25px;
+        ">
+            <h3 style="color:#D4A037;">🗓 Roadmap</h3>
+            <ul style="line-height:1.8;">
+                <li><span style='color:#F2C678;'>December 2025:</span> Rich Analytics Dashboard</li>
+                <li><span style='color:#F2C678;'>January 2026:</span> AAA Finance Intelligence (Beta)</li>
+                <li><span style='color:#F2C678;'>February 2026:</span> AAA Law Intelligence (Beta)</li>
+                <li><span style='color:#F2C678;'>2026 Q2:</span> AI Nodes — Personal Assistants</li>
+                <li><span style='color:#F2C678;'>2026 Q3:</span> Secure Cloud Sync (Optional)</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    **🧠 Tailored Health Dashboard**
-    - Personalised insights  
-    - Region-based intelligence  
-    - Age & demographic adjustments  
-    - Daily health score  
-    - Alerts & early-warning patterns  
-
-    **📂 Multi-Modal Health Summary**
-    - PDFs, images, doctor notes  
-    - Medical reports  
-    - Voice notes  
-    - Continuous AI summaries  
-
-    **👪 Close-Circle Sharing**
-    - Share health updates with trusted family  
-    - Emergency access mode  
-
-    **🌍 Regional Awareness**
-    - Local health news  
-    - Seasonal disease patterns  
-    - Smart alerts  
-
-    **🔮 Future Features (included with Premium)**
-    - Biomarker timeline  
-    - Vital tracking dashboard  
-    - AI-linked Serene Frequency playlists  
-    - Secret Geometry Code energy balance insights  
-
-    ---
-
-    ### Launch Timeline
-    **Premium unlocks globally on:**  
-    **🗓 December 5th, 2025**
-
-    AAA is becoming the world’s first  
-    **Artigellence Augmentation Engine**  
-    for personal Health, Law, and Finance.
-
-    Stay tuned.
-    """)
-
-    st.info("Premium payments will be enabled soon via Stripe, PayPal & UPI.")
+    # -------------------------------
+    # CTA BLOCK (DISABLED)
+    # -------------------------------
+    st.markdown(
+        """
+        <div style="
+            background-color:#0B1523;
+            border-radius:12px;
+            padding:20px;
+            margin-top:25px;
+            text-align:center;
+            border:1px dashed #2c3e50;
+        ">
+            <p style='color:#7f8c8d; font-size:15px;'>
+                Premium Plans will be available soon.
+            </p>
+            <button disabled style="
+                background-color:#1c2833;
+                color:#6c7a89;
+                padding:10px 20px;
+                border:none;
+                border-radius:8px;
+                cursor:not-allowed;
+                font-size:15px;
+            ">Coming Soon</button>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     aaa_footer()
 
@@ -1549,35 +2094,139 @@ def page_dashboard():
     aaa_footer()
 
 # ============================================================
+# FIREWALL + MONETIZATION (LIGHT MODE – SAFE FOR 5 DEC LAUNCH)
+# ============================================================
+
+PREMIUM_PAGES = {
+    "Premium (Coming Soon)",
+    "Summary AI",
+    "Insights AI",
+    "Summary Report",
+    "Merged View",
+}
+
+def check_firewall(page_name: str, mode: str):
+    """
+    Light firewall:
+    - Free mode → premium pages show upgrade notice.
+    - Premium mode → fully unlocked.
+    This is the safest & cleanest version.
+    """
+    if mode == "free" and page_name in PREMIUM_PAGES:
+        st.markdown("### 🔒 Premium Feature")
+        st.info(
+            """
+            This feature is part of **AAA Premium**.
+            Upgrade unlocks:
+            - Advanced AI summaries  
+            - Insights AI  
+            - Deep merged view  
+            - Rich PDF analytics  
+            - Priority processing  
+
+            👉 Coming December 2025.
+            """
+        )
+        st.stop()
+
+# ============================================================
 # MAIN NAVIGATION
 # ============================================================
 
 def main():
-    mode = get_mode()  # ensures sidebar radio is rendered
 
+    # -------------------------------
+    # SIDEBAR NAVIGATION
+    # -------------------------------
     with st.sidebar:
-        st.markdown("### 💎 AAA — Health Intelligence (DEV)")
 
-    pages = {
-        "📊 Dashboard": page_dashboard,             # NEW — DASHBOARD PAGE
-        "🩺 Health Log": page_health_log,
-        "📥 Health Vault": page_health_vault,
-        "📁 Vault Manager": page_vault_manager,
-        "🗑 Recycle Bin": page_recycle_bin,
-        "📄 PDF Preview": page_pdf_preview,
-        "🔍 OCR": page_ocr,
-        "🧠 Summary (Demo)": page_summary,
-        "✨ Merged View": page_merged,
-        "🧬 Summary AI": page_summary_ai,
-        "📊 Insights AI": page_insights_ai,
-        "📘 Summary Report": page_summary_report,
-        "💎 Subscription Plans": page_subscription_plans,
-        "🌟 Premium (Coming Soon)": page_premium,   # NEW — PREMIUM PAGE
-        "🧊 Snapshots": page_snapshots,
-    }
+        # SUBSCRIPTION MODE
+        st.markdown("## 🔐 Subscription Mode (Demo)")
+        mode = st.radio("Select mode:", ["free", "premium"])
+        st.session_state["mode"] = mode
 
-    choice = st.sidebar.radio("Navigate:", list(pages.keys()))
-    pages[choice]()
+        # HEADER
+        st.markdown("## 💎 AAA — Health Intelligence (DEV)")
+
+        # NAVIGATION MENU
+        choice = st.radio(
+            "Navigate:",
+            [
+                "📊 Dashboard",
+                "🩺 Health Log",
+                "📥 Health Vault",
+                "📁 Vault Manager",
+                "🗑 Recycle Bin",
+                "📄 PDF Preview",
+                "🔍 OCR",
+                "🧠 Summary (Demo)",
+                "✨ Merged View",
+                "🧬 Summary AI",
+                "📊 Insights AI",
+                "📚 Insights History",     # <— NEW, positioned after Insights AI
+                "📘 Summary Report",
+                "💎 Subscription Plans",
+                "🌟 Premium (Coming Soon)",
+                "🧊 Snapshots",
+            ]
+        )
+
+    # -------------------------------
+    # FIREWALL — DO NOT MOVE
+    # -------------------------------
+    check_firewall(choice, mode)
+
+    # -------------------------------
+    # PAGE ROUTING
+    # -------------------------------
+    if choice == "📊 Dashboard":
+        page_dashboard()
+
+    elif choice == "🩺 Health Log":
+        page_health_log()
+
+    elif choice == "📥 Health Vault":
+        page_health_vault()
+
+    elif choice == "📁 Vault Manager":
+        page_vault_manager()
+
+    elif choice == "🗑 Recycle Bin":
+        page_recycle_bin()
+
+    elif choice == "📄 PDF Preview":
+        page_pdf_preview()
+
+    elif choice == "🔍 OCR":
+        page_ocr()
+
+    elif choice == "🧠 Summary (Demo)":
+        page_summary()
+
+    elif choice == "✨ Merged View":
+        page_merged()
+
+    elif choice == "🧬 Summary AI":
+        page_summary_ai()
+
+    elif choice == "📊 Insights AI":
+        page_insights_ai()
+
+    elif choice == "📚 Insights History":
+        page_insights_history()
+
+    elif choice == "📘 Summary Report":
+        page_summary_report()
+
+    elif choice == "💎 Subscription Plans":
+        page_subscription_plans()
+
+    elif choice == "🌟 Premium (Coming Soon)":
+        page_premium()
+
+    elif choice == "🧊 Snapshots":
+        page_snapshots()
+
 
 # ============================================================
 # RUN

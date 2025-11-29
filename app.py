@@ -1,5 +1,5 @@
 # ============================================================
-# AAA — HEALTH INTELLIGENCE (DEV VERSION)
+# AAA — HEALTH INTELLIGENCE (PRODUCTION VERSION)
 # FULL CLEAN IMPORT BLOCK + STRIPE + MONETIZATION READY
 # ============================================================
 
@@ -9,10 +9,10 @@ import os
 import shutil
 from datetime import datetime
 from google import generativeai as genai
-import fitz        # PyMuPDF for PDF rendering
+import fitz            # PyMuPDF for PDF rendering
 import base64
 from fpdf import FPDF
-import stripe      # Stripe for checkout sessions
+import stripe          # Stripe for future checkout integration
 
 # ============================================================
 # PATHS & DIRECTORIES
@@ -39,7 +39,7 @@ AI_SUMMARY_FILE = os.path.join(DATA_DIR, "ai_summary.json")
 SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
 
 # ============================================================
-# STRIPE CONFIG (PLACEHOLDERS - WIRED LATER)
+# STRIPE CONFIG (PLACEHOLDERS — CONNECTED LATER)
 # ============================================================
 
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
@@ -93,17 +93,16 @@ def extract_text_any(path):
         except Exception as e:
             st.error(f"Error reading PDF: {e}")
     else:
-        # For images, just store a placeholder - real OCR is done elsewhere
-        text_chunks.append("Image file uploaded. OCR text is stored separately.")
+        text_chunks.append("Image file uploaded. OCR text stored separately.")
     return "\n".join(text_chunks)
 
 # ============================================================
-# GEMINI - GENERIC CALLER
+# GEMINI GENERIC CALLER
 # ============================================================
 
 def call_gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
-        return "⚠️ Gemini API key is missing. Please configure it in Streamlit secrets."
+        return "⚠️ Gemini API key is missing. Configure it in Streamlit secrets."
 
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
@@ -132,13 +131,111 @@ APP_CSS = """
 """
 
 st.set_page_config(
-    page_title="AAA — Health Intelligence (DEV)",
+    page_title="AAA — Health Intelligence",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown(APP_CSS, unsafe_allow_html=True)
+
+# ============================================================
+# SUBSCRIPTION PRICING DICTIONARY (A$, USD, INR)
+# ============================================================
+
+SUBSCRIPTION_PLANS = {
+    "monthly": {
+        "AUD": 10,
+        "USD": 10,
+        "INR": 100
+    },
+    "yearly": {
+        "AUD": 95,
+        "USD": 95,
+        "INR": 950
+    }
+}
+
+def get_price(currency: str, cycle: str):
+    """Return price based on selected currency and billing cycle."""
+    try:
+        return SUBSCRIPTION_PLANS[cycle][currency]
+    except KeyError:
+        return None
+
+# ============================================================
+# SUBSCRIPTION STATE + PAYWALL LOGIC
+# ============================================================
+
+# Global toggle: free or premium (existing sidebar toggle drives this)
+def get_subscription_mode():
+    return st.session_state.get("subscription_mode", "free")
+
+
+def require_premium(feature_name: str):
+    """
+    Central paywall guard.
+    If user is free → show locked message + return False.
+    If user is premium → return True and allow the feature to run.
+    """
+    mode = get_subscription_mode()
+
+    if mode == "premium":
+        return True
+
+    # Render Lock UI
+    st.warning(f"🔒 **{feature_name} is a premium feature.**")
+    st.info(
+        "Upgrade to unlock all AI summaries, tailored dashboards, snapshots, "
+        "priority OCR, advanced extraction, support circle, and early-access features."
+    )
+
+    # Upgrade CTA (uses your pricing dictionary)
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown("### ⭐ Upgrade Now")
+    with col2:
+        st.markdown(
+            """
+            **Monthly:** A$10 / ₹100 / $10  
+            **Yearly:** A$95 / ₹950 / $95  
+            """
+        )
+        st.button("Upgrade to Premium")
+
+    return False
+
+# ============================================================
+# PREMIUM SUBSCRIPTION BANNER (TOP OF PAGE)
+# ============================================================
+
+def premium_banner():
+    """
+    Display a simple, elegant banner encouraging upgrade.
+    Shown only when user is on free tier.
+    """
+    mode = get_subscription_mode()
+    if mode == "premium":
+        return  # Premium users should not see banner
+
+    st.markdown(
+        """
+        <div style="
+            background: linear-gradient(90deg, #0ea5e9, #3b82f6, #2563eb);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+            font-size: 17px;
+            font-weight: 500;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        ">
+            ⭐ <b>Upgrade to AAA Premium</b> for unlimited summaries, full dashboards,
+            tailored insights, advanced OCR, snapshot restore and priority features.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ============================================================
 # GLOBAL DISCLAIMER TEXT
