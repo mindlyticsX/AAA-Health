@@ -910,28 +910,27 @@ def page_summary_ai():
     aaa_footer()
 
 # ============================================================
-# PAGE 9 — INSIGHTS AI (PREMIUM HYBRID ENGINE)
+# PAGE 9 — INSIGHTS AI (PREMIUM HYBRID ENGINE, UPGRADED UI)
 # ============================================================
 
-def generate_insights_hybrid(file_text: str) -> str:
-    """AAA Hybrid Engine → Short Summary + Deep Insights (Structured)."""
-
+def generate_insights_hybrid(file_text: str) -> dict:
+    """Calls Gemini to produce Hybrid (Short + Deep) Health Intelligence."""
     prompt = f"""
-You are AAA — Health Intelligence.
+You are AAA-Health Intelligence. Analyze the following medical text and produce a HYBRID insight output.
 
-Analyze the following medical text and produce a **HYBRID INSIGHT REPORT** with two outputs:
+TEXT:
+\"\"\"
+{file_text}
+\"\"\"
 
-=====================================================================
-OUTPUT FORMAT (FOLLOW EXACTLY)
-=====================================================================
+OUTPUT FORMAT (VERY IMPORTANT — FOLLOW EXACTLY):
 
 SHORT_SUMMARY:
-- 3–5 bullet points
-- Simple, friendly, non-medical language
+- 3 to 5 bullet points
+- Simple, non-medical language
 - Easy for any user to understand
 
 DEEP_INSIGHTS:
-
 SECTION 1 — Key Findings:
 - 4–7 bullet points
 
@@ -944,17 +943,7 @@ SECTION 3 — Risks & Red Flags:
 SECTION 4 — Recommendations:
 - 3–6 bullet points
 
-=====================================================================
-
-TEXT TO ANALYZE:
-\"\"\"
-{file_text}
-\"\"\"
-
-Return ONLY the structured output.  
-No intro.  
-No explanation.  
-No extra text.
+Return ONLY the structured text. No intro, no extra explanation.
 """
 
     model = genai.GenerativeModel("gemini-2.0-flash")
@@ -963,7 +952,7 @@ No extra text.
 
 
 def save_insights_record(title: str, short_summary: str, deep_insights: str):
-    """Append insight record to insights.json"""
+    """Saves insight to insights.json."""
     data = load_json(INSIGHTS_FILE, [])
     data.append(
         {
@@ -981,12 +970,13 @@ def page_insights_ai():
     aaa_header()
     st.subheader("📊 Insights AI (Premium)")
 
+    # ========== PREMIUM CHECK ==========
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # Load files
+    # ========== LOAD FILES ==========
     files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
@@ -1000,41 +990,100 @@ def page_insights_ai():
 
     selected_file = st.selectbox("Select file for insights:", files)
 
+    # ========== GENERATE INSIGHTS ==========
     if st.button("Generate Insights"):
         with st.spinner("Analyzing with AAA Intelligence…"):
+
             try:
-                # Load & extract text
+                # Extract text
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
 
-                # AI Hybrid Output
+                # AI Hybrid output
                 ai_output = generate_insights_hybrid(text)
 
-                # Safe splitting
+                # Split short + deep sections
                 try:
-                    short_part = (
-                        ai_output.split("SHORT_SUMMARY:")[1]
-                                 .split("DEEP_INSIGHTS:")[0]
-                                 .strip()
-                    )
-                    deep_part = (
-                        ai_output.split("DEEP_INSIGHTS:")[1].strip()
-                    )
+                    short_part = ai_output.split("SHORT_SUMMARY:")[1].split("DEEP_INSIGHTS:")[0].strip()
+                    deep_part = ai_output.split("DEEP_INSIGHTS:")[1].strip()
                 except Exception:
                     short_part = "Unable to format short summary."
                     deep_part = ai_output
 
-                # Save record in insights.json
+                # Save record
                 save_insights_record(selected_file, short_part, deep_part)
 
                 st.success("Insights generated successfully!")
 
-                # Display
-                st.markdown("### 🟦 Short Summary")
+                # ---------- UI STYLE ----------
+                card_bg = "#0B1625"
+                gold = "#D4A037"
+                teal = "#00A6C8"
+                soft_gold = "#F2C678"
+
+                st.markdown(
+                    f"""
+                    <style>
+                        .insights-box {{
+                            background-color: {card_bg};
+                            padding: 20px;
+                            border-radius: 12px;
+                            border-left: 4px solid {gold};
+                            margin-bottom: 25px;
+                            box-shadow: 0 0 12px rgba(0, 166, 200, 0.15);
+                        }}
+                        .insights-title {{
+                            font-size: 20px;
+                            color: {gold};
+                            font-weight: 600;
+                        }}
+                        .section-header {{
+                            font-size: 16px;
+                            color: {soft_gold};
+                            margin-top: 12px;
+                            margin-bottom: 8px;
+                            font-weight: 500;
+                        }}
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                # ---------- DISPLAY BLOCK ----------
+                st.markdown("<div class='insights-box'>", unsafe_allow_html=True)
+
+                # Short summary
+                st.markdown("<div class='insights-title'>🟦 Short Summary</div>", unsafe_allow_html=True)
                 st.markdown(short_part.replace("-", "• "))
 
-                st.markdown("### 🟫 Deep Insights")
-                st.markdown(deep_part.replace("-", "• "))
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # Deep Insights with sections expanded
+                st.markdown("<div class='insights-title'>🟫 Deep Insights</div>", unsafe_allow_html=True)
+
+                with st.expander("SECTION 1 — Key Findings"):
+                    if "Key Findings:" in deep_part:
+                        sec1 = deep_part.split("Key Findings:")[1].split("SECTION 2")[0]
+                        st.markdown(sec1.replace("-", "• "))
+                    else:
+                        st.markdown(deep_part.replace("-", "• "))
+
+                with st.expander("SECTION 2 — Trends & Patterns"):
+                    if "SECTION 2" in deep_part:
+                        sec2 = deep_part.split("SECTION 2 — Trends & Patterns:")[1].split("SECTION 3")[0]
+                        st.markdown(sec2.replace("-", "• "))
+
+                with st.expander("SECTION 3 — Risks & Red Flags"):
+                    if "SECTION 3" in deep_part:
+                        sec3 = deep_part.split("SECTION 3 — Risks & Red Flags:")[1].split("SECTION 4")[0]
+                        st.markdown(sec3.replace("-", "• "))
+
+                with st.expander("SECTION 4 — Recommendations"):
+                    if "SECTION 4" in deep_part:
+                        sec4 = deep_part.split("SECTION 4 — Recommendations:")[1]
+                        st.markdown(sec4.replace("-", "• "))
+
+                st.markdown("</div>", unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Error generating insights: {e}")
