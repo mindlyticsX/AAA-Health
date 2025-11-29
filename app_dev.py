@@ -25,18 +25,29 @@ SNAPSHOT_DIR = os.path.join(DATA_DIR, "snapshots")
 RECYCLE_BIN_DIR = os.path.join(DATA_DIR, "recycle_bin")
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
+# Ensure required folders exist
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(VAULT_DIR, exist_ok=True)
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 os.makedirs(RECYCLE_BIN_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)
 
+# ============================================================
+# FILE PATHS (JSON / PDF DATA SOURCES)
+# ============================================================
+
 HEALTH_LOG_FILE = os.path.join(DATA_DIR, "health_log.json")
 OCR_DATA_FILE = os.path.join(DATA_DIR, "ocr_results.json")
 PHOTO_DATA_FILE = os.path.join(DATA_DIR, "photo_data.json")
-MERGED_DATA_FILE = os.path.join(DATA_DIR, "merge_health_data.py")
+
+# Corrected merged data file (must be JSON, not .py)
+MERGED_DATA_FILE = os.path.join(DATA_DIR, "merged_health_data.json")
+
 AI_SUMMARY_FILE = os.path.join(DATA_DIR, "ai_summary.json")
 SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
+
+# Insights History (FIXED — this was missing)
+INSIGHTS_HISTORY_FILE = os.path.join(DATA_DIR, "insights_history.json")
 
 # ============================================================
 # STRIPE CONFIG (PLACEHOLDERS — CONNECTED LATER)
@@ -1725,121 +1736,140 @@ def page_insights_history():
 
 
 # ============================================================
-# PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
+# PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
 def page_subscription_plans():
     aaa_header()
-    st.subheader("💎 AAA Premium — Unlock Full Health Intelligence")
+    st.subheader("💳 Subscription Plans — Artigellence Premium")
 
+    # Everyone can see this page (no premium lock)
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
-            Upgrade to AAA Premium to access advanced AI-powered health insights,
-            deep report intelligence, professional summaries, and upcoming Finance
-            and Law intelligence modules. Designed to give you clarity, control,
-            and confidence.
+        <div style="font-size:15px; line-height:1.6; margin-bottom:20px; color:#C7D2FE;">
+            Choose how you want to explore <b>AAA — Health Intelligence</b>.
+            Free mode lets you try the experience, while <b>Artigellence Premium</b>
+            unlocks full AI intelligence, health reports, and early access to AAA Finance & Law.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------------
-    # FREE vs PREMIUM COMPARISON
-    # -------------------------------
-    st.markdown(
-        """
-        <style>
-            .plan-card {
-                background-color: #0B1523;
-                padding: 20px;
-                border-radius: 12px;
-                border: 1px solid #1f2b3a;
-                margin-bottom: 20px;
-            }
-            .gold-title {
-                color: #D4A037;
-                font-size: 20px;
-                font-weight: 600;
-            }
-            .teal {
-                color: #00A6C8;
-            }
-            .gold {
-                color: #F2C678;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --- PLAN CARDS LAYOUT ---
+    col1, col2, col3 = st.columns(3)
 
     # FREE PLAN
-    st.markdown(
-        """
-        <div class="plan-card">
-            <div class="gold-title">🆓 Free Plan</div>
-            <ul>
-                <li>Health Log (basic)</li>
-                <li>Upload PDF & Images</li>
-                <li>Basic OCR</li>
-                <li>Demo Summary (sample only)</li>
-                <li>Access to Dashboard</li>
-                <li>Snapshots</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    with col1:
+        st.markdown(
+            """
+            <div style="
+                border-radius:14px;
+                padding:18px;
+                background:linear-gradient(145deg, #020617, #0f172a);
+                border:1px solid #1f2937;
+            ">
+                <h3 style="color:#E5E7EB; margin-bottom:4px;">Free</h3>
+                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
+                    Get a feel for AAA Health Intelligence.
+                </p>
+                <div style="font-size:22px; font-weight:bold; color:#FACC15; margin:8px 0;">
+                    $0 / month
+                </div>
+                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
+                    <li>Dashboard (Beta)</li>
+                    <li>Basic Health Log</li>
+                    <li>PDF Vault & OCR (limits apply)</li>
+                    <li>Demo AI Summary (short preview)</li>
+                    <li>Snapshots (Beta)</li>
+                </ul>
+                <div style="margin-top:10px; font-size:11px; color:#6B7280;">
+                    Ideal if you are just exploring AAA.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # PREMIUM – INDIA PLAN
+    with col2:
+        st.markdown(
+            """
+            <div style="
+                border-radius:14px;
+                padding:18px;
+                background:linear-gradient(145deg, #0b1120, #111827);
+                border:1px solid #4B5563;
+                box-shadow:0 0 18px rgba(56,189,248,0.35);
+            ">
+                <div style="font-size:11px; color:#22C55E; text-transform:uppercase; letter-spacing:0.08em;">
+                    Recommended
+                </div>
+                <h3 style="color:#E5E7EB; margin-bottom:4px;">Artigellence Premium — India</h3>
+                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
+                    Full AAA Health Intelligence for users in India.
+                </p>
+                <div style="font-size:22px; font-weight:bold; color:#22C55E; margin:8px 0;">
+                    ₹1000 / month
+                </div>
+                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
+                    <li>Unlimited AI Medical Summaries</li>
+                    <li>Hybrid Engine Insights (multi-document)</li>
+                    <li>Deep Insights AI & Insights History log</li>
+                    <li>PDF Health Reports & Summary PDF export</li>
+                    <li>Merged View (Doctor + Lab + Notes)</li>
+                    <li>Snapshots & Smart Timeline</li>
+                    <li>Early access to AAA Finance & Law</li>
+                    <li>Priority feature upgrades</li>
+                </ul>
+                <div style="margin-top:10px; font-size:11px; color:#E5E7EB;">
+                    Stripe checkout coming soon – pricing is indicative only.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # PREMIUM – GLOBAL PLAN
+    with col3:
+        st.markdown(
+            """
+            <div style="
+                border-radius:14px;
+                padding:18px;
+                background:linear-gradient(145deg, #020617, #0f172a);
+                border:1px solid #1f2937;
+            ">
+                <h3 style="color:#E5E7EB; margin-bottom:4px;">Artigellence Premium — Global</h3>
+                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
+                    For users outside India (Australia, US, EU and more).
+                </p>
+                <div style="font-size:22px; font-weight:bold; color:#38BDF8; margin:8px 0;">
+                    $10 / month
+                </div>
+                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
+                    <li>All Premium health features</li>
+                    <li>AI-generated health PDFs</li>
+                    <li>Hybrid Engine & Insights History</li>
+                    <li>Priority roadmap voting</li>
+                    <li>Access to future Serene Frequencies indicators</li>
+                </ul>
+                <div style="margin-top:10px; font-size:11px; color:#6B7280;">
+                    Final pricing may adjust slightly at public launch.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    # Note about upcoming Stripe integration
+    st.info(
+        "Stripe payments are not live yet. These plans show the "
+        "intended structure and prices. You are currently in demo mode."
     )
 
-    # PREMIUM PLAN
-    st.markdown(
-        """
-        <div class="plan-card">
-            <div class="gold-title">💎 AAA Premium</div>
-            <ul>
-                <li class="teal">Advanced AI Summaries</li>
-                <li class="teal">Insights AI (Deep Medical Intelligence)</li>
-                <li class="teal">Insights History Viewer</li>
-                <li class="teal">Merged View (Multi-Document Intelligence)</li>
-                <li class="teal">PDF Summary Reports (Exportable)</li>
-                <li class="teal">Priority Model Processing</li>
-                <li class="gold">Coming December 2025: Rich Analytics Dashboard</li>
-                <li class="gold">Coming Jan–Feb 2026: Finance Intelligence</li>
-                <li class="gold">Coming Feb 2026: Law Intelligence</li>
-                <li class="gold">AI Nodes: Personal AI Agents</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # -------------------------------
-    # PRICING BOX
-    # -------------------------------
-    st.markdown(
-        """
-        <div style="
-            background-color:#0B1523;
-            border: 1px solid #2c3e50;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 10px;
-        ">
-            <h3 style="color:#D4A037;">💎 Early Access Pricing</h3>
-            <p style="line-height:1.6;">
-                <span style="font-size:28px; color:#00A6C8;"><b>$10 / month</b></span><br>
-                <span style="color:#F2C678;">(Early access — pricing may change after launch)</span>
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # CTA BUTTON
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("Upgrade to AAA Premium 💎"):
-        st.info("Subscription system coming soon — launching December 2025!")
-
+    # Keep your standard monetization CTA + footer
     monetization_cta()
     aaa_footer()
 
