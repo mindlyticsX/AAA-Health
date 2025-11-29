@@ -2443,6 +2443,210 @@ def page_edge_node_memory():
 
 
 # ============================================================
+# PAGE 20 — AAA PATTERN TIMELINE AI
+# Neuralink-Style Signal Condenser (Premium Intelligence)
+# ============================================================
+
+def page_pattern_timeline_ai():
+    aaa_header()
+    st.subheader("🧩 AAA Pattern Timeline AI — Neuralink-Style Condensed Signals")
+
+    # Premium check
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            This is AAA’s neural signal condenser — it compresses logs, documents, 
+            insights, memory signals, and patterns into a unified high-density health 
+            timeline. Inspired by Neuralink-style pattern compression and 
+            DeepMind-style sequence alignment, this engine identifies your key daily 
+            shifts and expresses them as condensed “signal bursts”.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # LOAD HEALTH LOGS
+    # --------------------------------------------------------
+    logs = load_json_data(HEALTH_LOG_FILE, default=[])
+    vault_files = [f for f in os.listdir(VAULT_DIR)]
+    insights = load_json_data(AI_SUMMARY_FILE, default={})
+    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
+
+    # --------------------------------------------------------
+    # TIME RANGE SELECT
+    # --------------------------------------------------------
+    st.markdown("### 📅 Select Timeline Range")
+    range_choice = st.selectbox(
+        "Choose analysis period:",
+        ["Last 7 Days", "Last 14 Days", "Last 30 Days"]
+    )
+
+    if range_choice == "Last 7 Days":
+        days = 7
+    elif range_choice == "Last 14 Days":
+        days = 14
+    else:
+        days = 30
+
+    cutoff = datetime.now().timestamp() - (days * 86400)
+
+    # Filter logs within range
+    filtered_logs = [
+        log for log in logs
+        if "timestamp" in log and log["timestamp"] >= cutoff
+    ]
+
+    # --------------------------------------------------------
+    # TIMELINE SUMMARY
+    # --------------------------------------------------------
+    st.markdown("### 🧠 Condensed Signal Timeline")
+    if not filtered_logs:
+        st.info("No activity detected in the selected range.")
+    else:
+        for log in filtered_logs:
+            ts = datetime.fromtimestamp(log["timestamp"]).strftime("%Y-%m-%d %H:%M")
+            summary = log.get("summary", "No summary available.")
+
+            st.markdown(
+                f"""
+                <div style="background:#0d1b2a; padding:15px; border-radius:10px; margin-bottom:10px;">
+                    <b>🗓 {ts}</b><br>
+                    <span style="font-size:15px;">{summary}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # --------------------------------------------------------
+    # SIGNAL CONDENSER (AI)
+    # --------------------------------------------------------
+    if st.button("🔮 Generate Condensed Pattern Summary"):
+        with st.spinner("Analyzing behavioural & medical signals…"):
+
+            log_text = "\n".join([l.get("summary", "") for l in filtered_logs])
+            memory_text = "\n".join([m for m in memory_signals])
+            insight_text = json.dumps(insights, indent=2)
+
+            combined_text = (
+                f"LOGS:\n{log_text}\n\n"
+                f"MEMORY SIGNALS:\n{memory_text}\n\n"
+                f"INSIGHTS:\n{insight_text}"
+            )
+
+            try:
+                ai = genai.GenerativeModel("gemini-2.0-flash")
+                response = ai.generate_content(
+                    f"""
+                    You are AAA Pattern Timeline AI.
+
+                    TASK:
+                    - Read all logs, memory signals, insights.
+                    - Detect recurring health patterns.
+                    - Identify behaviour clusters.
+                    - Create a condensed Neuralink-style 'signal burst' summary.
+                    - Provide timeline trends and actionable signals.
+
+                    DATA:
+                    {combined_text}
+
+                    FORMAT:
+                    1. 🔶 High-Density Signal Burst (3–5 lines)
+                    2. 📌 Behavioural Clusters
+                    3. 📊 Medical Micro-Patterns
+                    4. 🔮 Predictive Early Indicators (next 7 days)
+                    """
+                )
+
+                st.markdown("### 🔶 Condensed Signal Burst")
+                st.info(response.text)
+
+            except Exception as e:
+                st.error(f"AI Error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 19 — AI Health Risk Engine (Premium)
+# ============================================================
+
+def page_risk_engine():
+    aaa_header()
+    st.subheader("🛡️ AI Health Risk Engine (Beta)")
+
+    # Premium firewall
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <p style="font-size:15px; line-height:1.6; margin-top:10px;">
+        This module analyses all your uploaded medical data — health logs, PDFs, lab reports,
+        prescriptions, and insights history — to detect patterns that may require attention.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Load available insights + logs
+    insights = load_insights_history()
+    logs = load_logs()
+
+    if not insights and not logs:
+        st.warning("No data available for pattern analysis. Please upload files or add logs.")
+        aaa_footer()
+        return
+
+    # GEN RISK SIGNALS
+    if st.button("Run Health Risk Analysis"):
+        with st.spinner("Analysing medical patterns…"):
+            try:
+                combined_text = ""
+
+                # combine signals
+                if logs:
+                    combined_text += "\n".join(logs)
+
+                if insights:
+                    for item in insights:
+                        combined_text += f"\n{item.get('summary','')}"
+                        combined_text += f"\n{item.get('details','')}"
+
+                # AI engine — Gemini
+                risk_prompt = f"""
+                You are an advanced medical-pattern analysis engine.
+                Analyse the following combined patient data and detect:
+                - potential risks
+                - early-warning signs
+                - anomalies
+                - trends requiring medical attention
+
+                Keep output simple, non-alarming, and educational.
+
+                DATA:
+                {combined_text}
+                """
+
+                risk_output = call_gemini(risk_prompt)
+
+                st.success("Analysis complete.")
+                st.markdown(risk_output)
+
+            except Exception as e:
+                st.error(f"Failed to generate risk signals: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
 # PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
@@ -3328,6 +3532,7 @@ def main():
         choice = st.radio(
             "Navigate:",
             [
+                # ---- Core Health Intelligence ----
                 "📊 Dashboard",
                 "🩺 Health Log",
                 "📥 Health Vault",
@@ -3335,12 +3540,16 @@ def main():
                 "🗑 Recycle Bin",
                 "📄 PDF Preview",
                 "🔍 OCR",
+
+                # ---- AI Intelligence Layer ----
                 "🧠 Summary (Demo)",
                 "✨ Merged View",
                 "🧬 Summary AI",
                 "📊 Insights AI",
                 "📚 Insights History",
                 "📘 Summary Report",
+                "🛡️ Risk Engine",
+                "🧬 Pattern Timeline AI",     # <— PAGE 20 (NEW)
 
                 # ---- Monetization Layer ----
                 "💎 Subscription Plans",
@@ -3401,6 +3610,12 @@ def main():
 
     elif choice == "📘 Summary Report":
         page_summary_report()
+
+    elif choice == "🛡️ Risk Engine":
+        page_risk_engine()
+
+    elif choice == "🧬 Pattern Timeline AI":      # <— PAGE 20 ROUTE
+        page_pattern_timeline_ai()
 
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
