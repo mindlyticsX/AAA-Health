@@ -1572,6 +1572,107 @@ def page_analytics_dashboard():
 
 
 # ============================================================
+# SNAPSHOTS HELPERS (AAA HEALTH)
+# ============================================================
+
+SNAPSHOTS_FILE = os.path.join(DATA_DIR, "snapshots.json")
+
+def load_snapshots():
+    if not os.path.exists(SNAPSHOTS_FILE):
+        return []
+    try:
+        with open(SNAPSHOTS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_snapshots(snapshots):
+    with open(SNAPSHOTS_FILE, "w") as f:
+        json.dump(snapshots, f, indent=2)
+
+def create_snapshot():
+    logs = load_logs()
+    vault_files = load_vault_files()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    snapshot = {
+        "timestamp": timestamp,
+        "log_count": len(logs),
+        "vault_files": vault_files,
+    }
+
+    snapshots = load_snapshots()
+    snapshots.append(snapshot)
+    save_snapshots(snapshots)
+    return snapshot
+
+
+# ============================================================
+# PAGE 13 — SNAPSHOTS + SMART TIMELINE
+# ============================================================
+
+def page_snapshots():
+    aaa_header()
+    st.subheader("📸 Health Snapshots (Beta)")
+
+    snapshots = load_snapshots()
+
+    if st.button("Create New Snapshot"):
+        snap = create_snapshot()
+        st.success(f"Snapshot created at {snap['timestamp']}")
+
+    if not snapshots:
+        st.info("No snapshots yet. Create your first snapshot to begin tracking.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    for s in snapshots:
+        with st.expander(f"Snapshot — {s['timestamp']}"):
+            st.write(f"📝 Log entries: {s['log_count']}")
+            st.write(f"📄 Documents stored: {len(s['vault_files'])}")
+            st.write("Files:")
+            for f in s["vault_files"]:
+                st.write(f"- {f}")
+
+    monetization_cta()
+    aaa_footer()
+
+
+def page_timeline():
+    aaa_header()
+    st.subheader("📅 Smart Timeline (Beta)")
+
+    logs = load_logs()
+    vault_files = load_vault_files()
+
+    st.markdown("### 🧠 Today's Signals")
+
+    if not logs:
+        st.warning("Not enough data to evaluate logging frequency.")
+    else:
+        st.success("Logging activity detected.")
+
+    if vault_files:
+        st.success(f"**{len(vault_files)} documents stored** — vault is active.")
+    else:
+        st.warning("No documents found.")
+
+    st.markdown("—")
+    st.markdown("### 🧩 Why These Signals Matter")
+
+    st.markdown(
+        """
+        These signals help AAA create a personalised health trend using your logs,
+        snapshots, documents and generated summaries.
+        """
+    )
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
 # PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
