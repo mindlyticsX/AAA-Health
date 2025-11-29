@@ -1673,6 +1673,58 @@ def page_timeline():
 
 
 # ============================================================
+# PAGE 14 — INSIGHTS HISTORY (PREMIUM) — FINAL UPGRADED VERSION
+# ============================================================
+
+def page_insights_history():
+    check_firewall("Insights History", st.session_state.get("mode", "free"))
+    aaa_header()
+
+    st.markdown(
+        """
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            📚 Insights History (Premium)
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Your previously generated AAA health insights — deep analysis, patterns, 
+            risk detection and interpretation logs.
+        </p>
+        <br>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Load history
+    history = load_json(INSIGHTS_HISTORY_FILE, [])
+
+    if not history:
+        st.info("No insights generated yet. Create insights in **Insights AI** first.")
+        aaa_footer()
+        return
+
+    # Display table
+    st.markdown("### 🧾 Intelligence Log")
+
+    for item in history[::-1]:  # newest first
+        with st.expander(f"🧠 {item.get('title','Insight')} — {item.get('date','')}"):
+            st.markdown(
+                f"""
+                **Model:** {item.get('model','Gemini')}  
+                **Category:** {item.get('category','General Health')}  
+                **Generated on:** {item.get('date','')}  
+                <br>
+                **Insight:**  
+                {item.get('text','')}
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("---")
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
 # PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
