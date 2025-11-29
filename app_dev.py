@@ -2345,6 +2345,104 @@ def page_stripe_engine():
 
 
 # ============================================================
+# PAGE 19 — AI EDGE NODE MEMORY LAYER (FUTURISTIC MODE)
+# ============================================================
+
+def page_edge_node_memory():
+
+    aaa_header()
+
+    st.markdown(
+        """
+        <h2 style="text-align:center; color:#00D4FF; margin-bottom:5px;">
+            🤖 AI Edge Node — Memory Layer (Beta)
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            This is the adaptive memory layer that evolves with your health,
+            behaviour patterns, and AAA usage signals.  
+            Inspired by edge-AI processing — high-speed, personalised,
+            privacy-preserving augmentation.
+        </p>
+        <br>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # -------------------------
+    # TEMP FILES
+    # -------------------------
+    memory_file = os.path.join(DATA_DIR, "edge_memory.json")
+    if not os.path.exists(memory_file):
+        with open(memory_file, "w") as f:
+            json.dump({"events": []}, f, indent=4)
+
+    # -------------------------
+    # ADD NEW MEMORY SIGNAL
+    # -------------------------
+    st.subheader("🧠 Add Memory Signal")
+    signal = st.text_input("Describe a pattern, note, or observation:")
+
+    if st.button("Save Memory Signal"):
+        with open(memory_file, "r") as f:
+            data = json.load(f)
+
+        entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "signal": signal.strip(),
+        }
+
+        data["events"].append(entry)
+
+        with open(memory_file, "w") as f:
+            json.dump(data, f, indent=4)
+
+        st.success("Memory signal saved into your Edge-Node layer!")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # -------------------------
+    # VIEW MEMORY LAYER ENTRIES
+    # -------------------------
+    st.subheader("📡 Active Memory Streams")
+
+    with open(memory_file, "r") as f:
+        data = json.load(f)
+
+    events = data.get("events", [])
+
+    if not events:
+        st.info("No memory signals yet. Start adding patterns above.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # Show latest first
+    for e in reversed(events):
+        ts = e["timestamp"]
+        sig = e["signal"]
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#0E1A2B;
+                padding:12px;
+                margin:8px 0;
+                border-radius:10px;
+                border-left:4px solid #00D4FF;
+                color:#D0E4FF;
+                line-height:1.5;
+            ">
+                <b>{ts}</b><br>
+                {sig}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    aaa_footer()
+
+
+# ============================================================
 # PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
@@ -3241,9 +3339,17 @@ def main():
                 "✨ Merged View",
                 "🧬 Summary AI",
                 "📊 Insights AI",
-                "📚 Insights History",     # <— NEW, positioned after Insights AI
+                "📚 Insights History",
                 "📘 Summary Report",
+
+                # ---- Monetization Layer ----
                 "💎 Subscription Plans",
+                "💳 Stripe Engine",
+
+                # ---- Future Intelligence Layer ----
+                "🧠 Edge Node Memory",
+
+                # ---- Upcoming Features ----
                 "🌟 Premium (Coming Soon)",
                 "🧊 Snapshots",
             ]
@@ -3298,6 +3404,12 @@ def main():
 
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
+
+    elif choice == "💳 Stripe Engine":
+        page_stripe_engine()
+
+    elif choice == "🧠 Edge Node Memory":
+        page_edge_node_memory()
 
     elif choice == "🌟 Premium (Coming Soon)":
         page_premium()
