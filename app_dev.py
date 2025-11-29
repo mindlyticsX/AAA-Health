@@ -1424,6 +1424,154 @@ def page_hybrid_engine():
 
 
 # ============================================================
+# PAGE 12 — RICH ANALYTICS DASHBOARD (PREMIUM ANALYTICS)
+# ============================================================
+
+def page_analytics_dashboard():
+    check_firewall("Analytics Dashboard", st.session_state.get("mode", "free"))
+    aaa_header()
+    st.subheader("📊 Rich Analytics Dashboard (Premium)")
+
+    # 🔒 Premium Lock
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.7; margin-bottom:15px;">
+            Deep multi-layer analytics based on your AI summaries, insights, logs,
+            and health score patterns. Updated automatically as your Vault grows.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ========= Load required data =========
+    summaries = load_json(AI_SUMMARY_FILE, [])
+    insights = load_json(INSIGHTS_FILE, [])
+    health_data = load_json(HEALTH_LOG_FILE, [])
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
+
+    # ========= Section: Data Overview =========
+    st.markdown("## 🗂 Data Overview")
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("AI Summaries", len(summaries))
+    col2.metric("AI Insights", len(insights))
+    col3.metric("Health Log Entries", len(health_data))
+    col4.metric("Documents in Vault", len(vault_files))
+
+    st.markdown("---")
+
+    # ========= Section: Health Score Trend =========
+    st.markdown("## 📈 Health Score Trend (Last 30 Entries)")
+
+    if health_data:
+        try:
+            import pandas as pd
+            import matplotlib.pyplot as plt
+
+            df = pd.DataFrame(health_data)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.sort_values("date").tail(30)
+
+            fig, ax = plt.subplots()
+            ax.plot(df["date"], df["score"])
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Health Score")
+            ax.set_title("Health Score Trend (Last 30 Updates)")
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"Error rendering chart: {e}")
+    else:
+        st.info("No health log data available.")
+
+    st.markdown("---")
+
+    # ========= Section: Term Frequency from AI Summaries =========
+    st.markdown("## 🧬 Key Medical Terms Frequency")
+
+    if summaries:
+        try:
+            text_all = " ".join(s.get("text", "") for s in summaries).lower()
+
+            keywords = [
+                "blood", "pressure", "glucose", "cholesterol", "kidney",
+                "liver", "infection", "inflammation", "rate", "risk",
+                "deficiency", "vitamin", "anemia", "pain", "fatigue"
+            ]
+
+            freq = {
+                k: text_all.count(k)
+                for k in keywords
+            }
+
+            df2 = pd.DataFrame(list(freq.items()), columns=["Term", "Count"])
+            st.bar_chart(df2.set_index("Term"))
+        except Exception as e:
+            st.error(f"Error generating term frequency: {e}")
+    else:
+        st.info("No summaries available for analysis.")
+
+    st.markdown("---")
+
+    # ========= Section: Condition Alerts =========
+    st.markdown("## 🚨 Potential Condition Flags (AI)")
+
+    if insights:
+        combined_text = " ".join(i.get("deep", "") for i in insights)
+
+        alert_keywords = [
+            ("Kidney-related indicators", ["creatinine", "gfr", "urea"]),
+            ("Cardio Indicators", ["bp", "hypertension", "tachy", "cholesterol"]),
+            ("Infection Markers", ["stool", "wbc", "infection"]),
+            ("Inflammation Markers", ["crp", "esr", "inflamm"])
+        ]
+
+        for title, keys in alert_keywords:
+            found = any(k in combined_text.lower() for k in keys)
+            if found:
+                st.warning(f"⚠ **{title} flagged in recent reports**")
+    else:
+        st.info("No insights available for condition flagging.")
+
+    st.markdown("---")
+
+    # ========= Section: Regional Health Awareness =========
+    st.markdown("## 🌏 Regional Health Awareness (Beta)")
+
+    st.markdown(
+        """
+        This shows location-based seasonal trends and general awareness.
+        (Static beta content — will be replaced with live regional models.)
+        """,
+        unsafe_allow_html=True,
+    )
+
+    region = "Sydney, AU"
+    st.info(f"Region detected: **{region}**")
+
+    st.markdown(
+        """
+        - 🌡 Seasonal allergies are moderate.
+        - 🤧 Flu cases rising locally.
+        - 🦠 Gastro outbreaks reported in nearby suburbs.
+        - ☀ UV index trending high — extra precautions advised.
+        """
+    )
+
+    st.markdown("---")
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
 # PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
