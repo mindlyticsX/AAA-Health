@@ -112,6 +112,110 @@ def extract_text_any(path):
     return "\n".join(text_chunks)
 
 # ============================================================
+# MULTI-SIGNAL ENGINE — BACKEND
+# ============================================================
+
+def run_multi_signal_engine(signals):
+    """
+    signals: list of raw text strings collected from vault files, images,
+    manual text, and health logs.
+    """
+
+    # 1. Merge all signals
+    master_text = "\n\n---\n\n".join(signals)
+
+    # 2. Safety cap (prevent huge model calls)
+    cleaned = master_text.strip()[:40000]
+
+    # 3. Build prompt
+    prompt = build_multi_signal_prompt(cleaned)
+
+    # 4. Gemini call (correct API syntax)
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+        ai_text = response.text if hasattr(response, "text") else str(response)
+
+    except Exception as e:
+        ai_text = f"Error generating insights: {e}"
+
+    # 5. JSON structure (future expansion: cluster extraction)
+    result_json = {
+        "clusters": [],
+        "confidence": {},
+        "summary": ai_text[:1500]
+    }
+
+    # 6. HTML formatted output
+    formatted = f"""
+    <div style='font-size:15px; line-height:1.7;'>
+        {ai_text}
+    </div>
+    """
+
+    return {
+        "json": result_json,
+        "formatted": formatted
+    }
+
+# ============================================================
+# MULTI-SIGNAL PROMPT — SAFE DIFFERENTIAL INSIGHTS
+# ============================================================
+
+def build_multi_signal_prompt(text):
+    return f"""
+You are AAA — Artigellence Augmentation Aggregator.
+
+TASK:
+Analyze all the signals (combined text from medical PDFs, images, notes, and logs)
+and produce **INFORMATIONAL, NON-MEDICAL** differential insight clusters.
+
+STRICT RULES:
+- DO NOT give medical advice.
+- DO NOT suggest treatment or medications.
+- DO NOT tell the user what disease they have.
+- Only provide informational pattern-based insights.
+- Maintain strict medical safety compliance.
+
+FORMAT OUTPUT AS:
+
+1. **Signal Interpretation Overview**
+   - General patterns found
+   - Notable correlations
+
+2. **Differential Insight Clusters (Informational Only)**
+   - Cluster A: Possible interpretation patterns  
+     · Evidence from text  
+     · Why this cluster appears  
+     · Confidence (Low / Medium / High)
+
+   - Cluster B
+   - Cluster C  
+   (3–6 clusters total)
+
+3. **Cross-Signal Correlation Map**
+   - Text ↔ Biomarkers  
+   - Notes ↔ PDF findings  
+   - OCR ↔ Health Logs
+
+4. **Early Indicators (Observational Only)**
+   - Mild variance patterns  
+   - Possible functional themes  
+   - Monitoring considerations (informational only)
+
+5. **Confidence Matrix**
+   - How strongly the text supports each cluster
+   - Limitations
+
+6. **Summary (150 words)**
+   - High-level descriptive insights only.
+   - No directives, no medical conclusions.
+
+TEXT TO ANALYZE:
+{text}
+"""
+
+# ============================================================
 # GEMINI GENERIC CALLER
 # ============================================================
 
@@ -3809,6 +3913,447 @@ def page_health_knowledge_graph():
 
 
 # ============================================================
+# PAGE 32 — MULTI-SIGNAL DIAGNOSTIC ENGINE (AI Differential Insights)
+# ============================================================
+
+def page_multi_signal_engine():
+    check_firewall("Multi-Signal Diagnostic Engine", st.session_state.get("mode", "free"))
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
+            🧬 Multi-Signal Diagnostic Engine
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            AI-powered differential insights using all combined health signals.<br>
+            (Strictly informational — no medical advice)
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # 🔒 Premium Access
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # COLLECT SIGNALS FROM ALL SOURCES
+    # ------------------------------------------------------------
+    signals = []
+
+    # 1. Vault Files (PDF, images, TXT)
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
+    for f in vault_files:
+        path = os.path.join(VAULT_DIR, f)
+        extracted = extract_text_any(path)
+        if extracted.strip():
+            signals.append(extracted)
+
+    # 2. OCR Results
+    ocr_results = load_json(OCR_DATA_FILE, [])
+    for item in ocr_results:
+        if isinstance(item, dict) and "text" in item:
+            signals.append(item["text"])
+
+    # 3. Health Log
+    health_log = load_json(HEALTH_LOG_FILE, [])
+    for entry in health_log:
+        if "note" in entry:
+            signals.append(entry["note"])
+
+    # 4. Doctor Notes
+    doctor_notes = load_json(DOCTOR_NOTES_FILE, [])
+    if doctor_notes:
+        signals.append("\n".join(doctor_notes))
+
+    # No data available
+    if not signals:
+        st.info("No health signals available. Upload files or write logs to generate insights.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # RUN THE ENGINE
+    # ------------------------------------------------------------
+    if st.button("🚀 Run Diagnostic Engine"):
+        with st.spinner("Analyzing multi-source signals using AAA Intelligence…"):
+            result = run_multi_signal_engine(signals)
+
+        # Display formatted diagnostic insights
+        st.markdown(result["formatted"], unsafe_allow_html=True)
+
+        # Save into Insights History
+        history = load_json(INSIGHTS_FILE, [])
+        history.append({
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "title": "Multi-Signal Diagnostic Insight",
+            "short": result["json"]["summary"],
+            "deep": result["formatted"]
+        })
+        save_json(INSIGHTS_FILE, history)
+
+        st.success("Insights saved to Insights History successfully.")
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 33 — HEALTH SIGNATURE ENGINE (NEW ENGINE)
+# ============================================================
+
+def page_health_signature_engine():
+    check_firewall("Health Signature Engine", st.session_state.get("mode", "free"))
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
+            🩺 Health Signature Engine
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Generates a unified health signature across logs, biomarkers, PDFs and patterns.
+            (Strictly informational — no medical advice)
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # 🔒 Premium Block
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # GATHER SIGNALS
+    # ------------------------------------------------------------
+    signals = []
+
+    # 1) Vault files
+    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    for f in vault_files:
+        text = extract_text_any(os.path.join(VAULT_DIR, f))
+        if text.strip():
+            signals.append(text)
+
+    # 2) OCR
+    ocr_data = load_json(OCR_DATA_FILE, [])
+    for item in ocr_data:
+        if isinstance(item, dict) and "text" in item:
+            signals.append(item["text"])
+
+    # 3) Health logs
+    logs = load_json(HEALTH_LOG_FILE, [])
+    for entry in logs:
+        if entry.get("note", "").strip():
+            signals.append(entry["note"])
+
+    # Validation
+    if not signals:
+        st.info("No signals available. Please upload files or logs.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # RUN ENGINE
+    # ------------------------------------------------------------
+    if st.button("🚀 Generate Health Signature"):
+        with st.spinner("Building your unified health signature…"):
+            try:
+                result = run_multi_signal_engine(signals)
+            except Exception as e:
+                st.error(f"Engine error: {e}")
+                aaa_footer()
+                return
+
+        st.markdown("### 🔍 Your Health Signature")
+        st.markdown(result["formatted"], unsafe_allow_html=True)
+
+        # Save to insights history
+        history = load_json(INSIGHTS_FILE, [])
+        history.append({
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "title": "Health Signature Engine",
+            "short": result["json"].get("summary", ""),
+            "deep": result["formatted"]
+        })
+        save_json(INSIGHTS_FILE, history)
+
+        st.success("Health Signature saved to Insights History.")
+
+    monetization_cta()
+    aaa_footer()
+
+
+    # ------------------------------------------------------------
+    # RUN ENGINE
+    # ------------------------------------------------------------
+    if st.button("🔬 Generate Health Signature"):
+        with st.spinner("Building your multi-layer Health Signature…"):
+            try:
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                response = model.generate_content(signature_prompt)
+                ai_text = response.text or "(No response)"
+            except Exception as e:
+                ai_text = f"Error generating signature: {e}"
+
+        # Display Output
+        st.markdown(ai_text, unsafe_allow_html=True)
+
+        # Save into history
+        history = load_json(INSIGHTS_FILE, [])
+        history.append({
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "title": "Health Signature Engine Output",
+            "short": ai_text[:600],
+            "deep": ai_text
+        })
+        save_json(INSIGHTS_FILE, history)
+
+        st.success("Health Signature saved to Insights History.")
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 34 — UNIFIED SIGNAL COMPARISON ENGINE
+# ============================================================
+
+def page_unified_signal_comparison():
+    check_firewall("Unified Signal Comparison Engine", st.session_state.get("mode", "free"))
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#D4A037; margin-bottom:6px;">
+            🔎 Unified Signal Comparison Engine
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Compare logs, biomarkers, PDFs, vibration indicators, and patterns side-by-side.
+            (Strictly informational — no medical advice)
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # 🔒 Premium wall
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # LOAD SIGNAL SOURCES
+    # ------------------------------------------------------------
+    signals = []
+
+    # Health Log
+    logs = load_json(HEALTH_LOG_FILE, [])
+    log_text = "\n".join([entry.get("note", "") for entry in logs])
+    if log_text.strip():
+        signals.append(("Health Log", log_text))
+
+    # OCR
+    ocr_items = load_json(OCR_DATA_FILE, [])
+    ocr_text = "\n".join([t.get("text", "") for t in ocr_items if isinstance(t, dict)])
+    if ocr_text.strip():
+        signals.append(("OCR Extracted Text", ocr_text))
+
+    # Vault PDFs / Images
+    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    for f in vault_files:
+        text = extract_text_any(os.path.join(VAULT_DIR, f))
+        if text.strip():
+            signals.append((f, text))
+
+    # Doctor Notes
+    doctor = load_json(DOCTOR_NOTES_FILE, [])
+    if doctor:
+        signals.append(("Doctor Notes", "\n".join(doctor)))
+
+    # Validation
+    if not signals:
+        st.info("No signals available for comparison. Please upload files or add logs.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # USER SELECTION — PICK ANY 2–4 SIGNALS TO COMPARE
+    # ------------------------------------------------------------
+    st.markdown("### Select signals to compare")
+
+    signal_names = [s[0] for s in signals]
+    selected = st.multiselect("Choose 2–4 signals:", signal_names)
+
+    if len(selected) < 2:
+        st.warning("Select at least two signals to continue.")
+        aaa_footer()
+        return
+
+    # Build comparison list
+    compare_blocks = [s[1] for s in signals if s[0] in selected]
+
+    # ------------------------------------------------------------
+    # RUN ENGINE
+    # ------------------------------------------------------------
+    if st.button("🚀 Run Comparison Engine"):
+        with st.spinner("Generating comparison across signals…"):
+            try:
+                prompt = f"""
+                You are AAA Intelligence. Compare these signals:
+
+                {str(selected)}
+
+                For each signal, analyse:
+                - Key themes  
+                - Biomarker references  
+                - Symptoms & trends  
+                - Contradictions  
+                - Overlaps  
+                - Missing information  
+                - Agreement score (0–100)
+
+                Output format (HTML):
+                1. Comparison Table  
+                2. Overlap Map  
+                3. Conflicts  
+                4. Agreement Score  
+                5. Short Summary (150 words)
+                """
+
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                response = model.generate_content(prompt)
+                ai_text = response.text or "(No response)"
+
+            except Exception as e:
+                ai_text = f"Error generating comparison: {e}"
+
+        # Display
+        st.markdown(ai_text, unsafe_allow_html=True)
+
+        # Save to history
+        history = load_json(INSIGHTS_FILE, [])
+        history.append({
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "title": "Unified Signal Comparison",
+            "short": ai_text[:600],
+            "deep": ai_text
+        })
+        save_json(INSIGHTS_FILE, history)
+
+        st.success("Comparison saved to Insights History.")
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 35 — SIGNAL VOLATILITY ENGINE (INFORMATIONAL ONLY)
+# ============================================================
+
+def page_signal_volatility_engine():
+    check_firewall("Signal Volatility Engine", st.session_state.get("mode", "free"))
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
+            📉 Signal Volatility Engine
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Detect variability, noise, instability, and fluctuations across all your health signals.
+            (Strictly informational — no medical advice)
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # Premium check
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # Load all signals
+    # ------------------------------------------------------------
+    signals = []
+
+    # Vault files
+    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    for f in vault_files:
+        path = os.path.join(VAULT_DIR, f)
+        text = extract_text_any(path)
+        if text.strip():
+            signals.append(text)
+
+    # OCR data
+    ocr = load_json(OCR_DATA_FILE, [])
+    for item in ocr:
+        if isinstance(item, dict) and "text" in item:
+            signals.append(item["text"])
+
+    # Health log
+    logs = load_json(HEALTH_LOG_FILE, [])
+    for entry in logs:
+        signals.append(entry.get("note", ""))
+
+    # Doctor notes
+    doctor = load_json(DOCTOR_NOTES_FILE, [])
+    if doctor:
+        signals.append("\n".join(doctor))
+
+    if not signals:
+        st.info("No signals found. Please upload documents or logs first.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # RUN VOLATILITY ENGINE
+    # ------------------------------------------------------------
+    if st.button("🔍 Analyze Signal Volatility"):
+        with st.spinner("Evaluating volatility patterns…"):
+            try:
+                combined = "\n\n---\n\n".join(signals)
+                prompt = """
+You are AAA — Artigellence Augmentation Aggregator.
+
+TASK:
+Analyze the combined signals and detect variability, instability, fluctuations,
+and high-volatility regions.
+
+STRICT RULES:
+- No medical advice.
+- No diagnosis.
+- Observational patterns only.
+
+FORMAT:
+
+1. High-Volatility Zones  
+2. Low-Volatility Zones  
+3. Noise / Outlier Regions  
+4. Potential Correlation Instability  
+5. Summary (100 words)
+"""
+
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                response = model.generate_content(prompt + combined[:30000])
+                ai_text = response.text or "No response"
+
+            except Exception as e:
+                ai_text = f"Error generating volatility insights: {e}"
+
+        st.markdown(f"<div style='font-size:15px; line-height:1.7;'>{ai_text}</div>", unsafe_allow_html=True)
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
 # PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
@@ -3863,7 +4408,7 @@ def page_subscription_plans():
             unsafe_allow_html=True,
         )
 
-    # PREMIUM – INDIA PLAN
+    # PREMIUM – INDIA PLAN (₹500)
     with col2:
         st.markdown(
             """
@@ -3882,7 +4427,7 @@ def page_subscription_plans():
                     Full AAA Health Intelligence for users in India.
                 </p>
                 <div style="font-size:22px; font-weight:bold; color:#22C55E; margin:8px 0;">
-                    ₹1000 / month
+                    ₹500 / month
                 </div>
                 <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
                     <li>Unlimited AI Medical Summaries</li>
@@ -3938,8 +4483,7 @@ def page_subscription_plans():
 
     # Note about upcoming Stripe integration
     st.info(
-        "Stripe payments are not live yet. These plans show the "
-        "intended structure and prices. You are currently in demo mode."
+        "Stripe payments are not live yet. These plans show the intended structure and prices. You are currently in demo mode."
     )
 
     # Keep your standard monetization CTA + footer
@@ -3953,105 +4497,78 @@ def page_subscription_plans():
 
 def page_premium():
     aaa_header()
-    
-    st.markdown(
-        """
-        <div style='text-align:center; margin-bottom:20px;'>
-            <img src='https://raw.githubusercontent.com/mindlyticsx/AAA-Health/main/assets/aaa_logo.png'
-                 width='140'>
-        </div>
-        <h2 style='text-align:center; color:#D4A037;'>🌟 Premium Features — Coming Soon</h2>
-        <p style='text-align:center; max-width:720px; margin:auto; line-height:1.6;'>
-            We’re building advanced <span style='color:#00A6C8;'>AAA Intelligence</span> features 
-            to help you take control of your Health, Finance, and Law data like never before.
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
 
-    # -------------------------------
-    # PREMIUM FEATURE BLOCK
-    # -------------------------------
+    st.subheader("🌟 Artigellence Premium — Coming Soon")
+
     st.markdown(
         """
-        <div style="
-            background-color:#0B1523;
-            border:1px solid #1f2b3a;
-            border-radius:12px;
-            padding:20px;
-            margin-top:25px;
-        ">
-            <h3 style="color:#D4A037;">💎 What Premium Will Unlock</h3>
-            <ul style="line-height:1.8;">
-                <li><span style='color:#00A6C8;'>Deep Health Intelligence Reports</span></li>
-                <li><span style='color:#00A6C8;'>Trends, Risks & Early Warnings</span></li>
-                <li><span style='color:#00A6C8;'>Multi-file Comparisons (Merged View)</span></li>
-                <li><span style='color:#00A6C8;'>Insights AI — Medical Reasoning</span></li>
-                <li><span style='color:#00A6C8;'>Insights History Viewer</span></li>
-                <li><span style='color:#00A6C8;'>Unlimited PDF & CSV Exports</span></li>
-                <li><span style='color:#00A6C8;'>AI-assisted Recommendations</span></li>
-                <li><span style='color:#00A6C8;'>Priority Model Processing</span></li>
-            </ul>
+        <div style="font-size:15px; line-height:1.7; color:#C7D2FE; margin-bottom:20px;">
+            You’re viewing the upcoming <b>AAA Premium</b> membership layer.
+            This tier unlocks the full power of <b>AAA — Health Intelligence</b>,
+            including advanced AI engines, cross-document insights, vibration indicators,
+            and future AAA Finance × Law modules.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------------
-    # ROADMAP BLOCK
-    # -------------------------------
+    # -------------------------
+    # GOLD–TEAL PREMIUM CARD
+    # -------------------------
     st.markdown(
         """
         <div style="
-            background-color:#0B1523;
-            border:1px solid #2c3e50;
-            border-radius:12px;
-            padding:20px;
-            margin-top:25px;
+            margin-top:10px;
+            padding:22px;
+            border-radius:16px;
+            background:linear-gradient(135deg, #0b1120, #1e293b);
+            border:1px solid rgba(56,189,248,0.35);
+            box-shadow:0 0 28px rgba(56,189,248,0.28);
         ">
-            <h3 style="color:#D4A037;">🗓 Roadmap</h3>
-            <ul style="line-height:1.8;">
-                <li><span style='color:#F2C678;'>December 2025:</span> Rich Analytics Dashboard</li>
-                <li><span style='color:#F2C678;'>January 2026:</span> AAA Finance Intelligence (Beta)</li>
-                <li><span style='color:#F2C678;'>February 2026:</span> AAA Law Intelligence (Beta)</li>
-                <li><span style='color:#F2C678;'>2026 Q2:</span> AI Nodes — Personal Assistants</li>
-                <li><span style='color:#F2C678;'>2026 Q3:</span> Secure Cloud Sync (Optional)</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            <h2 style="color:#FACC15; margin:0; font-size:24px;">
+                🚀 AAA Premium (Full Intelligence Tier)
+            </h2>
 
-    # -------------------------------
-    # CTA BLOCK (DISABLED)
-    # -------------------------------
-    st.markdown(
-        """
-        <div style="
-            background-color:#0B1523;
-            border-radius:12px;
-            padding:20px;
-            margin-top:25px;
-            text-align:center;
-            border:1px dashed #2c3e50;
-        ">
-            <p style='color:#7f8c8d; font-size:15px;'>
-                Premium Plans will be available soon.
+            <p style="color:#C7D2FE; font-size:14px; margin-top:10px;">
+                Unlock every AI engine inside AAA — from summaries to pattern analysis,
+                timeline intelligence, multi-signal diagnostics, vibration correlation,
+                volatility mapping, and more.
             </p>
-            <button disabled style="
-                background-color:#1c2833;
-                color:#6c7a89;
-                padding:10px 20px;
-                border:none;
-                border-radius:8px;
-                cursor:not-allowed;
-                font-size:15px;
-            ">Coming Soon</button>
+
+            <ul style="color:#E2E8F0; font-size:14px; line-height:1.6; padding-left:20px; margin-top:15px;">
+                <li>Unlimited AI Medical Summaries</li>
+                <li>Hybrid Engine (Doctor × Lab × Notes)</li>
+                <li>Deep Insights AI + History</li>
+                <li>Smart Timeline & Snapshots</li>
+                <li>PDF Health Reports + AI-Generated PDFs</li>
+                <li>Pattern Timeline AI + Trend Forecast</li>
+                <li>Health × Vibration Correlation Indicators</li>
+                <li>Unified Multi-Signal Comparison</li>
+                <li>Volatility Map + Noise Detection Engine</li>
+                <li>Early access to AAA Finance & Law</li>
+                <li>Serene Frequencies wellness indicators</li>
+            </ul>
+
+            <div style="margin-top:18px; font-size:13px; color:#94A3B8;">
+                Final pricing will be announced soon. You are currently in demo mode.
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    # CTA BELOW CARD
+    st.markdown(
+        """
+        <div style="margin-top:25px; font-size:16px; color:#C7D2FE;">
+            Want early access? Premium launches with full AI workflows, 
+            vibration intelligence, and cross-domain upgrades.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    monetization_cta()
     aaa_footer()
 
 
@@ -4710,18 +5227,22 @@ def main():
                 "📊 Insights AI",
                 "📚 Insights History",
                 "📘 Summary Report",
-                "🚨 AI Health Risk Engine",                  # Page 21
-                "🧬 Pattern Timeline AI",                    # Page 20
-                "🌐 Insight Fusion Layer",                   # Page 22
-                "📈 Insight Graphs",                         # Page 23
-                "🩺 Medical Triptych",                       # Page 24
-                "🎵 Serene Frequencies",                     # Page 25
-                "🧘 Mood × Sleep × Stress Radar",            # Page 26
-                "🔮 Health × Vibration Correlation Map",     # Page 27
-                "📈 Trend Forecast Engine",                  # Page 28
-                "📅 Unified Timeline Intelligence",          # Page 29
-                "🧩 Insight Matrix",                         # Page 30
-                "🧠 Health Knowledge Graph",                 # Page 31  <<< NEW
+                "🚨 AI Health Risk Engine",
+                "🧬 Pattern Timeline AI",
+                "🌐 Insight Fusion Layer",
+                "📈 Insight Graphs",
+                "🩺 Medical Triptych",
+                "🎵 Serene Frequencies",
+                "🧘 Mood × Sleep × Stress Radar",
+                "🔮 Health × Vibration Correlation Map",
+                "📈 Trend Forecast Engine",
+                "📅 Unified Timeline Intelligence",
+                "🧩 Insight Matrix",
+                "🧠 Health Knowledge Graph",
+                "🧬 Multi-Signal Diagnostic Engine",     # Page 32
+                "🧬 Health Signature Engine",            # Page 33
+                "🧬 Unified Signal Comparison",          # Page 34
+                "📉 Signal Volatility Engine",           # Page 35
 
                 # ---- Monetization Layer ----
                 "💎 Subscription Plans",
@@ -4819,6 +5340,18 @@ def main():
     elif choice == "🧠 Health Knowledge Graph":
         page_health_knowledge_graph()
 
+    elif choice == "🧬 Multi-Signal Diagnostic Engine":
+        page_multi_signal_engine()
+
+    elif choice == "🧬 Health Signature Engine":
+        page_health_signature_engine()
+
+    elif choice == "🧬 Unified Signal Comparison":
+        page_unified_signal_comparison()
+
+    elif choice == "📉 Signal Volatility Engine":
+        page_signal_volatility_engine()
+
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
 
@@ -4833,7 +5366,6 @@ def main():
 
     elif choice == "🧊 Snapshots":
         page_snapshots()
-
 
 # ============================================================
 # RUN
