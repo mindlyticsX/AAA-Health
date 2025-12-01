@@ -2573,12 +2573,550 @@ def page_pattern_timeline_ai():
 
 
 # ============================================================
-# PAGE 19 — AI Health Risk Engine (Premium)
+# PAGE 21 — AI Health Risk Engine (Premium)
 # ============================================================
 
 def page_risk_engine():
     aaa_header()
-    st.subheader("🛡️ AI Health Risk Engine (Beta)")
+    st.subheader("⚠️ AI Health Risk Engine (Beta)")
+
+    # ------------------------------
+    # PREMIUM FIREWALL
+    # ------------------------------
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            AAA’s AI Health Risk Engine detects behavioural shifts, lifestyle patterns,
+            and early trends using your logs, summaries, memory signals, and insights.
+            <br><br>
+            <b>This is NOT medical advice</b> — it is pattern-based intelligence to help
+            you understand daily rhythms, deviations, and consistency trends.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------
+    # LOAD DATA
+    # ------------------------------
+    logs = load_json_data(HEALTH_LOG_FILE, default=[])
+    insights = load_json_data(AI_SUMMARY_FILE, default={})
+    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
+
+    # ------------------------------
+    # RANGE SELECTOR
+    # ------------------------------
+    st.markdown("### 📅 Select Analysis Window")
+    window = st.selectbox(
+        "Analyze patterns for:",
+        ["Last 7 Days", "Last 14 Days", "Last 30 Days"]
+    )
+
+    if window == "Last 7 Days":
+        days = 7
+    elif window == "Last 14 Days":
+        days = 14
+    else:
+        days = 30
+
+    cutoff = datetime.now().timestamp() - (days * 86400)
+
+    filtered_logs = [
+        log for log in logs
+        if "timestamp" in log and log["timestamp"] >= cutoff
+    ]
+
+    st.markdown("### 📊 Recent Activity Overview")
+    if not filtered_logs:
+        st.info("No signals found in the selected period.")
+    else:
+        for log in filtered_logs:
+            ts = datetime.fromtimestamp(log["timestamp"]).strftime("%Y-%m-%d %H:%M")
+            summary = log.get("summary", "No summary available.")
+
+            st.markdown(
+                f"""
+                <div style="background:#0e1a25; padding:12px; border-radius:10px; margin-bottom:10px;">
+                    <b>🗓 {ts}</b><br>
+                    <span style="font-size:14px;">{summary}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    # ------------------------------
+    # AI RISK ANALYSIS
+    # ------------------------------
+    if st.button("🚨 Run Risk Pattern Analysis"):
+        with st.spinner("Evaluating behavioural and lifestyle patterns…"):
+
+            log_text = "\n".join([l.get("summary", "") for l in filtered_logs])
+            insight_text = json.dumps(insights, indent=2)
+            memory_text = "\n".join([m for m in memory_signals])
+
+            combined = (
+                f"LOGS:\n{log_text}\n\n"
+                f"INSIGHTS:\n{insight_text}\n\n"
+                f"MEMORY SIGNALS:\n{memory_text}"
+            )
+
+            try:
+                ai = genai.GenerativeModel("gemini-2.0-flash")
+                response = ai.generate_content(
+                    f"""
+You are AAA — the Artigellence Augmentation Aggregator.
+
+Your task:
+Analyze logs, behavioural summaries, insights, and memory signals.
+Identify:
+- Behavioural deviations
+- Lifestyle risk contributors
+- Sleep / activity pattern misalignments
+- Stress & recovery cycles
+- High-level trend warnings (non-medical)
+- Consistency scoring
+- Early risk indicators (pattern-level, NOT diagnosis)
+
+DATA:
+{combined}
+
+Format output EXACTLY as:
+
+🔶 **Pattern Deviation Summary**
+- 2–3 lines
+
+📉 **Behavioural Risk Contributors**
+- Bullet list (3–5)
+
+🧩 **Lifestyle Pattern Weak Points**
+- Bullet list (3–5)
+
+🔮 **Early Pattern Indicators (Next 7 Days)**
+- 2–4 items
+
+📊 **Consistency Score (0–100)**  
+<short explanation>
+
+Keep everything pattern-based.  
+No medical claims.  
+"""
+                )
+
+                st.markdown("### 🚨 Pattern Risk Summary")
+                st.info(response.text)
+
+            except Exception as e:
+                st.error(f"AI Error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 22 — INSIGHT FUSION LAYER (AAA Intelligence Core)
+# Multi-Signal Fusion → One Unified Intelligence Burst
+# ============================================================
+
+def page_insight_fusion():
+    aaa_header()
+    st.subheader("🌐 Insight Fusion Layer — Unified Health Intelligence (Beta)")
+
+    # ------------------------------
+    # PREMIUM FIREWALL
+    # ------------------------------
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            This is AAA’s central intelligence layer.  
+            <br><br>
+            It fuses signals from health logs, summaries, OCR, PDFs, insights,
+            memory streams, risk patterns, and behavioural signals into one unified
+            high-density intelligence burst.
+            <br><br>
+            Inspired by multi-modal fusion engines (DeepMind × Neuralink × AGI),
+            this layer produces a complete picture of your health behaviour.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------
+    # LOAD SIGNALS
+    # ------------------------------
+    logs = load_json_data(HEALTH_LOG_FILE, default=[])
+    insights = load_json_data(AI_SUMMARY_FILE, default={})
+    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
+    vault_data = load_json_data(os.path.join(DATA_DIR, "vault_data.json"), default={})
+    score_history = load_json_data(os.path.join(DATA_DIR, "score_history.json"), default=[])
+
+    # OCR results
+    ocr_file = os.path.join(DATA_DIR, "ocr_results.json")
+    if os.path.exists(ocr_file):
+        with open(ocr_file, "r") as f:
+            ocr_results = json.load(f)
+    else:
+        ocr_results = {}
+
+    # Combine text blocks
+    log_text = "\n".join([l.get("summary","") for l in logs])
+    insight_text = json.dumps(insights, indent=2)
+    memory_text = "\n".join([m for m in memory_signals])
+    vault_text = json.dumps(vault_data, indent=2)
+    ocr_text = json.dumps(ocr_results, indent=2)
+    score_text = json.dumps(score_history, indent=2)
+
+    combined_text = f"""
+==== LOG SUMMARIES ====
+{log_text}
+
+==== INSIGHTS HISTORY ====
+{insight_text}
+
+==== MEMORY SIGNALS ====
+{memory_text}
+
+==== OCR EXTRACTED TEXT ====
+{ocr_text}
+
+==== VAULT PDF DATA ====
+{vault_text}
+
+==== HEALTH SCORE HISTORY ====
+{score_text}
+"""
+
+    # ------------------------------
+    # FUSION ENGINE
+    # ------------------------------
+    if st.button("🌐 Generate Unified Intelligence"):
+        with st.spinner("Generating multi-signal fusion…"):
+
+            try:
+                ai = genai.GenerativeModel("gemini-2.0-flash")
+
+                response = ai.generate_content(
+                    f"""
+You are AAA — the Artigellence Augmentation Aggregator.
+
+Your task is to fuse ALL signals from the user's health data into one unified
+multi-modal intelligence summary.
+
+DATA PROVIDED:
+{combined_text}
+
+Create output with the following structure:
+
+🌐 **AAA Unified Intelligence Burst (High-Density Summary)**
+- 4–6 lines, Neuralink-style compressed intelligence
+
+📊 **Cross-Signal Patterns**
+- What patterns persist across logs, OCR, insights, and memory signals?
+
+🧩 **Hidden Correlations**
+- What correlations emerge across behaviours, timing, and health scores?
+
+📉 **Behavioural Drift Detection**
+- Note any subtle deviations or changes in rhythm
+
+🔮 **7-Day Predictive Indicators**
+- Future-facing pattern-level predictions (non-medical)
+
+📌 **Recommended Action Loops**
+- Behavioural improvements
+- Insight reinforcement
+- Data collection suggestions
+
+Ensure tone is:
+- Non-medical
+- Insightful
+- Pattern-focused
+- Actionable
+- Calm and supportive
+"""
+                )
+
+                st.markdown("## 🌐 Unified Intelligence Burst")
+                st.info(response.text)
+
+            except Exception as e:
+                st.error(f"Fusion Engine Error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 23 — AAA Insight Graphs & Trend Visualizer
+# ============================================================
+
+def page_insight_graphs():
+    aaa_header()
+    st.subheader("📈 AAA Insight Graphs & Trend Visualizer")
+
+    # ------------------------------
+    # PREMIUM FIREWALL
+    # ------------------------------
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            Visual intelligence layer showing trends across logs, summaries,
+            insights, and AAA behavioural patterns.
+            <br><br>
+            These charts help you understand consistency, patterns,
+            and long-term behaviour.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------
+    # LOAD DATA
+    # ------------------------------
+    logs = load_json_data(HEALTH_LOG_FILE, default=[])
+    insights = load_json_data(AI_SUMMARY_FILE, default={})
+    score_history = load_json_data(os.path.join(DATA_DIR, "score_history.json"), default=[])
+
+    # Convert to DataFrames
+    log_df = pd.DataFrame(logs)
+    score_df = pd.DataFrame(score_history)
+    insight_df = pd.DataFrame(insights.get("history", []))
+
+    st.markdown("---")
+
+    # ============================================================
+    # 1) HEALTH SCORE TREND
+    # ============================================================
+    st.markdown("### 📈 Health Score Trend")
+
+    if not score_df.empty and "score" in score_df and "timestamp" in score_df:
+        score_df["date"] = pd.to_datetime(score_df["timestamp"]).dt.date
+
+        chart = alt.Chart(score_df).mark_line(point=True).encode(
+            x="date:T",
+            y=alt.Y("score:Q", scale=alt.Scale(domain=[0, 100])),
+            tooltip=["date", "score"]
+        ).properties(
+            width="container",
+            height=300
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+    else:
+        st.info("No health score data yet.")
+
+    st.markdown("---")
+
+    # ============================================================
+    # 2) DAILY LOG FREQUENCY
+    # ============================================================
+    st.markdown("### 📊 Daily Log Activity")
+
+    if not log_df.empty and "timestamp" in log_df:
+        log_df["date"] = pd.to_datetime(log_df["timestamp"], unit="s").dt.date
+        freq_df = log_df.groupby("date").size().reset_index(name="count")
+
+        chart = alt.Chart(freq_df).mark_bar().encode(
+            x="date:T",
+            y="count:Q",
+            tooltip=["date", "count"]
+        ).properties(
+            width="container",
+            height=300
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+    else:
+        st.info("No logs found.")
+
+    st.markdown("---")
+
+    # ============================================================
+    # 3) INSIGHT GENERATION TREND
+    # ============================================================
+    st.markdown("### 🧩 Insight Frequency Trend")
+
+    if not insight_df.empty and "timestamp" in insight_df:
+        insight_df["date"] = pd.to_datetime(insight_df["timestamp"]).dt.date
+        insight_freq = insight_df.groupby("date").size().reset_index(name="count")
+
+        chart = alt.Chart(insight_freq).mark_area(opacity=0.5).encode(
+            x="date:T",
+            y="count:Q",
+            tooltip=["date", "count"]
+        ).properties(
+            width="container",
+            height=300
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+    else:
+        st.info("No insights generated yet.")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 24 — Medical Triptych Layer (Doctor + Lab + PDF Fusion)
+# ============================================================
+
+def page_medical_triptych():
+    aaa_header()
+    st.subheader("🩺 Medical Triptych — Doctor + Lab + PDF Fusion (Beta)")
+
+    # -----------------------------
+    # PREMIUM FIREWALL
+    # -----------------------------
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
+            This is AAA’s unified medical intelligence layer.
+            <br><br>
+            It fuses data from three streams:
+            <ul>
+                <li><b>Doctor Notes</b> — manual entries + OCR</li>
+                <li><b>Lab Reports</b> — extracted from PDFs</li>
+                <li><b>Medical PDFs</b> — uploaded into your Health Vault</li>
+            </ul>
+            AAA combines all signals into a single clinical summary,
+            trend analysis, and doctor-friendly briefing.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ---------------------------------------------------------
+    # 1) DOCTOR NOTES INPUT
+    # ---------------------------------------------------------
+    st.markdown("### 🟦 Doctor Notes")
+    doctor_notes = st.text_area(
+        "Add doctor notes or findings:",
+        height=120,
+        placeholder="Enter clinical notes, symptoms, observations..."
+    )
+
+    # ---------------------------------------------------------
+    # 2) LAB REPORT EXTRACTION
+    # ---------------------------------------------------------
+    st.markdown("### 🟧 Lab Report (PDF → Text)")
+
+    lab_pdf = st.file_uploader(
+        "Upload a lab report (PDF)",
+        type=["pdf"],
+        key="lab_pdf_uploader"
+    )
+
+    lab_text = ""
+    if lab_pdf:
+        try:
+            with open("temp_lab.pdf", "wb") as f:
+                f.write(lab_pdf.read())
+            lab_text = extract_text_any("temp_lab.pdf")
+            st.success("Lab report extracted successfully.")
+        except:
+            st.error("Unable to read the lab PDF.")
+
+    # ---------------------------------------------------------
+    # 3) MEDICAL PDF VAULT — QUICK SELECT
+    # ---------------------------------------------------------
+    st.markdown("### 🟩 Select a Medical PDF from Vault")
+
+    vault_files = [f for f in os.listdir(VAULT_DIR) if f.endswith(".pdf")]
+
+    selected_pdf = st.selectbox(
+        "Choose a PDF:",
+        ["None"] + vault_files
+    )
+
+    vault_text = ""
+    if selected_pdf != "None":
+        try:
+            path = os.path.join(VAULT_DIR, selected_pdf)
+            vault_text = extract_text_any(path)
+            st.success(f"Loaded PDF: {selected_pdf}")
+        except:
+            st.error("Failed to read selected PDF.")
+
+    st.markdown("---")
+
+    # Combine all triptych data
+    combined_triptych = f"""
+    DOCTOR NOTES:
+    {doctor_notes}
+
+    LAB REPORT:
+    {lab_text}
+
+    MEDICAL PDF:
+    {vault_text}
+    """
+
+    # ---------------------------------------------------------
+    # GENERATE FUSED TRIPTYCH SUMMARY
+    # ---------------------------------------------------------
+    if st.button("🔮 Generate Unified Medical Summary"):
+        if not (doctor_notes or lab_text or vault_text):
+            st.warning("Please provide at least one input source.")
+            aaa_footer()
+            return
+
+        with st.spinner("Fusing doctor + lab + medical documents…"):
+            try:
+                ai = genai.GenerativeModel("gemini-2.0-flash")
+                resp = ai.generate_content(
+                    f"""
+                    You are AAA Health Intelligence.
+
+                    TASK:
+                    Fuse DOCTOR NOTES + LAB REPORT + MEDICAL PDF.
+                    Produce:
+                    1) 🩺 Unified Clinical Summary (5–7 lines)
+                    2) 📊 Key Trends (lab values, symptoms, behaviour)
+                    3) 🚦 Risk/Attention Layer (non-alarming)
+                    4) 🧑‍⚕️ Doctor-Friendly Briefing (clear, simple)
+
+                    RAW DATA:
+                    {combined_triptych}
+                    """
+                )
+
+                st.markdown("### 🩺 Unified Clinical Summary")
+                st.info(resp.text)
+
+            except Exception as e:
+                st.error(f"AI Error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 25 — SERENE FREQUENCY INDICATORS
+# Health × Vibration × Energy Signal Mapper (Beta)
+# ============================================================
+
+def page_serene_frequency():
+    aaa_header()
+    st.subheader("🎵 Serene Frequency Indicators — Vibration × Health Intelligence (Beta)")
 
     # Premium firewall
     if not is_premium():
@@ -2588,60 +3126,684 @@ def page_risk_engine():
 
     st.markdown(
         """
-        <p style="font-size:15px; line-height:1.6; margin-top:10px;">
-        This module analyses all your uploaded medical data — health logs, PDFs, lab reports,
-        prescriptions, and insights history — to detect patterns that may require attention.
-        </p>
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            This is AAA’s vibration-health synchronisation layer.  
+            It blends your emotional logs, sleep notes, medical summaries, 
+            and energy patterns to generate personalised frequency indicators.
+            <br><br>
+            Inspired by wellness sciences, meditation research, and 
+            mind–body coherence models, this module identifies:
+            <ul>
+                <li>• Daily emotional tone</li>
+                <li>• Mental clarity indicators</li>
+                <li>• Stress resonance levels</li>
+                <li>• Suggested healing frequencies</li>
+                <li>• Breath + focus guidance</li>
+            </ul>
+        </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Load available insights + logs
+    # ----------------------------------------------
+    # LOAD LOGS + INSIGHTS
+    # ----------------------------------------------
+    logs = load_json_data(HEALTH_LOG_FILE, default=[])
+    insights = load_insights_history()
+
+    if not logs and not insights:
+        st.info("No logs or insights available yet. Add logs to activate Serene Frequency Indicators.")
+        aaa_footer()
+        return
+
+    # ----------------------------------------------
+    # USER SELECTOR
+    # ----------------------------------------------
+    st.markdown("### 📅 Select Range")
+    freq_range = st.selectbox(
+        "Choose analysis window:",
+        ["Last 3 Days", "Last 7 Days", "Last 14 Days"]
+    )
+
+    days = 3 if freq_range == "Last 3 Days" else 7 if freq_range == "Last 7 Days" else 14
+    cutoff = datetime.now().timestamp() - (days * 86400)
+
+    filtered_logs = [
+        l for l in logs
+        if "timestamp" in l and l["timestamp"] >= cutoff
+    ]
+
+    # ----------------------------------------------
+    # FREQUENCY SUMMARY PANEL
+    # ----------------------------------------------
+    st.markdown("### 🎛 Coherence Summary")
+
+    if not filtered_logs:
+        st.info("No recent logs in selected time range.")
+        aaa_footer()
+        return
+
+    combined_text = "\n".join([l.get("summary", "") for l in filtered_logs])
+
+    # ----------------------------------------------
+    # AI ENGINE — GEMINI
+    # ----------------------------------------------
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(
+            f"""
+            You are Serene Frequency AI.
+
+            TASK:
+            - Study emotional logs, daily summaries, and behaviour patterns.
+            - Derive frequency alignment indicators.
+            - Provide vibration-health insights.
+            - Recommend frequencies (Hz), breathing patterns, or tones.
+            - Keep output non-medical and supportive.
+
+            LOG DATA:
+            {combined_text}
+
+            FORMAT:
+            1. 🌤 Emotional Tone (1 line)
+            2. 🔔 Frequency Recommendation (Hz)
+            3. 🧘 Breath Rhythm Suggestion
+            4. 🎵 Sound/Music Style Suggestion (Meditation, Alpha, Theta, Delta)
+            5. 💬 Gentle Affirmation
+            """
+        )
+
+        st.markdown("### 🎶 Your Frequency Alignment")
+        st.info(response.text)
+
+    except Exception as e:
+        st.error(f"AI Error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 26 — Mood × Sleep × Stress Radar (Mind–Body State Map)
+# ============================================================
+
+def page_mood_sleep_stress_radar():
+    aaa_header()
+    st.subheader("🧘 Mood × Sleep × Stress Radar — Mind–Body State Map (Beta)")
+
+    # 🔐 Premium Lock
+    if not is_premium():
+        feature_locked()
+        monetization_cta()
+        aaa_footer()
+        return
+
+    # -------------------------------
+    # USER INPUTS — MIND–BODY CHECK-IN
+    # -------------------------------
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
+            Track your emotional state, sleep quality, and stress levels.
+            AAA will convert your inputs into a <b>Mind–Body Radar Map</b> to help you
+            understand your inner-state trends and health connections.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        mood = st.slider("😊 Mood Level", 1, 10, 7)
+        sleep_quality = st.slider("😴 Sleep Quality", 1, 10, 6)
+
+    with col2:
+        stress = st.slider("⚡ Stress Level", 1, 10, 4)
+        energy = st.slider("🔋 Energy Level", 1, 10, 6)
+
+    st.markdown("---")
+
+    # -------------------------------
+    # GENERATE RADAR CHART
+    # -------------------------------
+    if st.button("Generate Mind–Body Radar Map"):
+        with st.spinner("Generating your Mind–Body State Map…"):
+
+            # Data for radar
+            categories = ["Mood", "Sleep", "Stress", "Energy"]
+            values = [mood, sleep_quality, stress, energy]
+
+            # Radar chart (matplotlib)
+            import matplotlib.pyplot as plt
+            import numpy as np
+
+            angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+            values += values[:1]
+            angles += angles[:1]
+
+            fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
+
+            ax.plot(angles, values, linewidth=2)
+            ax.fill(angles, values, alpha=0.25)
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(categories)
+            ax.set_yticklabels([])
+
+            st.pyplot(fig)
+
+        st.success("Your Mind–Body State Map is ready.")
+
+    st.markdown("---")
+
+    # -------------------------------
+    # AI INTERPRETATION — USING GEMINI/GPT
+    # -------------------------------
+    st.markdown("### 🔮 AI Interpretation")
+
+    if st.button("Generate AI Insight"):
+        with st.spinner("Analyzing your mind–body pattern…"):
+
+            insight_prompt = f"""
+You are AAA Health Intelligence. Provide a short, warm, evidence-based interpretation of the user's
+Mood, Sleep, Stress, and Energy. Avoid medical claims.
+
+Inputs:
+- Mood: {mood}/10
+- Sleep Quality: {sleep_quality}/10
+- Stress: {stress}/10
+- Energy: {energy}/10
+
+Give:
+1. A 2-sentence summary.
+2. 2 actionable suggestions.
+3. A vibration alignment note (Serene Frequencies).
+"""
+
+            try:
+                ai_response = call_gemini(insight_prompt)
+                st.markdown(
+                    f"""
+                    <div style="padding:15px; background:#0e1b2c; border-radius:10px;
+                    box-shadow:0 0 10px rgba(0,0,0,0.3); color:#cde3ff;">
+                        {ai_response}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            except Exception as e:
+                st.error("AI interpretation failed. Please try again.")
+                st.exception(e)
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 27 — Health × Vibration Correlation Map
+# ============================================================
+
+def page_health_vibration_correlation():
+    aaa_header()
+    st.subheader("🌀 Health × Vibration Correlation Map (Beta)")
+
+    # -------------------------------
+    # PREMIUM LOCK
+    # -------------------------------
+    if not is_premium():
+        feature_locked()
+        monetization_cta()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+            This module explores the relationship between your <b>physical health metrics</b> 
+            and <b>vibration indicators</b> from Serene Frequency & Mind-Body logs.
+            <br><br>
+            AAA Intelligence correlates:
+            <ul>
+                <li>📊 Blood markers & medical summary metrics</li>
+                <li>🎵 Frequency alignment scores</li>
+                <li>🧘 Mood × Sleep × Stress patterns</li>
+                <li>🔮 Serene Frequency Indicators</li>
+            </ul>
+            The engine reveals hidden patterns between health and vibration states,
+            giving you a 360° insight into your mind–body alignment.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    # -------------------------------
+    # USER INPUTS FOR CORRELATION
+    # -------------------------------
+    st.markdown("### 🧩 Select Inputs for Correlation Analysis")
+
+    health_option = st.selectbox(
+        "Choose a Health Metric:",
+        [
+            "Blood Pressure",
+            "Blood Sugar (Fasting / PP)",
+            "Kidney Indicators (eGFR, Creatinine)",
+            "Liver Enzymes (ALT, AST, GGT)",
+            "Hemoglobin / CBC",
+            "Vitamin Profile",
+            "Thyroid Panel",
+        ]
+    )
+
+    vibration_option = st.selectbox(
+        "Choose a Vibration Indicator:",
+        [
+            "Serene Frequency Score",
+            "Mood Rating",
+            "Sleep Quality",
+            "Stress Level",
+            "Frequency Alignment Index",
+            "Mind–Body Balance Score",
+        ]
+    )
+
+    if st.button("🔍 Run Correlation Analysis"):
+        with st.spinner("Running AAA Correlation Engine…"):
+
+            try:
+                # ----------------------------------------------------
+                # LOAD EXISTING DATA SOURCES
+                # ----------------------------------------------------
+                health_json = load_json("health_data.json")
+                vibration_json = load_json("serene_frequency_data.json")  # placeholder file
+                mindbody_json = load_json("mood_sleep_stress.json")       # placeholder file
+
+                # ----------------------------------------------------
+                # AAA CORRELATION ENGINE (Placeholder)
+                # ----------------------------------------------------
+                result = {
+                    "health_metric": health_option,
+                    "vibration_metric": vibration_option,
+                    "correlation_score": round(random.uniform(-1, 1), 2),
+                    "interpretation": (
+                        "Positive correlation — improvements in vibration indicators align with better health outcomes."
+                        if random.random() > 0.5 else
+                        "Negative correlation — vibration imbalance may be influencing health metrics."
+                    ),
+                }
+
+                # -------------------------------
+                # DISPLAY RESULT SUMMARY
+                # -------------------------------
+                st.success("Correlation Analysis Complete")
+
+                st.markdown(
+                    f"""
+                    ### 📌 Results  
+                    **Health Metric:** {health_option}  
+                    **Vibration Metric:** {vibration_option}  
+                    **Correlation Score:** `{result['correlation_score']}`  
+                    """
+                )
+
+                st.info(f"**Interpretation:** {result['interpretation']}")
+
+                st.markdown("---")
+
+                # -------------------------------
+                # CORRELATION GRAPH (Matplotlib Placeholder)
+                # -------------------------------
+                fig, ax = plt.subplots()
+                ax.scatter(
+                    [random.randint(1, 100) for _ in range(20)],
+                    [random.randint(1, 100) for _ in range(20)],
+                )
+                ax.set_title("Health × Vibration Correlation Scatter Plot")
+                ax.set_xlabel(health_option)
+                ax.set_ylabel(vibration_option)
+                st.pyplot(fig)
+
+            except Exception as e:
+                st.error(f"Error while calculating correlation: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 28 — Trend Forecast Engine (Predictive Health + Vibration AI)
+# ============================================================
+
+def page_trend_forecast_engine():
+    aaa_header()
+    st.subheader("📈 Trend Forecast Engine — Predictive Health × Vibration AI (Beta)")
+
+    # --------------------------
+    # PREMIUM LOCK
+    # --------------------------
+    if not is_premium():
+        feature_locked()
+        monetization_cta()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
+            This engine forecasts your upcoming health & vibration patterns using AI.
+            It studies your logs, insights, trends, emotional signals, sleep quality,
+            PDFs, and vibration metrics — then predicts what the next 7 days may look like.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------
+    # LOAD DATA
+    # --------------------------
     insights = load_insights_history()
     logs = load_logs()
 
     if not insights and not logs:
-        st.warning("No data available for pattern analysis. Please upload files or add logs.")
+        st.warning("No historical data available for forecasting. Add logs or upload files.")
         aaa_footer()
         return
 
-    # GEN RISK SIGNALS
-    if st.button("Run Health Risk Analysis"):
-        with st.spinner("Analysing medical patterns…"):
+    # --------------------------
+    # USER SELECTS FORECAST WINDOW
+    # --------------------------
+    window = st.selectbox(
+        "Select forecast window:",
+        ["Next 3 days", "Next 7 days", "Next 14 days"]
+    )
+
+    # --------------------------
+    # RUN FORECAST
+    # --------------------------
+    if st.button("Generate Forecast"):
+        with st.spinner("Building predictive model…"):
             try:
                 combined_text = ""
 
-                # combine signals
+                # combine raw logs
                 if logs:
-                    combined_text += "\n".join(logs)
+                    combined_text += "\n\n".join(logs)
 
+                # combine insights (summary + details)
                 if insights:
                     for item in insights:
                         combined_text += f"\n{item.get('summary','')}"
                         combined_text += f"\n{item.get('details','')}"
 
-                # AI engine — Gemini
-                risk_prompt = f"""
-                You are an advanced medical-pattern analysis engine.
-                Analyse the following combined patient data and detect:
-                - potential risks
-                - early-warning signs
-                - anomalies
-                - trends requiring medical attention
+                forecast_prompt = f"""
+                You are AAA's predictive health and vibration intelligence engine.
 
-                Keep output simple, non-alarming, and educational.
+                Using the historical combined dataset below, generate a clean, calm
+                and educational forecast for the following window: {window}.
+
+                Include:
+                - Health trend forecast
+                - Sleep forecast
+                - Mood & stress forecast
+                - Vibration/energy pattern shift prediction
+                - Red flags to watch (non-alarming)
+                - Simple lifestyle adjustments for the window
 
                 DATA:
                 {combined_text}
                 """
 
-                risk_output = call_gemini(risk_prompt)
+                result = call_gemini(forecast_prompt)
 
-                st.success("Analysis complete.")
-                st.markdown(risk_output)
+                st.success("Forecast ready.")
+                st.markdown(result)
+
+                # --------------------------
+                # MATPLOTLIB PREVIEW CHART
+                # (SIMPLE — RANDOMIZED PLACEHOLDER)
+                # --------------------------
+                st.markdown("### 📉 Forecast Trend Preview (Simulated)")
+                fig, ax = plt.subplots()
+                ax.plot([1, 2, 3, 4, 5, 6, 7], 
+                        [random.randint(40, 90) for _ in range(7)])
+                ax.set_title("Predictive Health-Vibration Curve (Sample)")
+                ax.set_xlabel("Days Ahead")
+                ax.set_ylabel("Trend Strength")
+                st.pyplot(fig)
 
             except Exception as e:
-                st.error(f"Failed to generate risk signals: {e}")
+                st.error(f"Forecast generation failed: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 29 — Unified Timeline Intelligence (All Signals, One Timeline)
+# ============================================================
+
+def page_unified_timeline_intel():
+    aaa_header()
+    st.subheader("📅 Unified Timeline Intelligence — All Signals, One Timeline (Beta)")
+
+    # Premium Lock
+    if not is_premium():
+        feature_locked()
+        monetization_cta()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <p style="font-size:15px; line-height:1.6;">
+        A unified chronological view of <b>all your health signals</b> — logs, summaries, 
+        mood scores, sleep quality, stress levels, frequency indicators, and medical insights —
+        merged into a single timeline for easier pattern detection.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    # -------------------------------
+    # PLACEHOLDER TIMELINE GRAPH
+    # -------------------------------
+    try:
+        import matplotlib.pyplot as plt
+        import random
+
+        # Placeholder dates & values
+        days = list(range(1, 16))
+        health_scores = [random.randint(60, 85) for _ in days]
+        mood_scores = [random.randint(40, 90) for _ in days]
+        sleep_hours = [random.randint(4, 9) for _ in days]
+
+        fig, ax = plt.subplots(figsize=(10,4))
+        ax.plot(days, health_scores, marker="o", label="Health Score")
+        ax.plot(days, mood_scores, marker="s", label="Mood Score")
+        ax.plot(days, sleep_hours, marker="^", label="Sleep Hours")
+
+        ax.set_title("Unified Timeline — Health × Mood × Sleep Trends")
+        ax.set_xlabel("Timeline (Days)")
+        ax.set_ylabel("Values")
+        ax.legend()
+
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Timeline generation error: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 30 — AAA INSIGHT MATRIX (Signal-to-Signal Relationship Grid)
+# ============================================================
+
+def page_insight_matrix():
+
+    aaa_header()
+
+    st.subheader("🧩 AAA Insight Matrix — Signal-to-Signal Relationship Grid (Beta)")
+
+    # Premium Firewall
+    if not is_premium():
+        st.warning("This feature is available for Premium members.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; margin-bottom:25px;">
+            The <b>AAA Insight Matrix</b> compares how different health and vibration signals 
+            interact, influence, and correlate with one another.  
+            <br><br>
+            Each cell visualizes the <b>strength</b> and <b>direction</b> of relationships using 
+            synthetic placeholder data. Future versions will draw from the unified data lake 
+            inside AAA-Health.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # -------------------------------
+    # SIGNAL LIST
+    # -------------------------------
+    signals = [
+        "Heart Rate",
+        "Blood Pressure",
+        "Sleep Quality",
+        "Stress Level",
+        "Oxygen Saturation",
+        "Glucose",
+        "Vibration Index",
+        "Mood Score",
+        "Inflammation Score"
+    ]
+
+    st.markdown("### 🔢 Signals Included")
+    st.write(signals)
+
+    # -------------------------------
+    # PLACEHOLDER MATRIX (Random Heatmap)
+    # -------------------------------
+    st.markdown("### 🔥 Relationship Matrix (Placeholder Heatmap)")
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    try:
+        matrix = np.random.uniform(-1, 1, (len(signals), len(signals)))
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        heatmap = ax.imshow(matrix, cmap="coolwarm")
+
+        ax.set_xticks(range(len(signals)))
+        ax.set_yticks(range(len(signals)))
+        ax.set_xticklabels(signals, rotation=45, ha="right", fontsize=8)
+        ax.set_yticklabels(signals, fontsize=8)
+
+        fig.colorbar(heatmap)
+        ax.set_title("Signal-to-Signal Relationship Matrix (Synthetic Data)", fontsize=12)
+
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Matrix generation error: {e}")
+
+    st.markdown(
+        """
+        <div style="font-size:15px; margin-top:20px; line-height:1.6;">
+            <b>Matrix Interpretation:</b><br>
+            • <b>Red</b> → Strong Positive Influence<br>
+            • <b>Blue</b> → Strong Negative Influence<br>
+            • <b>White</b> → Weak / No Correlation<br><br>
+            The Insight Matrix will evolve into a core analytical engine within AAA-Health, 
+            driving risk scoring, timelines, and forecast modules.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 31 — Health Knowledge Graph (AI Semantic Medical Map)
+# ============================================================
+
+def page_health_knowledge_graph():
+    aaa_header()
+    st.subheader("🧠 Health Knowledge Graph — AI Semantic Medical Map (Beta)")
+
+    # ---- Premium Lock ----
+    if not is_premium():
+        st.warning("This feature is available for Premium members.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
+            Explore an AI-generated semantic map of your health signals.
+            The AAA Health Knowledge Graph connects symptoms, biomarkers,
+            lifestyle factors, stress patterns, sleep cycles, and vibration
+            signals into one unified medical understanding layer.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------
+    # OPTIONS
+    # ------------------------------
+    st.markdown("### 🔎 Generate Knowledge Graph")
+
+    graph_type = st.selectbox(
+        "Select Graph Type:",
+        [
+            "Biomarker Relationships",
+            "Symptom → Cause Map",
+            "Lifestyle Impact Graph",
+            "Stress–Sleep Interaction",
+            "Vibration–Health Semantic Web",
+            "Full Unified Knowledge Map (All Signals)",
+        ]
+    )
+
+    if st.button("Generate Graph"):
+        try:
+            with st.spinner("Generating AI Semantic Medical Graph…"):
+
+                # PLACEHOLDER — Replace with future Graph Engine
+                # Simulated JSON structure
+                example_graph = {
+                    "nodes": [
+                        {"id": "Stress", "group": 1},
+                        {"id": "Sleep Quality", "group": 1},
+                        {"id": "Vitamin D", "group": 2},
+                        {"id": "Inflammation", "group": 2},
+                        {"id": "Heart Rate", "group": 3},
+                        {"id": "Vibration Score", "group": 4},
+                    ],
+                    "links": [
+                        {"source": "Stress", "target": "Sleep Quality", "value": 4},
+                        {"source": "Stress", "target": "Heart Rate", "value": 3},
+                        {"source": "Sleep Quality", "target": "Inflammation", "value": 2},
+                        {"source": "Vitamin D", "target": "Inflammation", "value": 3},
+                        {"source": "Vibration Score", "target": "Stress", "value": 5},
+                    ]
+                }
+
+                st.json(example_graph)
+
+                st.info(
+                    "🔧 Full interactive graph (D3.js / PyVis) will be added in "
+                    "AAA-Health v0.9 after December roadmap integration."
+                )
+
+        except Exception as e:
+            st.error(f"Graph Engine Error: {e}")
 
     aaa_footer()
 
@@ -3548,8 +4710,18 @@ def main():
                 "📊 Insights AI",
                 "📚 Insights History",
                 "📘 Summary Report",
-                "🛡️ Risk Engine",
-                "🧬 Pattern Timeline AI",     # <— PAGE 20 (NEW)
+                "🚨 AI Health Risk Engine",                  # Page 21
+                "🧬 Pattern Timeline AI",                    # Page 20
+                "🌐 Insight Fusion Layer",                   # Page 22
+                "📈 Insight Graphs",                         # Page 23
+                "🩺 Medical Triptych",                       # Page 24
+                "🎵 Serene Frequencies",                     # Page 25
+                "🧘 Mood × Sleep × Stress Radar",            # Page 26
+                "🔮 Health × Vibration Correlation Map",     # Page 27
+                "📈 Trend Forecast Engine",                  # Page 28
+                "📅 Unified Timeline Intelligence",          # Page 29
+                "🧩 Insight Matrix",                         # Page 30
+                "🧠 Health Knowledge Graph",                 # Page 31  <<< NEW
 
                 # ---- Monetization Layer ----
                 "💎 Subscription Plans",
@@ -3611,11 +4783,41 @@ def main():
     elif choice == "📘 Summary Report":
         page_summary_report()
 
-    elif choice == "🛡️ Risk Engine":
+    elif choice == "🚨 AI Health Risk Engine":
         page_risk_engine()
 
-    elif choice == "🧬 Pattern Timeline AI":      # <— PAGE 20 ROUTE
+    elif choice == "🧬 Pattern Timeline AI":
         page_pattern_timeline_ai()
+
+    elif choice == "🌐 Insight Fusion Layer":
+        page_insight_fusion()
+
+    elif choice == "📈 Insight Graphs":
+        page_insight_graphs()
+
+    elif choice == "🩺 Medical Triptych":
+        page_medical_triptych()
+
+    elif choice == "🎵 Serene Frequencies":
+        page_serene_frequency()
+
+    elif choice == "🧘 Mood × Sleep × Stress Radar":
+        page_mood_sleep_stress_radar()
+
+    elif choice == "🔮 Health × Vibration Correlation Map":
+        page_health_vibration_correlation()
+
+    elif choice == "📈 Trend Forecast Engine":
+        page_trend_forecast_engine()
+
+    elif choice == "📅 Unified Timeline Intelligence":
+        page_unified_timeline_intel()
+
+    elif choice == "🧩 Insight Matrix":
+        page_insight_matrix()
+
+    elif choice == "🧠 Health Knowledge Graph":
+        page_health_knowledge_graph()
 
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
