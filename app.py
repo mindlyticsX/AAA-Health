@@ -2258,78 +2258,150 @@ def page_summary_report():
 
 
 # ============================================================
-# PDF GENERATION ENGINE
+# PDF GENERATION ENGINE — POLISHED (STEP 1 COMPLETED)
 # ============================================================
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
+from reportlab.lib.colors import HexColor
 
-def generate_pdf_report(path, logs, insights, vault_files):
+
+def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
+    """
+    Generates a polished, presentation-ready PDF summary for AAA — Health Intelligence.
+    Includes:
+    - Gold–Teal headers
+    - Proper spacing + section separators
+    - Doctor-style AI summary block
+    - Clean list formatting
+    """
+
     c = canvas.Canvas(path, pagesize=letter)
     width, height = letter
+    y = height - 1 * inch
 
-    # Title
-    c.setFont("Helvetica-Bold", 20)
-    c.drawString(1 * inch, height - 1 * inch, "AAA — Health Intelligence Report")
+    # ---------------------------------------------------------
+    # TITLE BLOCK
+    # ---------------------------------------------------------
+    c.setFont("Helvetica-Bold", 22)
+    c.setFillColor(HexColor("#FACC15"))  # Gold accent
+    c.drawString(1 * inch, y, "AAA — Health Intelligence Report")
+
+    y -= 0.4 * inch
     c.setFont("Helvetica", 12)
-    c.drawString(1 * inch, height - 1.3 * inch, "AI-powered medical summary · Vault intelligence · Insights · Logs")
+    c.setFillColor(HexColor("#E2E8F0"))
+    c.drawString(1 * inch, y, "AI-powered clinical summary • Lab insights • Logs • Vault intelligence")
 
-    y = height - 1.8 * inch
+    y -= 0.5 * inch
 
-    # ------------------------
+    # Horizontal line
+    c.setStrokeColor(HexColor("#38BDF8"))  # Teal
+    c.setLineWidth(1)
+    c.line(1 * inch, y, width - 1 * inch, y)
+
+    y -= 0.5 * inch
+
+    # ---------------------------------------------------------
+    # DOCTOR-STYLE SUMMARY BLOCK
+    # ---------------------------------------------------------
+    if doctor_summary:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(HexColor("#FACC15"))
+        c.drawString(1 * inch, y, "🩺 Clinical AI Summary")
+        y -= 0.35 * inch
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for line in doctor_summary.split("\n"):
+            c.drawString(1 * inch, y, line[:110])
+            y -= 0.22 * inch
+            if y < 1 * inch:
+                c.showPage()
+                y = height - 1 * inch
+
+        y -= 0.3 * inch
+
+        # Divider
+        c.setStrokeColor(HexColor("#334155"))
+        c.line(1 * inch, y, width - 1 * inch, y)
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
     # SECTION: HEALTH LOGS
-    # ------------------------
+    # ---------------------------------------------------------
     if logs:
         c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "Health Logs")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#38BDF8"))  # Teal Header
+        c.drawString(1 * inch, y, "📘 Health Logs")
+        y -= 0.35 * inch
 
-        for entry in logs[:10]:
-            text = f"{entry.get('timestamp', '')}: {entry.get('text','')}"
-            c.drawString(1 * inch, y, text[:100])
-            y -= 0.25 * inch
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for entry in logs[:12]:
+            text = f"- {entry.get('timestamp', '')}: {entry.get('text', '')}"
+            c.drawString(1 * inch, y, text[:110])
+            y -= 0.22 * inch
+
             if y < 1 * inch:
                 c.showPage()
                 y = height - 1 * inch
 
-    # ------------------------
-    # SECTION: INSIGHTS
-    # ------------------------
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
+    # SECTION: INSIGHTS HISTORY
+    # ---------------------------------------------------------
     if insights:
         c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "AI Insights History")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#38BDF8"))
+        c.drawString(1 * inch, y, "📊 AI Insights History")
+        y -= 0.35 * inch
 
-        for item in insights[:8]:
-            text = f"- {item.get('summary','')}"
-            c.drawString(1 * inch, y, text[:100])
-            y -= 0.25 * inch
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for item in insights[:10]:
+            text = f"- {item.get('summary', '')}"
+            c.drawString(1 * inch, y, text[:110])
+            y -= 0.22 * inch
+
             if y < 1 * inch:
                 c.showPage()
                 y = height - 1 * inch
 
-    # ------------------------
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
     # SECTION: VAULT FILES
-    # ------------------------
+    # ---------------------------------------------------------
     if vault_files:
         c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "Vault File Summaries")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#38BDF8"))
+        c.drawString(1 * inch, y, "📁 Vault File Summaries")
+        y -= 0.35 * inch
 
-        for f in vault_files[:5]:
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for f in vault_files[:8]:
             c.drawString(1 * inch, y, f"- {f}")
-            y -= 0.25 * inch
+            y -= 0.22 * inch
+
             if y < 1 * inch:
                 c.showPage()
                 y = height - 1 * inch
 
-    # Footer
+        y -= 0.3 * inch
+
+    # ---------------------------------------------------------
+    # FOOTER
+    # ---------------------------------------------------------
     c.setFont("Helvetica", 9)
-    c.drawString(1 * inch, 0.7 * inch, "Generated by Artigellence — AAA Health Intelligence")
+    c.setFillColor(HexColor("#94A3B8"))
+    c.drawString(1 * inch, 0.6 * inch, "Generated by Artigellence — AAA Health Intelligence · Private · Local · Secure")
 
     c.save()
 

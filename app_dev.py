@@ -13,6 +13,25 @@ import fitz            # PyMuPDF for PDF rendering
 import base64
 from fpdf import FPDF
 import stripe
+import html            # for safe_render()
+
+# ============================================================
+# GLOBAL SAFE HTML SANITIZER — PREVENTS UI BREAKING
+# ============================================================
+
+def safe_render(text: str) -> str:
+    """
+    Ensures AI output never breaks HTML rendering in Streamlit.
+    - Escapes unsafe HTML tags returned by Gemini
+    - Prevents accidental raw HTML injection
+    - Converts newlines into <br> for readability
+    """
+    if not text:
+        return ""
+    safe = html.escape(text)
+    safe = safe.replace("\n", "<br>")
+    return safe
+
 
 # ============================================================
 # PATHS & DIRECTORIES
@@ -26,6 +45,7 @@ RECYCLE_BIN_DIR = os.path.join(DATA_DIR, "recycle_bin")
 INSIGHTS_HISTORY_DIR = os.path.join(DATA_DIR, "insights_history")
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
+# Create directories if missing
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(VAULT_DIR, exist_ok=True)
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
@@ -54,7 +74,7 @@ SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
 INSIGHTS_FILE = os.path.join(INSIGHTS_HISTORY_DIR, "insights_history.json")
 
 # ============================================================
-# STRIPE CONFIG (PLACEHOLDERS — CONNECTED LATER)
+# STRIPE CONFIG (PLACEHOLDERS — ACTIVATED WHEN KEY ADDED)
 # ============================================================
 
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
@@ -66,7 +86,7 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ============================================================
-# GEMINI CONFIG
+# GEMINI CONFIG — AAA INTELLIGENCE ENGINE
 # ============================================================
 
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
@@ -74,7 +94,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # ============================================================
-# JSON HELPERS
+# JSON HELPERS (STANDARDIZED & STABLE)
 # ============================================================
 
 def load_json(path, default):
@@ -94,12 +114,13 @@ def save_json(path, data):
         st.error(f"Error saving data: {e}")
 
 # ============================================================
-# PDF UTILITIES
+# PDF / FILE UTILITIES
 # ============================================================
 
 def extract_text_any(path):
     """Extract rough text from PDF or image using PyMuPDF."""
     text_chunks = []
+
     if path.lower().endswith(".pdf"):
         try:
             with fitz.open(path) as doc:
@@ -108,7 +129,9 @@ def extract_text_any(path):
         except Exception as e:
             st.error(f"Error reading PDF: {e}")
     else:
-        text_chunks.append("Image file uploaded. OCR text stored separately.")
+        # Images or unknown files — handled via OCR elsewhere
+        text_chunks.append("Image uploaded — OCR text stored separately.")
+
     return "\n".join(text_chunks)
 
 # ============================================================
@@ -367,34 +390,49 @@ Always consult certified experts for critical decisions.
 """
 
 # ============================================================
-# GLOBAL UI — HEADER + FOOTER (COPIED FROM STABLE app.py)
+# GLOBAL UI — HEADER + FOOTER (STABLE + SAFE HTML WRAPPERS)
 # ============================================================
 
 def aaa_header():
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        logo_path = os.path.join("assets", "logo.png")
-        if os.path.exists(logo_path):
-            st.image(logo_path, use_column_width=False, width=220)
-        else:
-            st.write("AAA — Artigellence Augmentation Aggregator")
+    st.markdown(
+        """
+        <div style='text-align:center; padding-top:10px; padding-bottom:10px;'>
+            <img src='assets/logo.png' width='220' style='margin:auto;' />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 def aaa_footer():
     st.markdown(
         """
         <br><br>
-        <div style='text-align:center; color:#9ca3af; font-size:14px;'>
+
+        <div style='text-align:center; 
+                    color:#9ca3af; 
+                    font-size:14px;
+                    line-height:1.6; 
+                    margin-top:25px;'>
+
             AAA — Health Intelligence provides AI-assisted insights.<br>
-            It does not replace professional medical, financial, or legal advice.<br>
-            Always consult certified experts for critical decisions.
+            It does not replace medical, financial, or legal advice.<br>
+            Always consult certified professionals for critical decisions.
         </div>
-        <br><br>
-        <div style='text-align:center; color:#e5e7eb; font-size:14px; font-weight:500;'>
+
+        <div style='text-align:center; 
+                    color:#e5e7eb; 
+                    font-size:14px; 
+                    font-weight:500;
+                    margin-top:10px;'>
+
             Crafted by Rajdeep Singh — Artigellence Augmentation Aggregator<br>
             <span style='font-size:13px; color:#9ca3af;'>
                 Edge-AI Orchestration Layer • Gemini • Vertex AI
             </span>
         </div>
+
+        <br><br>
         """,
         unsafe_allow_html=True,
     )
@@ -842,112 +880,145 @@ TEXT:
     aaa_footer()
 
 # ============================================================
-# PAGE — MERGED VIEW (PREMIUM FEATURE)
+# PAGE — MERGED VIEW (PREMIUM FEATURE, POLISHED)
 # ============================================================
 
 def page_merged():
-    # 🔒 FIREWALL — FIRST LINE
+    # 🔒 Always check firewall first
     check_firewall("Merged View", st.session_state.get("mode", "free"))
 
     aaa_header()
-    st.subheader("✨ Merged View — Multi-Document Intelligence (Premium)")
+    st.subheader("✨ Merged View — Unified Medical Intelligence (Premium)")
 
-    # Premium check
+    # Premium guard
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
+    # ---------------------------------------------
+    # INTRO
+    # ---------------------------------------------
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
-            Compare multiple medical documents together — PDFs, reports, prescriptions,
-            scans, or lab results — and generate combined insights, patterns, and
-            cross-document trends using AAA Intelligence.
+        <div style="
+            font-size:16px; 
+            line-height:1.6; 
+            margin-bottom:20px;
+            color:#cbd5f5;
+        ">
+            AAA merges multiple medical documents into a single, structured,
+            doctor-style intelligence sheet.  
+            Upload lab reports, scans, prescriptions, or PDFs — AAA will read,
+            compare, correlate, and summarise them into one unified view.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ------------------------------------------------------------
-    # LOAD VAULT FILES
-    # ------------------------------------------------------------
-    files = [
+    # ---------------------------------------------
+    # LOAD VAULT DOCUMENTS
+    # ---------------------------------------------
+    vault_files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
-    if not files:
-        st.warning("Upload at least 2 files in the Vault to use Merged View.")
+    if not vault_files:
+        st.warning("Upload at least 2 documents to use Merged View.")
         monetization_cta()
         aaa_footer()
         return
 
     selected_files = st.multiselect(
-        "Select 2–5 files for merged analysis:",
-        files,
+        "Select 2–5 files for merged intelligence:",
+        vault_files,
         max_selections=5
     )
 
     if len(selected_files) < 2:
-        st.info("Select at least 2 files to continue.")
+        st.info("Please select at least two files.")
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # GENERATE MERGED ANALYSIS
-    # ------------------------------------------------------------
-    if st.button("Generate Merged Intelligence"):
-        with st.spinner("Processing multiple documents with AAA Intelligence…"):
+    # ---------------------------------------------
+    # RUN MERGED INTELLIGENCE
+    # ---------------------------------------------
+    if st.button("Generate Unified Intelligence", use_container_width=True):
+        with st.spinner("Reading & merging documents…"):
             try:
-                extracted_texts = []
+                sections = []
+
+                # Extract all selected files
                 for f in selected_files:
-                    path = os.path.join(VAULT_DIR, f)
-                    extracted_texts.append(f"\n\n===== FILE: {f} =====\n" + extract_text_any(path))
+                    p = os.path.join(VAULT_DIR, f)
+                    text = extract_text_any(p)
+                    sections.append(
+                        f"\n\n===== DOCUMENT: {f} =====\n{text}"
+                    )
 
-                combined_text = "\n".join(extracted_texts)
+                merged_block = "\n".join(sections)
 
-                # Prompt
-                prompt = (
-                    "You are AAA Intelligence. Create a combined, structured, "
-                    "patient-friendly analysis from multiple uploaded medical documents.\n\n"
-                    "Break the output into these sections:\n"
-                    "1. Combined Key Findings (all files)\n"
-                    "2. Trends, Patterns & Relationships\n"
-                    "3. Risk Indicators & Warnings\n"
-                    "4. Contradictions / Missing Info\n"
-                    "5. Recommendations & Next Steps (simple explanation)\n\n"
-                    "Documents:\n"
-                    f"{combined_text[:12000]}"
-                )
+                # -----------------------------------------
+                # PROMPT FOR AAA UNIFIED INTELLIGENCE
+                # -----------------------------------------
+                prompt = f"""
+You are AAA Health Intelligence. Produce a clean, structured, 
+doctor-style unified summary from multiple medical documents.
 
-                # Call Gemini
+Your output MUST contain the following sections:
+
+1. 🔍 **Combined Key Findings**
+2. 📈 **Trends, Correlations & Cross-Document Patterns**
+3. ⚠️ **Risk Indicators & Red Flags**
+4. 🔄 **Conflicts, Mismatches or Missing Information**
+5. 🧠 **Actionable Recommendations (Simple Language)**
+6. ⭐ **Overall Takeaway (Executive Summary)**
+
+Write in clear bullet points. Avoid medical jargon unless necessary.
+Text source (multiple documents):
+
+{merged_block[:12000]}
+"""
+
                 result = call_gemini(prompt)
 
-                # Display styled card
+                # -----------------------------------------
+                # DISPLAY RESULT IN GOLD–TEAL PREMIUM CARD
+                # -----------------------------------------
                 st.markdown(
                     """
                     <div style="
-                        padding:20px;
-                        border-radius:12px;
-                        background-color:#0B1625;
-                        border-left:4px solid #D4A037;
-                        box-shadow:0 0 12px rgba(0,166,200,0.15);
+                        padding:28px;
+                        border-radius:14px;
+                        background:linear-gradient(145deg, #0b1220, #0f1a2e);
+                        border-left:5px solid #38bdf8;
+                        box-shadow:0 0 18px rgba(56,189,248,0.28);
+                        color:#e2e8f0;
+                        font-size:15px;
+                        line-height:1.65;
                     ">
                     """,
                     unsafe_allow_html=True,
                 )
-                st.write(result)
+
+                st.markdown(result)
+
                 st.markdown("</div>", unsafe_allow_html=True)
 
+                # -----------------------------------------
+                # COPY BUTTON
+                # -----------------------------------------
+                st.code(result, language="text")
+
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error processing files: {e}")
 
     monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 8 — SUMMARY AI (PREMIUM FEATURE)
+# PAGE 8 — SUMMARY AI (PREMIUM FEATURE) — UPDATED SAFE VERSION
 # ============================================================
 
 def page_summary_ai():
@@ -957,7 +1028,7 @@ def page_summary_ai():
     aaa_header()
     st.subheader("🧬 Summary AI (Premium)")
 
-    # If not premium → lock the feature
+    # Premium mode check
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -966,17 +1037,15 @@ def page_summary_ai():
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            Generate an intelligent, doctor-style medical summary from your uploaded
-            PDFs, images, lab reports, and prescriptions.  
-            AAA Intelligence creates a structured, patient-friendly summary with
-            findings, explanation, and next-step suggestions.
+            Generate a structured, patient-friendly medical summary using AAA Intelligence.
+            Works across PDFs, lab reports, prescriptions and diagnostic images (OCR required).
         </div>
         """,
         unsafe_allow_html=True,
     )
 
     # ------------------------------------------------------------
-    # LOAD FILES
+    # LOAD FILES FROM VAULT
     # ------------------------------------------------------------
     files = [
         f for f in os.listdir(VAULT_DIR)
@@ -984,7 +1053,7 @@ def page_summary_ai():
     ]
 
     if not files:
-        st.warning("Upload at least 1 file in the Vault to generate a summary.")
+        st.warning("Upload at least 1 file in your Vault to generate a summary.")
         monetization_cta()
         aaa_footer()
         return
@@ -1001,35 +1070,40 @@ def page_summary_ai():
                 text = extract_text_any(path)
 
                 prompt = (
-                    "Provide a clear, structured, patient-friendly medical summary. "
+                    "Provide a clear, structured, patient-friendly medical summary.\n"
                     "Break into sections:\n"
                     "1. Key Findings\n"
-                    "2. What This Means (explain simply)\n"
+                    "2. Easy Explanation\n"
                     "3. Risk Indicators\n"
-                    "4. Missing Info To Check\n"
-                    "5. Recommended Next Steps\n\n"
-                    f"TEXT:\n{text[:4000]}"
+                    "4. Missing Information\n"
+                    "5. Observation-Based Next Steps\n\n"
+                    f"TEXT:\n{text[:6000]}"
                 )
 
-                result = call_gemini(prompt)
-                st.success("Summary generated!")
-
-                st.markdown(
-                    "<div style='padding:15px; border-radius:10px; "
-                    "background-color:#0B1625; box-shadow:0 0 8px rgba(0,166,200,0.15);'>",
-                    unsafe_allow_html=True,
-                )
-                st.write(result)
-                st.markdown("</div>", unsafe_allow_html=True)
+                result_raw = call_gemini(prompt)
+                result_clean = safe_render(result_raw)
 
             except Exception as e:
                 st.error(f"Error: {e}")
+                monetization_cta()
+                aaa_footer()
+                return
+
+        st.success("Summary generated!")
+
+        st.markdown(
+            "<div style='padding:15px; border-radius:10px; "
+            "background-color:#0B1625; box-shadow:0 0 8px rgba(0,166,200,0.15);'>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(result_clean, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     monetization_cta()
     aaa_footer()
 
 # ============================================================
-# PAGE 9 — INSIGHTS AI (PREMIUM HYBRID ENGINE — FINAL VERSION)
+# PAGE 9 — INSIGHTS AI (HYBRID ENGINE) — UPDATED SAFE VERSION
 # ============================================================
 
 def generate_insights_hybrid(file_text: str) -> str:
@@ -1042,12 +1116,12 @@ TEXT:
 {file_text}
 \"\"\"
 
-OUTPUT FORMAT (FOLLOW EXACTLY):
+OUTPUT FORMAT EXACTLY:
 
 SHORT_SUMMARY:
 - 3–5 bullet points
 - Simple language
-- Easy for any user to understand
+- Easy to understand
 
 DEEP_INSIGHTS:
 SECTION 1 — Key Findings:
@@ -1062,9 +1136,8 @@ SECTION 3 — Risks & Red Flags:
 SECTION 4 — Recommendations:
 - 3–6 bullet points
 
-Return ONLY the structured text. No intro, no conclusion.
+Return ONLY formatted text. No intro, no disclaimers.
 """
-
     model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
     return response.text
@@ -1087,13 +1160,14 @@ def page_insights_ai():
     aaa_header()
     st.subheader("📊 Insights AI (Premium)")
 
-    # Premium check
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # Load vault files
+    # ------------------------------------------------------------
+    # LOAD VAULT FILES
+    # ------------------------------------------------------------
     files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
@@ -1107,70 +1181,62 @@ def page_insights_ai():
 
     selected_file = st.selectbox("Select file for insights:", files)
 
+    # ------------------------------------------------------------
+    # RUN HYBRID ENGINE
+    # ------------------------------------------------------------
     if st.button("Generate Insights"):
         with st.spinner("🔥 Generating AAA Hybrid Intelligence…"):
 
             try:
-                # Extract text
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
 
-                # Call Hybrid Engine
-                ai_output = generate_insights_hybrid(text)
+                ai_output_raw = generate_insights_hybrid(text)
+                ai_output = ai_output_raw or ""
+
+                # -------------------------
+                # SAFE RENDERING
+                # -------------------------
+                ai_output_safe = safe_render(ai_output)
 
                 # -------------------------
                 # SPLITTING SECTIONS
                 # -------------------------
-                try:
-                    short_part = ai_output.split("SHORT_SUMMARY:")[1].split("DEEP_INSIGHTS:")[0].strip()
-                except Exception:
-                    short_part = "Unable to format short summary."
+                short_part = ""
+                deep_part = ai_output_safe
 
-                try:
-                    deep_part = ai_output.split("DEEP_INSIGHTS:")[1].strip()
-                except Exception:
-                    deep_part = ai_output
+                if "SHORT_SUMMARY:" in ai_output:
+                    try:
+                        short_part = ai_output.split("SHORT_SUMMARY:")[1].split("DEEP_INSIGHTS:")[0].strip()
+                    except:
+                        short_part = "Unable to extract short summary."
+
+                if "DEEP_INSIGHTS:" in ai_output:
+                    try:
+                        deep_part = ai_output.split("DEEP_INSIGHTS:")[1].strip()
+                    except:
+                        deep_part = ai_output_safe
+
+                short_safe = safe_render(short_part)
+                deep_safe = safe_render(deep_part)
 
                 # -------------------------
-                # SAVE
+                # SAVE HISTORY
                 # -------------------------
-                save_insights_record(selected_file, short_part, deep_part)
+                save_insights_record(selected_file, short_safe, deep_safe)
 
                 # -------------------------
-                # DISPLAY UI
+                # UI DISPLAY
                 # -------------------------
                 st.success("Insights generated successfully!")
 
                 st.markdown("### 🟦 Short Summary")
-                st.markdown(short_part.replace("-", "• "))
+                st.markdown(short_safe, unsafe_allow_html=True)
 
                 st.markdown("---")
-
                 st.markdown("### 🟫 Deep Insights")
 
-                # Key Findings
-                if "SECTION 1" in deep_part:
-                    sec1 = deep_part.split("SECTION 1 — Key Findings:")[1].split("SECTION 2")[0].strip()
-                    with st.expander("🔍 Key Findings"):
-                        st.markdown(sec1.replace("-", "• "))
-
-                # Trends & Patterns
-                if "SECTION 2" in deep_part:
-                    sec2 = deep_part.split("SECTION 2 — Trends & Patterns:")[1].split("SECTION 3")[0].strip()
-                    with st.expander("📈 Trends & Patterns"):
-                        st.markdown(sec2.replace("-", "• "))
-
-                # Risks
-                if "SECTION 3" in deep_part:
-                    sec3 = deep_part.split("SECTION 3 — Risks & Red Flags:")[1].split("SECTION 4")[0].strip()
-                    with st.expander("⚠️ Risks & Red Flags"):
-                        st.markdown(sec3.replace("-", "• "))
-
-                # Recommendations
-                if "SECTION 4" in deep_part:
-                    sec4 = deep_part.split("SECTION 4 — Recommendations:")[1].strip()
-                    with st.expander("✅ Recommendations"):
-                        st.markdown(sec4.replace("-", "• "))
+                st.markdown(deep_safe, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Error generating insights: {e}")
@@ -1557,6 +1623,9 @@ def page_analytics_dashboard():
         aaa_footer()
         return
 
+    # -----------------------------
+    # Description
+    # -----------------------------
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.7; margin-bottom:15px;">
@@ -1625,15 +1694,14 @@ def page_analytics_dashboard():
                 "deficiency", "vitamin", "anemia", "pain", "fatigue"
             ]
 
-            freq = {
-                k: text_all.count(k)
-                for k in keywords
-            }
+            freq = {k: text_all.count(k) for k in keywords}
 
             df2 = pd.DataFrame(list(freq.items()), columns=["Term", "Count"])
             st.bar_chart(df2.set_index("Term"))
+
         except Exception as e:
             st.error(f"Error generating term frequency: {e}")
+
     else:
         st.info("No summaries available for analysis.")
 
@@ -1643,19 +1711,19 @@ def page_analytics_dashboard():
     st.markdown("## 🚨 Potential Condition Flags (AI)")
 
     if insights:
-        combined_text = " ".join(i.get("deep", "") for i in insights)
+        combined_text = " ".join(i.get("deep", "") for i in insights).lower()
 
         alert_keywords = [
             ("Kidney-related indicators", ["creatinine", "gfr", "urea"]),
             ("Cardio Indicators", ["bp", "hypertension", "tachy", "cholesterol"]),
             ("Infection Markers", ["stool", "wbc", "infection"]),
-            ("Inflammation Markers", ["crp", "esr", "inflamm"])
+            ("Inflammation Markers", ["crp", "esr", "inflamm"]),
         ]
 
         for title, keys in alert_keywords:
-            found = any(k in combined_text.lower() for k in keys)
-            if found:
+            if any(k in combined_text for k in keys):
                 st.warning(f"⚠ **{title} flagged in recent reports**")
+
     else:
         st.info("No insights available for condition flagging.")
 
@@ -1666,8 +1734,10 @@ def page_analytics_dashboard():
 
     st.markdown(
         """
-        This shows location-based seasonal trends and general awareness.
-        (Static beta content — will be replaced with live regional models.)
+        <p style="font-size:15px; line-height:1.6; color:#CBD5E1;">
+            This shows location-based seasonal trends and general awareness.
+            (Static beta content — will be replaced with live regional models.)
+        </p>
         """,
         unsafe_allow_html=True,
     )
@@ -1677,10 +1747,10 @@ def page_analytics_dashboard():
 
     st.markdown(
         """
-        - 🌡 Seasonal allergies are moderate.
-        - 🤧 Flu cases rising locally.
-        - 🦠 Gastro outbreaks reported in nearby suburbs.
-        - ☀ UV index trending high — extra precautions advised.
+        - 🌡 Seasonal allergies are moderate.  
+        - 🤧 Flu cases rising locally.  
+        - 🦠 Gastro outbreaks reported in nearby suburbs.  
+        - ☀ UV index trending high — extra precautions advised.  
         """
     )
 
@@ -1688,42 +1758,6 @@ def page_analytics_dashboard():
 
     monetization_cta()
     aaa_footer()
-
-
-# ============================================================
-# SNAPSHOTS HELPERS (AAA HEALTH)
-# ============================================================
-
-SNAPSHOTS_FILE = os.path.join(DATA_DIR, "snapshots.json")
-
-def load_snapshots():
-    if not os.path.exists(SNAPSHOTS_FILE):
-        return []
-    try:
-        with open(SNAPSHOTS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_snapshots(snapshots):
-    with open(SNAPSHOTS_FILE, "w") as f:
-        json.dump(snapshots, f, indent=2)
-
-def create_snapshot():
-    logs = load_logs()
-    vault_files = load_vault_files()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    snapshot = {
-        "timestamp": timestamp,
-        "log_count": len(logs),
-        "vault_files": vault_files,
-    }
-
-    snapshots = load_snapshots()
-    snapshots.append(snapshot)
-    save_snapshots(snapshots)
-    return snapshot
 
 
 # ============================================================
@@ -2258,87 +2292,10 @@ def page_summary_report():
 
 
 # ============================================================
-# PDF GENERATION ENGINE
-# ============================================================
-
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import inch
-
-def generate_pdf_report(path, logs, insights, vault_files):
-    c = canvas.Canvas(path, pagesize=letter)
-    width, height = letter
-
-    # Title
-    c.setFont("Helvetica-Bold", 20)
-    c.drawString(1 * inch, height - 1 * inch, "AAA — Health Intelligence Report")
-    c.setFont("Helvetica", 12)
-    c.drawString(1 * inch, height - 1.3 * inch, "AI-powered medical summary · Vault intelligence · Insights · Logs")
-
-    y = height - 1.8 * inch
-
-    # ------------------------
-    # SECTION: HEALTH LOGS
-    # ------------------------
-    if logs:
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "Health Logs")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
-
-        for entry in logs[:10]:
-            text = f"{entry.get('timestamp', '')}: {entry.get('text','')}"
-            c.drawString(1 * inch, y, text[:100])
-            y -= 0.25 * inch
-            if y < 1 * inch:
-                c.showPage()
-                y = height - 1 * inch
-
-    # ------------------------
-    # SECTION: INSIGHTS
-    # ------------------------
-    if insights:
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "AI Insights History")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
-
-        for item in insights[:8]:
-            text = f"- {item.get('summary','')}"
-            c.drawString(1 * inch, y, text[:100])
-            y -= 0.25 * inch
-            if y < 1 * inch:
-                c.showPage()
-                y = height - 1 * inch
-
-    # ------------------------
-    # SECTION: VAULT FILES
-    # ------------------------
-    if vault_files:
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(1 * inch, y, "Vault File Summaries")
-        y -= 0.3 * inch
-        c.setFont("Helvetica", 11)
-
-        for f in vault_files[:5]:
-            c.drawString(1 * inch, y, f"- {f}")
-            y -= 0.25 * inch
-            if y < 1 * inch:
-                c.showPage()
-                y = height - 1 * inch
-
-    # Footer
-    c.setFont("Helvetica", 9)
-    c.drawString(1 * inch, 0.7 * inch, "Generated by Artigellence — AAA Health Intelligence")
-
-    c.save()
-
-
-# ============================================================
 # PAGE 18 — STRIPE MONETIZATION ENGINE (DEMO ONLY)
 # ============================================================
 
-def page_stripe_engine():
+def page_stripe_monetization_demo():
     aaa_header()
     st.subheader("💳 Stripe Monetization Engine (Demo)")
 
@@ -2353,13 +2310,17 @@ def page_stripe_engine():
         unsafe_allow_html=True,
     )
 
-    st.info("Stripe live checkout is disabled. This is a demo preview of how AAA Premium billing will work.")
+    st.info(
+        "Stripe live checkout is disabled. This is a demo preview of how "
+        "AAA Premium billing will work."
+    )
 
     # ---------------------------------------------------------
     # PRICING CARDS — DEMO
     # ---------------------------------------------------------
     col1, col2, col3 = st.columns(3)
 
+    # AUSTRALIA — A$10
     with col1:
         st.markdown(
             """
@@ -2376,13 +2337,14 @@ def page_stripe_engine():
             unsafe_allow_html=True,
         )
 
+    # INDIA — ₹500
     with col2:
         st.markdown(
             """
             <div style='background:#0F233A; padding:20px; border-radius:12px; border:1px solid #284F63;'>
                 <h3 style='color:#5BB6FF;'>India</h3>
-                <h2 style='color:white;'>₹100 / month</h2>
-                <ul style='color:#D0EAFF; font-size:14px;'>
+                <h2 style='color:white;'>₹500 / month</h2>
+                <ul style='color:#D0EAFF; font-size:14px; font-weight:400;'>
                     <li>All Premium Features</li>
                     <li>Merged AI View (Doctor + Lab + Notes)</li>
                     <li>Early Access to AAA Finance & Law</li>
@@ -2392,6 +2354,7 @@ def page_stripe_engine():
             unsafe_allow_html=True,
         )
 
+    # GLOBAL — $10
     with col3:
         st.markdown(
             """
@@ -2449,7 +2412,7 @@ def page_stripe_engine():
 
 
 # ============================================================
-# PAGE 19 — AI EDGE NODE MEMORY LAYER (FUTURISTIC MODE)
+# PAGE — EDGE NODE MEMORY (BETA — FULLY FUNCTIONAL)
 # ============================================================
 
 def page_edge_node_memory():
@@ -2473,7 +2436,7 @@ def page_edge_node_memory():
     )
 
     # -------------------------
-    # TEMP FILES
+    # MEMORY FILE
     # -------------------------
     memory_file = os.path.join(DATA_DIR, "edge_memory.json")
     if not os.path.exists(memory_file):
@@ -2544,6 +2507,255 @@ def page_edge_node_memory():
         )
 
     aaa_footer()
+
+
+# ============================================================
+# PAGE 39 — SNAPSHOTS (FINAL UI EDITION)
+# ============================================================
+
+def page_snapshots():
+    aaa_header()
+
+    st.markdown(
+        """
+        <h2 style="text-align:center; color:#00D4FF; margin-bottom:0;">
+            🧊 Snapshots — Backup & Restore
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Save your current AAA health state — logs, OCR, summaries — 
+            and restore anytime. All data stays on your device.
+        </p>
+        <br>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # -------------------------------
+    # CREATE SNAPSHOT
+    # -------------------------------
+    if st.button("📦 Create New Snapshot", use_container_width=True):
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snap_path = os.path.join(SNAPSHOT_DIR, f"snapshot_{now}")
+        os.makedirs(snap_path, exist_ok=True)
+
+        for fname in [HEALTH_LOG_FILE, OCR_DATA_FILE, PHOTO_DATA_FILE, AI_SUMMARY_FILE]:
+            if os.path.exists(fname):
+                shutil.copy(fname, snap_path)
+
+        st.success(f"Snapshot saved as: snapshot_{now}")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # -------------------------------
+    # LIST SNAPSHOTS
+    # -------------------------------
+    st.subheader("📁 Available Snapshots")
+
+    folders = sorted(
+        [d for d in os.listdir(SNAPSHOT_DIR) if os.path.isdir(os.path.join(SNAPSHOT_DIR, d))],
+        reverse=True
+    )
+
+    if not folders:
+        st.info("No snapshots created yet.")
+        monetization_cta()
+        aaa_footer()
+        return
+
+    for folder in folders:
+        folder_path = os.path.join(SNAPSHOT_DIR, folder)
+
+        with st.expander(f"📦 {folder}"):
+
+            st.write("Contains copies of logs, OCR results, photos, and AI summaries.")
+
+            col1, col2, col3 = st.columns([1,1,1])
+
+            # --------------------------------------
+            # RESTORE SNAPSHOT
+            # --------------------------------------
+            with col1:
+                if st.button(f"Restore {folder}", key=f"restore_{folder}"):
+                    for fname in os.listdir(folder_path):
+                        src = os.path.join(folder_path, fname)
+                        dst = fname  # overwrite working file
+                        shutil.copy(src, dst)
+                    st.success(f"Restored snapshot: {folder}")
+
+            # --------------------------------------
+            # DOWNLOAD SNAPSHOT
+            # --------------------------------------
+            with col2:
+                zipped = shutil.make_archive(folder_path, 'zip', folder_path)
+                with open(zipped, "rb") as f:
+                    st.download_button(
+                        label="Download",
+                        data=f,
+                        file_name=f"{folder}.zip",
+                        mime="application/zip",
+                        key=f"download_{folder}"
+                    )
+
+            # --------------------------------------
+            # DELETE SNAPSHOT
+            # --------------------------------------
+            with col3:
+                if st.button(f"Delete {folder}", key=f"delete_{folder}"):
+                    shutil.rmtree(folder_path)
+                    st.warning(f"Deleted snapshot: {folder}")
+                    st.experimental_rerun()
+
+    monetization_cta()
+    aaa_footer()
+
+
+# ============================================================
+# PDF GENERATION ENGINE — POLISHED (STEP 1 COMPLETED)
+# ============================================================
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+from reportlab.lib.colors import HexColor
+
+
+def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
+    """
+    Generates a polished, presentation-ready PDF summary for AAA — Health Intelligence.
+    Includes:
+    - Gold–Teal headers
+    - Proper spacing + section separators
+    - Doctor-style AI summary block
+    - Clean list formatting
+    """
+
+    c = canvas.Canvas(path, pagesize=letter)
+    width, height = letter
+    y = height - 1 * inch
+
+    # ---------------------------------------------------------
+    # TITLE BLOCK
+    # ---------------------------------------------------------
+    c.setFont("Helvetica-Bold", 22)
+    c.setFillColor(HexColor("#FACC15"))  # Gold accent
+    c.drawString(1 * inch, y, "AAA — Health Intelligence Report")
+
+    y -= 0.4 * inch
+    c.setFont("Helvetica", 12)
+    c.setFillColor(HexColor("#E2E8F0"))
+    c.drawString(1 * inch, y, "AI-powered clinical summary • Lab insights • Logs • Vault intelligence")
+
+    y -= 0.5 * inch
+
+    # Horizontal line
+    c.setStrokeColor(HexColor("#38BDF8"))  # Teal
+    c.setLineWidth(1)
+    c.line(1 * inch, y, width - 1 * inch, y)
+
+    y -= 0.5 * inch
+
+    # ---------------------------------------------------------
+    # DOCTOR-STYLE SUMMARY BLOCK
+    # ---------------------------------------------------------
+    if doctor_summary:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(HexColor("#FACC15"))
+        c.drawString(1 * inch, y, "🩺 Clinical AI Summary")
+        y -= 0.35 * inch
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for line in doctor_summary.split("\n"):
+            c.drawString(1 * inch, y, line[:110])
+            y -= 0.22 * inch
+            if y < 1 * inch:
+                c.showPage()
+                y = height - 1 * inch
+
+        y -= 0.3 * inch
+
+        # Divider
+        c.setStrokeColor(HexColor("#334155"))
+        c.line(1 * inch, y, width - 1 * inch, y)
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
+    # SECTION: HEALTH LOGS
+    # ---------------------------------------------------------
+    if logs:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(HexColor("#38BDF8"))  # Teal Header
+        c.drawString(1 * inch, y, "📘 Health Logs")
+        y -= 0.35 * inch
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for entry in logs[:12]:
+            text = f"- {entry.get('timestamp', '')}: {entry.get('text', '')}"
+            c.drawString(1 * inch, y, text[:110])
+            y -= 0.22 * inch
+
+            if y < 1 * inch:
+                c.showPage()
+                y = height - 1 * inch
+
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
+    # SECTION: INSIGHTS HISTORY
+    # ---------------------------------------------------------
+    if insights:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(HexColor("#38BDF8"))
+        c.drawString(1 * inch, y, "📊 AI Insights History")
+        y -= 0.35 * inch
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for item in insights[:10]:
+            text = f"- {item.get('summary', '')}"
+            c.drawString(1 * inch, y, text[:110])
+            y -= 0.22 * inch
+
+            if y < 1 * inch:
+                c.showPage()
+                y = height - 1 * inch
+
+        y -= 0.4 * inch
+
+    # ---------------------------------------------------------
+    # SECTION: VAULT FILES
+    # ---------------------------------------------------------
+    if vault_files:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(HexColor("#38BDF8"))
+        c.drawString(1 * inch, y, "📁 Vault File Summaries")
+        y -= 0.35 * inch
+
+        c.setFont("Helvetica", 11)
+        c.setFillColor(HexColor("#E2E8F0"))
+
+        for f in vault_files[:8]:
+            c.drawString(1 * inch, y, f"- {f}")
+            y -= 0.22 * inch
+
+            if y < 1 * inch:
+                c.showPage()
+                y = height - 1 * inch
+
+        y -= 0.3 * inch
+
+    # ---------------------------------------------------------
+    # FOOTER
+    # ---------------------------------------------------------
+    c.setFont("Helvetica", 9)
+    c.setFillColor(HexColor("#94A3B8"))
+    c.drawString(1 * inch, 0.6 * inch, "Generated by Artigellence — AAA Health Intelligence · Private · Local · Secure")
+
+    c.save()
 
 
 # ============================================================
@@ -4271,18 +4483,13 @@ def page_signal_volatility_engine():
         <br>
     """, unsafe_allow_html=True)
 
-    # Premium check
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # Load all signals
-    # ------------------------------------------------------------
     signals = []
 
-    # Vault files
     vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     for f in vault_files:
         path = os.path.join(VAULT_DIR, f)
@@ -4290,18 +4497,15 @@ def page_signal_volatility_engine():
         if text.strip():
             signals.append(text)
 
-    # OCR data
     ocr = load_json(OCR_DATA_FILE, [])
     for item in ocr:
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
-    # Health log
     logs = load_json(HEALTH_LOG_FILE, [])
     for entry in logs:
         signals.append(entry.get("note", ""))
 
-    # Doctor notes
     doctor = load_json(DOCTOR_NOTES_FILE, [])
     if doctor:
         signals.append("\n".join(doctor))
@@ -4312,9 +4516,6 @@ def page_signal_volatility_engine():
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # RUN VOLATILITY ENGINE
-    # ------------------------------------------------------------
     if st.button("🔍 Analyze Signal Volatility"):
         with st.spinner("Evaluating volatility patterns…"):
             try:
@@ -4332,11 +4533,10 @@ STRICT RULES:
 - Observational patterns only.
 
 FORMAT:
-
-1. High-Volatility Zones  
-2. Low-Volatility Zones  
-3. Noise / Outlier Regions  
-4. Potential Correlation Instability  
+1. High-Volatility Zones
+2. Low-Volatility Zones
+3. Noise / Outlier Regions
+4. Potential Correlation Instability
 5. Summary (100 words)
 """
 
@@ -4354,26 +4554,23 @@ FORMAT:
 
 
 # ============================================================
-# PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
+# PAGE — SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
 def page_subscription_plans():
     aaa_header()
     st.subheader("💳 Subscription Plans — Artigellence Premium")
 
-    # Everyone can see this page (no premium lock)
     st.markdown(
         """
         <div style="font-size:15px; line-height:1.6; margin-bottom:20px; color:#C7D2FE;">
             Choose how you want to explore <b>AAA — Health Intelligence</b>.
-            Free mode lets you try the experience, while <b>Artigellence Premium</b>
-            unlocks full AI intelligence, health reports, and early access to AAA Finance & Law.
+            Free mode lets you try the essentials, while <b>Premium</b> unlocks full AI intelligence.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --- PLAN CARDS LAYOUT ---
     col1, col2, col3 = st.columns(3)
 
     # FREE PLAN
@@ -4387,28 +4584,21 @@ def page_subscription_plans():
                 border:1px solid #1f2937;
             ">
                 <h3 style="color:#E5E7EB; margin-bottom:4px;">Free</h3>
-                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
-                    Get a feel for AAA Health Intelligence.
-                </p>
-                <div style="font-size:22px; font-weight:bold; color:#FACC15; margin:8px 0;">
-                    $0 / month
-                </div>
+                <p style="color:#9CA3AF; font-size:13px;">Explore AAA basics.</p>
+                <div style="font-size:22px; font-weight:bold; color:#FACC15;">$0 / month</div>
                 <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
                     <li>Dashboard (Beta)</li>
                     <li>Basic Health Log</li>
                     <li>PDF Vault & OCR (limits apply)</li>
-                    <li>Demo AI Summary (short preview)</li>
+                    <li>Demo Summary (Short)</li>
                     <li>Snapshots (Beta)</li>
                 </ul>
-                <div style="margin-top:10px; font-size:11px; color:#6B7280;">
-                    Ideal if you are just exploring AAA.
-                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # PREMIUM – INDIA PLAN (₹500)
+    # PREMIUM INDIA ₹500
     with col2:
         st.markdown(
             """
@@ -4419,35 +4609,29 @@ def page_subscription_plans():
                 border:1px solid #4B5563;
                 box-shadow:0 0 18px rgba(56,189,248,0.35);
             ">
-                <div style="font-size:11px; color:#22C55E; text-transform:uppercase; letter-spacing:0.08em;">
+                <div style="font-size:11px; color:#22C55E; text-transform:uppercase;">
                     Recommended
                 </div>
-                <h3 style="color:#E5E7EB; margin-bottom:4px;">Artigellence Premium — India</h3>
-                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
-                    Full AAA Health Intelligence for users in India.
+                <h3 style="color:#E5E7EB;">Premium — India</h3>
+                <p style="color:#9CA3AF; font-size:13px;">
+                    Full AAA intelligence at accessible India pricing.
                 </p>
-                <div style="font-size:22px; font-weight:bold; color:#22C55E; margin:8px 0;">
-                    ₹500 / month
-                </div>
+                <div style="font-size:22px; font-weight:bold; color:#22C55E;">₹500 / month</div>
                 <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
-                    <li>Unlimited AI Medical Summaries</li>
-                    <li>Hybrid Engine Insights (multi-document)</li>
-                    <li>Deep Insights AI & Insights History log</li>
-                    <li>PDF Health Reports & Summary PDF export</li>
-                    <li>Merged View (Doctor + Lab + Notes)</li>
-                    <li>Snapshots & Smart Timeline</li>
-                    <li>Early access to AAA Finance & Law</li>
-                    <li>Priority feature upgrades</li>
+                    <li>Unlimited Summaries</li>
+                    <li>Hybrid Engine</li>
+                    <li>Deep Insights + History</li>
+                    <li>AI PDFs</li>
+                    <li>Merged View</li>
+                    <li>Snapshots + Timeline</li>
+                    <li>Finance × Law Access</li>
                 </ul>
-                <div style="margin-top:10px; font-size:11px; color:#E5E7EB;">
-                    Stripe checkout coming soon – pricing is indicative only.
-                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # PREMIUM – GLOBAL PLAN
+    # PREMIUM GLOBAL $10
     with col3:
         st.markdown(
             """
@@ -4457,23 +4641,18 @@ def page_subscription_plans():
                 background:linear-gradient(145deg, #020617, #0f172a);
                 border:1px solid #1f2937;
             ">
-                <h3 style="color:#E5E7EB; margin-bottom:4px;">Artigellence Premium — Global</h3>
-                <p style="color:#9CA3AF; font-size:13px; margin-top:0;">
-                    For users outside India (Australia, US, EU and more).
+                <h3 style="color:#E5E7EB;">Premium — Global</h3>
+                <p style="color:#9CA3AF; font-size:13px;">
+                    For users outside India.
                 </p>
-                <div style="font-size:22px; font-weight:bold; color:#38BDF8; margin:8px 0;">
-                    $10 / month
-                </div>
+                <div style="font-size:22px; font-weight:bold; color:#38BDF8;">$10 / month</div>
                 <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
-                    <li>All Premium health features</li>
-                    <li>AI-generated health PDFs</li>
-                    <li>Hybrid Engine & Insights History</li>
-                    <li>Priority roadmap voting</li>
-                    <li>Access to future Serene Frequencies indicators</li>
+                    <li>All Premium Features</li>
+                    <li>AI-Generated PDFs</li>
+                    <li>Hybrid Engine + Insights</li>
+                    <li>Serene Frequencies (Beta)</li>
+                    <li>Roadmap Voting</li>
                 </ul>
-                <div style="margin-top:10px; font-size:11px; color:#6B7280;">
-                    Final pricing may adjust slightly at public launch.
-                </div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -4481,12 +4660,8 @@ def page_subscription_plans():
 
     st.markdown("---")
 
-    # Note about upcoming Stripe integration
-    st.info(
-        "Stripe payments are not live yet. These plans show the intended structure and prices. You are currently in demo mode."
-    )
+    st.info("Stripe payments not live yet. Pricing shown is preview only.")
 
-    # Keep your standard monetization CTA + footer
     monetization_cta()
     aaa_footer()
 
@@ -4498,71 +4673,64 @@ def page_subscription_plans():
 def page_premium():
     aaa_header()
 
-    st.subheader("🌟 Artigellence Premium — Coming Soon")
-
     st.markdown(
         """
-        <div style="font-size:15px; line-height:1.7; color:#C7D2FE; margin-bottom:20px;">
-            You’re viewing the upcoming <b>AAA Premium</b> membership layer.
-            This tier unlocks the full power of <b>AAA — Health Intelligence</b>,
-            including advanced AI engines, cross-document insights, vibration indicators,
-            and future AAA Finance × Law modules.
-        </div>
+        <h2 style="text-align:center; color:#FACC15;">
+            🌟 Artigellence Premium — Coming Soon
+        </h2>
+        <p style="text-align:center; color:#C7D2FE; font-size:15px;">
+            Unlock AAA’s full intelligence tier with advanced AI engines,
+            cross-document insights, vibration mapping and Finance × Law modules.
+        </p>
+        <br>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------
-    # GOLD–TEAL PREMIUM CARD
-    # -------------------------
     st.markdown(
         """
         <div style="
-            margin-top:10px;
             padding:22px;
             border-radius:16px;
             background:linear-gradient(135deg, #0b1120, #1e293b);
             border:1px solid rgba(56,189,248,0.35);
             box-shadow:0 0 28px rgba(56,189,248,0.28);
         ">
-            <h2 style="color:#FACC15; margin:0; font-size:24px;">
+            <h2 style="color:#FACC15; font-size:24px; margin:0;">
                 🚀 AAA Premium (Full Intelligence Tier)
             </h2>
 
             <p style="color:#C7D2FE; font-size:14px; margin-top:10px;">
-                Unlock every AI engine inside AAA — from summaries to pattern analysis,
-                timeline intelligence, multi-signal diagnostics, vibration correlation,
-                volatility mapping, and more.
+                Experience AAA’s complete intelligence layer —
+                summaries → hybrid insights → forecasting →
+                vibration signals → volatility → unified timeline.
             </p>
 
-            <ul style="color:#E2E8F0; font-size:14px; line-height:1.6; padding-left:20px; margin-top:15px;">
+            <ul style="color:#E2E8F0; font-size:14px; padding-left:22px; line-height:1.6;">
                 <li>Unlimited AI Medical Summaries</li>
                 <li>Hybrid Engine (Doctor × Lab × Notes)</li>
-                <li>Deep Insights AI + History</li>
-                <li>Smart Timeline & Snapshots</li>
-                <li>PDF Health Reports + AI-Generated PDFs</li>
-                <li>Pattern Timeline AI + Trend Forecast</li>
-                <li>Health × Vibration Correlation Indicators</li>
-                <li>Unified Multi-Signal Comparison</li>
-                <li>Volatility Map + Noise Detection Engine</li>
-                <li>Early access to AAA Finance & Law</li>
-                <li>Serene Frequencies wellness indicators</li>
+                <li>Deep Insights + Full History</li>
+                <li>Timeline + Snapshots + Unified Logs</li>
+                <li>AI-Generated PDF Reports</li>
+                <li>Pattern Timeline AI + Forecasting</li>
+                <li>Health × Vibration Indicators</li>
+                <li>Volatility Map + Noise Detection</li>
+                <li>Access to AAA Finance × Law</li>
+                <li>Serene Frequencies Indicators</li>
             </ul>
 
             <div style="margin-top:18px; font-size:13px; color:#94A3B8;">
-                Final pricing will be announced soon. You are currently in demo mode.
+                Final pricing will be announced soon. Demo mode is active.
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # CTA BELOW CARD
     st.markdown(
         """
         <div style="margin-top:25px; font-size:16px; color:#C7D2FE;">
-            Want early access? Premium launches with full AI workflows, 
-            vibration intelligence, and cross-domain upgrades.
+            Want early access? Premium launches with complete AI workflows.
         </div>
         """,
         unsafe_allow_html=True,
@@ -5156,12 +5324,19 @@ def page_dashboard():
 # FIREWALL + MONETIZATION (LIGHT MODE – SAFE FOR 5 DEC LAUNCH)
 # ============================================================
 
+# IMPORTANT:
+# Use the *exact* sidebar labels here (with emojis) for premium pages.
+# Do NOT include:
+# - "🌟 Premium (Coming Soon)"
+# - "💎 Subscription Plans"
+# - "💳 Stripe Monetization Demo"
+# Those should be visible in both free and premium modes.
+
 PREMIUM_PAGES = {
-    "Premium (Coming Soon)",
-    "Summary AI",
-    "Insights AI",
-    "Summary Report",
-    "Merged View",
+    "🧬 Summary AI",
+    "📊 Insights AI",
+    "📘 Summary Report",
+    "✨ Merged View",
 }
 
 def check_firewall(page_name: str, mode: str):
@@ -5169,21 +5344,20 @@ def check_firewall(page_name: str, mode: str):
     Light firewall:
     - Free mode → premium pages show upgrade notice.
     - Premium mode → fully unlocked.
-    This is the safest & cleanest version.
     """
     if mode == "free" and page_name in PREMIUM_PAGES:
         st.markdown("### 🔒 Premium Feature")
         st.info(
             """
             This feature is part of **AAA Premium**.
-            Upgrade unlocks:
-            - Advanced AI summaries  
-            - Insights AI  
-            - Deep merged view  
-            - Rich PDF analytics  
-            - Priority processing  
 
-            👉 Coming December 2025.
+            Premium unlocks:
+            - Advanced AI summaries  
+            - Hybrid Insights AI  
+            - Deep merged view  
+            - Rich PDF summary reports  
+
+            👉 Full launch planned for December 2025.
             """
         )
         st.stop()
@@ -5239,14 +5413,14 @@ def main():
                 "📅 Unified Timeline Intelligence",
                 "🧩 Insight Matrix",
                 "🧠 Health Knowledge Graph",
-                "🧬 Multi-Signal Diagnostic Engine",     # Page 32
-                "🧬 Health Signature Engine",            # Page 33
-                "🧬 Unified Signal Comparison",          # Page 34
-                "📉 Signal Volatility Engine",           # Page 35
+                "🧬 Multi-Signal Diagnostic Engine",
+                "🧬 Health Signature Engine",
+                "🧬 Unified Signal Comparison",
+                "📉 Signal Volatility Engine",
 
                 # ---- Monetization Layer ----
                 "💎 Subscription Plans",
-                "💳 Stripe Engine",
+                "💳 Stripe Monetization Demo",
 
                 # ---- Future Intelligence Layer ----
                 "🧠 Edge Node Memory",
@@ -5260,7 +5434,14 @@ def main():
     # -------------------------------
     # FIREWALL — DO NOT MOVE
     # -------------------------------
-    check_firewall(choice, mode)
+    # Only lock actual premium engine pages.
+    # Subscription + Premium (Coming Soon) remain visible for both modes.
+    if choice not in {
+        "💎 Subscription Plans",
+        "💳 Stripe Monetization Demo",
+        "🌟 Premium (Coming Soon)",
+    }:
+        check_firewall(choice, mode)
 
     # -------------------------------
     # PAGE ROUTING
@@ -5355,8 +5536,8 @@ def main():
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
 
-    elif choice == "💳 Stripe Engine":
-        page_stripe_engine()
+    elif choice == "💳 Stripe Monetization Demo":
+        page_stripe_monetization_demo()
 
     elif choice == "🧠 Edge Node Memory":
         page_edge_node_memory()
@@ -5366,6 +5547,7 @@ def main():
 
     elif choice == "🧊 Snapshots":
         page_snapshots()
+
 
 # ============================================================
 # RUN
