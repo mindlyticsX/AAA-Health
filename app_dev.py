@@ -112,6 +112,110 @@ def extract_text_any(path):
     return "\n".join(text_chunks)
 
 # ============================================================
+# MULTI-SIGNAL ENGINE — BACKEND
+# ============================================================
+
+def run_multi_signal_engine(signals):
+    """
+    signals: list of raw text strings collected from vault files, images,
+    manual text, and health logs.
+    """
+
+    # 1. Merge all signals
+    master_text = "\n\n---\n\n".join(signals)
+
+    # 2. Safety cap (prevent huge model calls)
+    cleaned = master_text.strip()[:40000]
+
+    # 3. Build prompt
+    prompt = build_multi_signal_prompt(cleaned)
+
+    # 4. Gemini call (correct API syntax)
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+        ai_text = response.text if hasattr(response, "text") else str(response)
+
+    except Exception as e:
+        ai_text = f"Error generating insights: {e}"
+
+    # 5. JSON structure (future expansion: cluster extraction)
+    result_json = {
+        "clusters": [],
+        "confidence": {},
+        "summary": ai_text[:1500]
+    }
+
+    # 6. HTML formatted output
+    formatted = f"""
+    <div style='font-size:15px; line-height:1.7;'>
+        {ai_text}
+    </div>
+    """
+
+    return {
+        "json": result_json,
+        "formatted": formatted
+    }
+
+# ============================================================
+# MULTI-SIGNAL PROMPT — SAFE DIFFERENTIAL INSIGHTS
+# ============================================================
+
+def build_multi_signal_prompt(text):
+    return f"""
+You are AAA — Artigellence Augmentation Aggregator.
+
+TASK:
+Analyze all the signals (combined text from medical PDFs, images, notes, and logs)
+and produce **INFORMATIONAL, NON-MEDICAL** differential insight clusters.
+
+STRICT RULES:
+- DO NOT give medical advice.
+- DO NOT suggest treatment or medications.
+- DO NOT tell the user what disease they have.
+- Only provide informational pattern-based insights.
+- Maintain strict medical safety compliance.
+
+FORMAT OUTPUT AS:
+
+1. **Signal Interpretation Overview**
+   - General patterns found
+   - Notable correlations
+
+2. **Differential Insight Clusters (Informational Only)**
+   - Cluster A: Possible interpretation patterns  
+     · Evidence from text  
+     · Why this cluster appears  
+     · Confidence (Low / Medium / High)
+
+   - Cluster B
+   - Cluster C  
+   (3–6 clusters total)
+
+3. **Cross-Signal Correlation Map**
+   - Text ↔ Biomarkers  
+   - Notes ↔ PDF findings  
+   - OCR ↔ Health Logs
+
+4. **Early Indicators (Observational Only)**
+   - Mild variance patterns  
+   - Possible functional themes  
+   - Monitoring considerations (informational only)
+
+5. **Confidence Matrix**
+   - How strongly the text supports each cluster
+   - Limitations
+
+6. **Summary (150 words)**
+   - High-level descriptive insights only.
+   - No directives, no medical conclusions.
+
+TEXT TO ANALYZE:
+{text}
+"""
+
+# ============================================================
 # GEMINI GENERIC CALLER
 # ============================================================
 
@@ -3809,6 +3913,101 @@ def page_health_knowledge_graph():
 
 
 # ============================================================
+# PAGE 32 — MULTI-SIGNAL DIAGNOSTIC ENGINE (AI Differential Insights)
+# ============================================================
+
+def page_multi_signal_engine():
+    aaa_header()
+    st.subheader("🧬 Multi-Signal Diagnostic Engine (AI Differential Insights)")
+
+    # Premium check
+    if not is_premium():
+        feature_locked()
+        aaa_footer()
+        return
+
+    st.markdown(
+        """
+        <div style="font-size:15px; line-height:1.6; margin-bottom:18px;">
+        This engine analyzes multiple inputs together — PDFs, images, text, biomarkers,
+        and health logs — to generate structured, informational differential insight clusters.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # -------------------------
+    # INPUT SELECTION
+    # -------------------------
+    st.markdown("### Select Signals")
+
+    # 1) Vault Files
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
+    selected_files = st.multiselect(
+        "Choose files from Vault (PDFs, images, text):",
+        vault_files
+    )
+
+    # 2) Manual Text
+    manual_text = st.text_area(
+        "Add optional notes or text:",
+        height=120,
+        placeholder="Enter any symptoms, notes, or context (optional)"
+    )
+
+    # 3) Health Log
+    include_health_log = st.checkbox("Include recent Health Log entries")
+
+    # -------------------------
+    # PROCESS BUTTON
+    # -------------------------
+    if st.button("Generate Multi-Signal Insights"):
+        if not selected_files and not manual_text and not include_health_log:
+            st.warning("Please provide at least one signal.")
+            aaa_footer()
+            return
+
+        with st.spinner("Processing all signals with AAA Intelligence…"):
+            try:
+                signals = []
+
+                # --- Extract vault files ---
+                for f in selected_files:
+                    path = os.path.join(VAULT_DIR, f)
+                    extracted = extract_text_any(path)
+                    if extracted:
+                        signals.append(extracted)
+
+                # --- Manual text ---
+                if manual_text.strip():
+                    signals.append(manual_text.strip())
+
+                # --- Health Log ---
+                if include_health_log:
+                    health_log_text = extract_health_log_text()
+                    if health_log_text:
+                        signals.append(health_log_text)
+
+                # ---- RUN ENGINE ----
+                output = run_multi_signal_engine(signals)
+
+                # Display result
+                st.markdown("### 🔍 Differential Insight Clusters")
+                st.markdown(output["formatted"])
+
+                st.markdown("### 📦 Structured Output (JSON)")
+                st.json(output["json"])
+
+            except Exception as e:
+                st.error(f"Error generating insights: {e}")
+
+    aaa_footer()
+
+
+# ============================================================
 # PAGE – SUBSCRIPTION PLANS (AAA PREMIUM)
 # ============================================================
 
@@ -4721,7 +4920,8 @@ def main():
                 "📈 Trend Forecast Engine",                  # Page 28
                 "📅 Unified Timeline Intelligence",          # Page 29
                 "🧩 Insight Matrix",                         # Page 30
-                "🧠 Health Knowledge Graph",                 # Page 31  <<< NEW
+                "🧠 Health Knowledge Graph",                 # Page 31
+                "🧬 Multi-Signal Diagnostic Engine",         # Page 32  <<< NEW
 
                 # ---- Monetization Layer ----
                 "💎 Subscription Plans",
@@ -4818,6 +5018,9 @@ def main():
 
     elif choice == "🧠 Health Knowledge Graph":
         page_health_knowledge_graph()
+
+    elif choice == "🧬 Multi-Signal Diagnostic Engine":
+        page_multi_signal_engine()   # <<< NEW ROUTE
 
     elif choice == "💎 Subscription Plans":
         page_subscription_plans()
