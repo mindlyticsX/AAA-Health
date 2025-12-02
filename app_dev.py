@@ -289,7 +289,7 @@ SUBSCRIPTION_PLANS = {
     "monthly": {
         "AUD": 10,
         "USD": 10,
-        "INR": 100
+        "INR": 500
     },
     "yearly": {
         "AUD": 95,
@@ -339,7 +339,7 @@ def require_premium(feature_name: str):
     with col2:
         st.markdown(
             """
-            **Monthly:** A$10 / ₹100 / $10  
+            **Monthly:** A$10 / ₹500 / $10  
             **Yearly:** A$95 / ₹950 / $95  
             """
         )
@@ -390,49 +390,35 @@ Always consult certified experts for critical decisions.
 """
 
 # ============================================================
-# GLOBAL UI — HEADER + FOOTER (STABLE + SAFE HTML WRAPPERS)
+# GLOBAL UI — HEADER + FOOTER (STABLE — DO NOT MODIFY)
 # ============================================================
 
 def aaa_header():
-    st.markdown(
-        """
-        <div style='text-align:center; padding-top:10px; padding-bottom:10px;'>
-            <img src='assets/logo.png' width='220' style='margin:auto;' />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        logo_path = os.path.join("assets", "logo.png")
+        if os.path.exists(logo_path):
+            st.image(logo_path, use_column_width=False, width=220)
+        else:
+            st.write("AAA — Artigellence Augmentation Aggregator")
 
 
 def aaa_footer():
     st.markdown(
         """
         <br><br>
-
-        <div style='text-align:center; 
-                    color:#9ca3af; 
-                    font-size:14px;
-                    line-height:1.6; 
-                    margin-top:25px;'>
-
+        <div style='text-align:center; color:#9ca3af; font-size:14px;'>
             AAA — Health Intelligence provides AI-assisted insights.<br>
-            It does not replace medical, financial, or legal advice.<br>
-            Always consult certified professionals for critical decisions.
+            It does not replace professional medical, financial, or legal advice.<br>
+            Always consult certified experts for critical decisions.
         </div>
-
-        <div style='text-align:center; 
-                    color:#e5e7eb; 
-                    font-size:14px; 
-                    font-weight:500;
-                    margin-top:10px;'>
-
+        <br><br>
+        <div style='text-align:center; color:#e5e7eb; font-size:14px; font-weight:500;'>
             Crafted by Rajdeep Singh — Artigellence Augmentation Aggregator<br>
             <span style='font-size:13px; color:#9ca3af;'>
                 Edge-AI Orchestration Layer • Gemini • Vertex AI
             </span>
         </div>
-
-        <br><br>
         """,
         unsafe_allow_html=True,
     )
@@ -508,7 +494,7 @@ def paywall_screen():
         with c1:
             st.button("A$10 / month", use_container_width=True)
         with c2:
-            st.button("₹100 / month", use_container_width=True)
+            st.button("₹500 / month", use_container_width=True)
         with c3:
             st.button("$10 / month", use_container_width=True)
 
@@ -838,17 +824,23 @@ def page_summary():
     logs = load_json(HEALTH_LOG_FILE, [])
     ocr = load_json(OCR_DATA_FILE, [])
 
-    log_choice = st.selectbox(
-        "Select Health Log",
-        list(range(len(logs))) if logs else [],
-        format_func=lambda i: logs[i]["date"],
-    ) if logs else None
+    log_choice = (
+        st.selectbox(
+            "Select Health Log",
+            list(range(len(logs))) if logs else [],
+            format_func=lambda i: logs[i]["date"],
+        )
+        if logs else None
+    )
 
-    ocr_choice = st.selectbox(
-        "Select OCR Entry",
-        list(range(len(ocr))) if ocr else [],
-        format_func=lambda i: ocr[i]["filename"],
-    ) if ocr else None
+    ocr_choice = (
+        st.selectbox(
+            "Select OCR Entry",
+            list(range(len(ocr))) if ocr else [],
+            format_func=lambda i: ocr[i]["filename"],
+        )
+        if ocr else None
+    )
 
     if st.button("Generate Summary"):
         if log_choice is None and ocr_choice is None:
@@ -873,125 +865,104 @@ Convert the following into a structured, patient-friendly medical summary with:
 TEXT:
 {parts}
 """
+
         resp_text = call_gemini(prompt)
         st.markdown(resp_text)
 
     monetization_cta()
     aaa_footer()
 
+
 # ============================================================
-# PAGE — MERGED VIEW (PREMIUM FEATURE, POLISHED)
+# PAGE — MERGED VIEW (PREMIUM FEATURE)
 # ============================================================
 
 def page_merged():
-    # 🔒 Always check firewall first
     check_firewall("Merged View", st.session_state.get("mode", "free"))
 
     aaa_header()
     st.subheader("✨ Merged View — Unified Medical Intelligence (Premium)")
 
-    # Premium guard
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # ---------------------------------------------
-    # INTRO
-    # ---------------------------------------------
     st.markdown(
         """
-        <div style="
-            font-size:16px; 
-            line-height:1.6; 
-            margin-bottom:20px;
-            color:#cbd5f5;
-        ">
-            AAA merges multiple medical documents into a single, structured,
-            doctor-style intelligence sheet.  
-            Upload lab reports, scans, prescriptions, or PDFs — AAA will read,
-            compare, correlate, and summarise them into one unified view.
+        <div style="font-size:16px; color:#cbd5f5; margin-bottom:20px;">
+            AAA merges multiple medical documents into one structured,
+            doctor-style unified intelligence sheet.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ---------------------------------------------
-    # LOAD VAULT DOCUMENTS
-    # ---------------------------------------------
     vault_files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
     if not vault_files:
-        st.warning("Upload at least 2 documents to use Merged View.")
+        st.warning("Upload at least 2 documents.")
         monetization_cta()
         aaa_footer()
         return
 
     selected_files = st.multiselect(
-        "Select 2–5 files for merged intelligence:",
+        "Select 2–5 documents:",
         vault_files,
         max_selections=5
     )
 
     if len(selected_files) < 2:
-        st.info("Please select at least two files.")
+        st.info("Select at least two files to proceed.")
         aaa_footer()
         return
 
-    # ---------------------------------------------
-    # RUN MERGED INTELLIGENCE
-    # ---------------------------------------------
     if st.button("Generate Unified Intelligence", use_container_width=True):
-        with st.spinner("Reading & merging documents…"):
-            try:
-                sections = []
+        with st.spinner("Merging documents…"):
 
-                # Extract all selected files
+            try:
+                text_blocks = []
+
                 for f in selected_files:
                     p = os.path.join(VAULT_DIR, f)
-                    text = extract_text_any(p)
-                    sections.append(
-                        f"\n\n===== DOCUMENT: {f} =====\n{text}"
-                    )
+                    txt = extract_text_any(p)
+                    text_blocks.append(f"\n\n===== DOCUMENT: {f} =====\n{txt}")
 
-                merged_block = "\n".join(sections)
+                merged_block = "\n".join(text_blocks)
 
-                # -----------------------------------------
-                # PROMPT FOR AAA UNIFIED INTELLIGENCE
-                # -----------------------------------------
+                # Safely truncate to 12k tokens
+                safe_block = merged_block[:12000]
+
                 prompt = f"""
-You are AAA Health Intelligence. Produce a clean, structured, 
-doctor-style unified summary from multiple medical documents.
+You are AAA Health Intelligence.
 
-Your output MUST contain the following sections:
+Create a clean, structured, doctor-style unified summary.
 
-1. 🔍 **Combined Key Findings**
-2. 📈 **Trends, Correlations & Cross-Document Patterns**
-3. ⚠️ **Risk Indicators & Red Flags**
-4. 🔄 **Conflicts, Mismatches or Missing Information**
-5. 🧠 **Actionable Recommendations (Simple Language)**
-6. ⭐ **Overall Takeaway (Executive Summary)**
+Sections required:
+1. Combined Key Findings
+2. Trends & Patterns
+3. Risk Indicators
+4. Conflicts / Missing Information
+5. Actionable Recommendations
+6. Overall Takeaway
 
-Write in clear bullet points. Avoid medical jargon unless necessary.
-Text source (multiple documents):
-
-{merged_block[:12000]}
+TEXT:
+{safe_block}
 """
 
                 result = call_gemini(prompt)
+                result = safe_render(result)
 
-                # -----------------------------------------
-                # DISPLAY RESULT IN GOLD–TEAL PREMIUM CARD
-                # -----------------------------------------
+                # Premium styling
                 st.markdown(
                     """
                     <div style="
                         padding:28px;
                         border-radius:14px;
-                        background:linear-gradient(145deg, #0b1220, #0f1a2e);
+                        background:#0f1a2e;
                         border-left:5px solid #38bdf8;
                         box-shadow:0 0 18px rgba(56,189,248,0.28);
                         color:#e2e8f0;
@@ -1002,33 +973,27 @@ Text source (multiple documents):
                     unsafe_allow_html=True,
                 )
 
-                st.markdown(result)
-
+                st.markdown(result, unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                # -----------------------------------------
-                # COPY BUTTON
-                # -----------------------------------------
-                st.code(result, language="text")
+                st.code(result)
 
             except Exception as e:
-                st.error(f"Error processing files: {e}")
+                st.error(f"Error: {e}")
 
     monetization_cta()
     aaa_footer()
 
+
 # ============================================================
-# PAGE 8 — SUMMARY AI (PREMIUM FEATURE) — UPDATED SAFE VERSION
+# PAGE 8 — SUMMARY AI (PREMIUM)
 # ============================================================
 
 def page_summary_ai():
-    # 🔒 FIREWALL — FIRST LINE
     check_firewall("Summary AI", st.session_state.get("mode", "free"))
-
     aaa_header()
     st.subheader("🧬 Summary AI (Premium)")
 
-    # Premium mode check
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -1036,71 +1001,57 @@ def page_summary_ai():
 
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
+        <div style="font-size:15px; line-height:1.6; color:#8FA3B8;">
             Generate a structured, patient-friendly medical summary using AAA Intelligence.
-            Works across PDFs, lab reports, prescriptions and diagnostic images (OCR required).
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ------------------------------------------------------------
-    # LOAD FILES FROM VAULT
-    # ------------------------------------------------------------
     files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
     if not files:
-        st.warning("Upload at least 1 file in your Vault to generate a summary.")
+        st.info("Upload at least one document.")
         monetization_cta()
         aaa_footer()
         return
 
-    selected_file = st.selectbox("Select a file to summarize:", files)
+    selected_file = st.selectbox("Select file:", files)
 
-    # ------------------------------------------------------------
-    # GENERATE SUMMARY
-    # ------------------------------------------------------------
     if st.button("Generate Summary"):
-        with st.spinner("Analyzing with AAA Intelligence…"):
+        with st.spinner("Analyzing…"):
+
             try:
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
+                safe_text = text[:6000]
 
                 prompt = (
-                    "Provide a clear, structured, patient-friendly medical summary.\n"
-                    "Break into sections:\n"
+                    "Provide a structured, patient-friendly medical summary.\n"
+                    "Sections:\n"
                     "1. Key Findings\n"
                     "2. Easy Explanation\n"
                     "3. Risk Indicators\n"
-                    "4. Missing Information\n"
-                    "5. Observation-Based Next Steps\n\n"
-                    f"TEXT:\n{text[:6000]}"
+                    "4. Missing Info\n"
+                    "5. Actionable Next Steps\n\n"
+                    f"TEXT:\n{safe_text}"
                 )
 
                 result_raw = call_gemini(prompt)
-                result_clean = safe_render(result_raw)
+                result = safe_render(result_raw)
+
+                st.success("Summary generated!")
+                st.markdown(result, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Error: {e}")
-                monetization_cta()
-                aaa_footer()
-                return
-
-        st.success("Summary generated!")
-
-        st.markdown(
-            "<div style='padding:15px; border-radius:10px; "
-            "background-color:#0B1625; box-shadow:0 0 8px rgba(0,166,200,0.15);'>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(result_clean, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     monetization_cta()
     aaa_footer()
+
 
 # ============================================================
 # PAGE 9 — INSIGHTS AI (HYBRID ENGINE) — UPDATED SAFE VERSION
@@ -1761,39 +1712,117 @@ def page_analytics_dashboard():
 
 
 # ============================================================
-# PAGE 13 — SNAPSHOTS + SMART TIMELINE
+# PAGE 13 — SMART SNAPSHOTS (FINAL VERSION — FROM PAGE 39)
 # ============================================================
 
 def page_snapshots():
+    check_firewall("Snapshots", st.session_state.get("mode", "free"))
     aaa_header()
-    st.subheader("📸 Health Snapshots (Beta)")
 
-    snapshots = load_snapshots()
+    st.markdown(
+        """
+        <h2 style="text-align:center; color:#00D4FF; margin-bottom:0;">
+            🧊 Snapshots — Backup & Restore
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Save your current AAA health state — logs, OCR, summaries — 
+            and restore anytime. All data stays on your device.
+        </p>
+        <br>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    if st.button("Create New Snapshot"):
-        snap = create_snapshot()
-        st.success(f"Snapshot created at {snap['timestamp']}")
+    # -------------------------------
+    # CREATE SNAPSHOT
+    # -------------------------------
+    if st.button("📦 Create New Snapshot", use_container_width=True):
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snap_path = os.path.join(SNAPSHOT_DIR, f"snapshot_{now}")
+        os.makedirs(snap_path, exist_ok=True)
 
-    if not snapshots:
-        st.info("No snapshots yet. Create your first snapshot to begin tracking.")
+        for fname in [
+            HEALTH_LOG_FILE,
+            OCR_DATA_FILE,
+            PHOTO_DATA_FILE,
+            AI_SUMMARY_FILE,
+        ]:
+            if os.path.exists(fname):
+                shutil.copy(fname, snap_path)
+
+        st.success(f"Snapshot saved as: snapshot_{now}")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # -------------------------------
+    # LIST SNAPSHOTS
+    # -------------------------------
+    st.subheader("📁 Available Snapshots")
+
+    folders = sorted(
+        [
+            d
+            for d in os.listdir(SNAPSHOT_DIR)
+            if os.path.isdir(os.path.join(SNAPSHOT_DIR, d))
+        ],
+        reverse=True,
+    )
+
+    if not folders:
+        st.info("No snapshots created yet.")
         monetization_cta()
         aaa_footer()
         return
 
-    for s in snapshots:
-        with st.expander(f"Snapshot — {s['timestamp']}"):
-            st.write(f"📝 Log entries: {s['log_count']}")
-            st.write(f"📄 Documents stored: {len(s['vault_files'])}")
-            st.write("Files:")
-            for f in s["vault_files"]:
-                st.write(f"- {f}")
+    for folder in folders:
+        folder_path = os.path.join(SNAPSHOT_DIR, folder)
+
+        with st.expander(f"📦 {folder}"):
+
+            st.write("Contains copies of logs, OCR results, photos, and AI summaries.")
+
+            col1, col2, col3 = st.columns([1, 1, 1])
+
+            # RESTORE SNAPSHOT
+            with col1:
+                if st.button(f"Restore {folder}", key=f"restore_{folder}"):
+                    for fname in os.listdir(folder_path):
+                        src = os.path.join(folder_path, fname)
+                        dst = fname  # overwrite working file
+                        shutil.copy(src, dst)
+                    st.success(f"Restored snapshot: {folder}")
+
+            # DOWNLOAD SNAPSHOT
+            with col2:
+                zipped = shutil.make_archive(folder_path, "zip", folder_path)
+                with open(zipped, "rb") as f:
+                    st.download_button(
+                        label="Download",
+                        data=f,
+                        file_name=f"{folder}.zip",
+                        mime="application/zip",
+                        key=f"download_{folder}",
+                    )
+
+            # DELETE SNAPSHOT
+            with col3:
+                if st.button(f"Delete {folder}", key=f"delete_{folder}"):
+                    shutil.rmtree(folder_path)
+                    st.warning(f"Deleted snapshot: {folder}")
+                    st.experimental_rerun()
 
     monetization_cta()
     aaa_footer()
 
 
+# ============================================================
+# PAGE 14 — SMART TIMELINE (BETA)
+# ============================================================
+
 def page_timeline():
+    check_firewall("Timeline", st.session_state.get("mode", "free"))
     aaa_header()
+
     st.subheader("📅 Smart Timeline (Beta)")
 
     logs = load_logs()
@@ -1811,12 +1840,12 @@ def page_timeline():
     else:
         st.warning("No documents found.")
 
-    st.markdown("—")
-    st.markdown("### 🧩 Why These Signals Matter")
+    st.markdown("---")
 
+    st.markdown("### 🧩 Why These Signals Matter")
     st.markdown(
         """
-        These signals help AAA create a personalised health trend using your logs,
+        These signals help AAA create personalised health trends using your logs,
         snapshots, documents and generated summaries.
         """
     )
@@ -1826,130 +1855,28 @@ def page_timeline():
 
 
 # ============================================================
-# PAGE 14 — INSIGHTS HISTORY (PREMIUM INTELLIGENCE LOG)
+# PAGE 15 — TIMELINE INTELLIGENCE (AAA NODE v1)
 # ============================================================
 
-def page_insights_history():
-    check_firewall("Insights History", st.session_state.get("mode", "free"))
-    aaa_header()
-
-    # -----------------------------
-    # Title + subtitle
-    # -----------------------------
-    st.markdown("""
-        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
-            📚 Insights History (Premium)
-        </h2>
-        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Your previously generated AAA health insights — deep analysis, trends,
-            risk detection and interpretation logs.
-        </p>
-        <br>
-    """, unsafe_allow_html=True)
-
-    # -----------------------------
-    # Load insights history JSON
-    # -----------------------------
-    insights = []
-    if os.path.exists(INSIGHTS_FILE):
-        try:
-            with open(INSIGHTS_FILE, "r") as f:
-                insights = json.load(f)
-        except:
-            insights = []
-
-    if not insights:
-        st.warning("No insights generated yet. Create insights in **Insights AI** first.")
-        monetization_cta()
-        aaa_footer()
-        return
-
-    # -----------------------------
-    # AAA brand colors
-    # -----------------------------
-    card_bg = "#0B1625"        # Deep navy
-    teal = "#40B8C0"           # Teal
-    gold = "#D4A037"           # Metallic gold
-    soft_gold = "#F2C678"      # Accent gold
-
-    # -----------------------------
-    # Card styling
-    # -----------------------------
-    st.markdown(f"""
-        <style>
-            .aaa-card {{
-                background-color: {card_bg};
-                padding: 22px;
-                border-radius: 14px;
-                border-left: 4px solid {gold};
-                margin-bottom: 25px;
-                box-shadow: 0px 0px 15px rgba(0, 166, 200, 0.15);
-            }}
-            .aaa-title {{
-                color: {soft_gold};
-                font-size: 18px;
-                margin-bottom: 10px;
-                font-weight: 600;
-            }}
-            .aaa-text {{
-                color: #8FA3B8;
-                font-size: 15px;
-                line-height: 1.5;
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # -----------------------------
-    # Render insights history
-    # -----------------------------
-    for entry in reversed(insights):      # Newest first
-        ts = entry.get("timestamp", "Unknown Time")
-        summary = entry.get("summary", "")
-        risk = entry.get("risk_level", "N/A")
-        source = entry.get("source_file", "Unknown Source")
-        engine = entry.get("engine", "Gemini Hybrid Engine")
-
-        st.markdown(f"""
-            <div class="aaa-card">
-                <div class="aaa-title">🕒 {ts} — {engine}</div>
-
-                <div class="aaa-text">
-                    <b>Source:</b> {source}<br>
-                    <b>Risk Level:</b> {risk}<br><br>
-
-                    <b>Summary:</b><br>
-                    {summary}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    aaa_footer()
-
-
-# ============================================================
-# PAGE 15 — TIMELINE INTELLIGENCE (AAA NODE v1 — HYBRID MODE)
-# ============================================================
-
-# Timeline file path (global)
 TIMELINE_FILE = os.path.join(DATA_DIR, "timeline_master.json")
 
-# Initialise timeline file if missing
 if not os.path.exists(TIMELINE_FILE):
     with open(TIMELINE_FILE, "w") as f:
         json.dump([], f, indent=4)
 
+
 def load_timeline():
-    """Load timeline events safely."""
     try:
         with open(TIMELINE_FILE, "r") as f:
             return json.load(f)
     except:
         return []
 
+
 def save_timeline(data):
-    """Save timeline safely."""
     with open(TIMELINE_FILE, "w") as f:
         json.dump(data, f, indent=4)
+
 
 def add_timeline_event(
     summary,
@@ -1958,7 +1885,6 @@ def add_timeline_event(
     risk="N/A",
     engine="Gemini/AAA Hybrid",
 ):
-    """Append a new timeline event."""
     events = load_timeline()
     entry = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1972,9 +1898,6 @@ def add_timeline_event(
     events.append(entry)
     save_timeline(events)
 
-# ============================================================
-# PAGE RENDER — TIMELINE INTELLIGENCE
-# ============================================================
 
 def page_timeline_intelligence():
     check_firewall("Timeline Intelligence", st.session_state.get("mode", "free"))
@@ -1987,8 +1910,7 @@ def page_timeline_intelligence():
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
             A unified chronological record of your health logs, AI summaries,
-            snapshots, OCR results and AAA insights. Apple-class experience,
-            Musk-style Node architecture.
+            snapshots, OCR results and AAA insights.
         </p>
         <br>
         """,
@@ -1997,23 +1919,21 @@ def page_timeline_intelligence():
 
     events = load_timeline()
     if not events:
-        st.info("No timeline events yet. As you generate logs and insights, they will appear here.")
+        st.info("No timeline events yet.")
         monetization_cta()
         aaa_footer()
         return
 
-    # Apple-style styling
     card_bg = "#0D1628"
     accent = "#F2C678"
     border = "#04A3D7"
 
-    # Render newest → oldest
     for evt in reversed(events):
-        ts = evt.get("timestamp", "Unknown Time")
+        ts = evt.get("timestamp", "")
         summary = evt.get("summary", "")
         category = evt.get("category", "")
         source = evt.get("source", "")
-        risk = evt.get("risk", "N/A")
+        risk = evt.get("risk", "")
         engine = evt.get("engine", "")
         event_id = evt.get("event_id", "")
 
@@ -2024,7 +1944,7 @@ def page_timeline_intelligence():
                 padding:20px;
                 margin-bottom:18px;
                 border-radius:16px;
-                border-left: 4px solid {accent};
+                border-left:4px solid {accent};
                 box-shadow:0px 0px 18px rgba(0,0,0,0.35);
             ">
                 <div style="font-size:15px; color:{accent}; font-weight:bold;">
@@ -2041,10 +1961,10 @@ def page_timeline_intelligence():
                     </summary>
 
                     <div style="margin-top:10px; font-size:13px; line-height:1.6;">
-                        <b>Event ID:</b> {event_id} <br>
-                        <b>Source:</b> {source} <br>
-                        <b>Risk Level:</b> {risk} <br>
-                        <b>Engine:</b> {engine} <br>
+                        <b>Event ID:</b> {event_id}<br>
+                        <b>Source:</b> {source}<br>
+                        <b>Risk Level:</b> {risk}<br>
+                        <b>Engine:</b> {engine}<br>
                     </div>
                 </details>
             </div>
@@ -2052,95 +1972,77 @@ def page_timeline_intelligence():
             unsafe_allow_html=True,
         )
 
+    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 16 — AI HEALTH SCORE ENGINE (AAA Intelligence Core)
+# PAGE 16 — AI HEALTH SCORE ENGINE
 # ============================================================
 
 def compute_health_score(merged_data, insights, logs):
-    """
-    Core scoring engine (AAA hybrid model).
-    Weighted scoring across multiple health dimensions.
-    """
-
-    # If no data, return default neutral score
     if not merged_data and not insights and not logs:
         return 72, "⚠️ Limited data — upload more logs and documents.", []
 
     reasons = []
+    score = 80
 
-    score = 80  # Base score
-
-    # -------------------------------
-    # Logs Influence
-    # -------------------------------
     if logs:
-        latest_logs = logs[-5:]  # Last 5 logs
+        latest_logs = logs[-5:]
         for log in latest_logs:
-            if "bp" in log.get("type", "").lower():
-                bp = log.get("value", 0)
-                if bp > 140:
+            t = log.get("type", "").lower()
+            val = log.get("value", 0)
+
+            if "bp" in t:
+                if val > 140:
                     score -= 5
                     reasons.append("Elevated blood pressure detected.")
-                elif bp < 100:
+                elif val < 100:
                     score -= 3
                     reasons.append("Low blood pressure episodes noted.")
-            if "sleep" in log.get("type", "").lower():
-                hrs = log.get("value", 0)
-                if hrs < 6:
-                    score -= 2
-                    reasons.append("Insufficient sleep duration recently.")
-                elif hrs > 8:
-                    score += 1
-                    reasons.append("Consistently good sleep.")
 
-    # -------------------------------
-    # Insights Influence (AI-derived)
-    # -------------------------------
+            if "sleep" in t:
+                if val < 6:
+                    score -= 2
+                elif val > 8:
+                    score += 1
+
     for item in insights:
         risk = item.get("risk_level", "").lower()
         if "high" in risk:
             score -= 7
-            reasons.append("AI detected a high-risk pattern.")
         if "moderate" in risk:
             score -= 3
-            reasons.append("Moderate risk trend identified.")
 
-    # -------------------------------
-    # Merged Data Influence
-    # -------------------------------
     if merged_data:
         for item in merged_data:
-            category = item.get("category", "").lower()
+            cat = item.get("category", "").lower()
             val = item.get("value", "")
 
-            if "cholesterol" in category:
+            if "cholesterol" in cat:
                 if isinstance(val, (int, float)):
                     if val > 240:
                         score -= 5
-                        reasons.append("High cholesterol trend found.")
                     elif val < 200:
                         score += 2
-                        reasons.append("Healthy cholesterol levels.")
 
-            if "glucose" in category:
+            if "glucose" in cat:
                 if isinstance(val, (int, float)):
                     if val > 130:
                         score -= 4
-                        reasons.append("High glucose reading detected.")
                     elif val < 100:
                         score += 1
 
-    # Final clamping
     score = max(1, min(99, score))
+    summary = " • ".join(reasons[:4]) if reasons else "Stable — no major issues detected."
 
-    return score, " • ".join(reasons[:4]) if reasons else "Stable—no major issues detected.", reasons
+    return score, summary, reasons
 
 
 def page_health_score_engine():
+    check_firewall("Health Score", st.session_state.get("mode", "free"))
     aaa_header()
+
     st.subheader("🧠 AI Health Score Engine")
 
     if not is_premium():
@@ -2148,79 +2050,59 @@ def page_health_score_engine():
         aaa_footer()
         return
 
-    # Load all known data sources
     merged_data = load_json(MERGED_DATA_FILE, [])
     insights = load_json(INSIGHTS_HISTORY_FILE, [])
     logs = load_json(HEALTH_LOG_FILE, [])
 
-    # Compute score
-    score, summary_text, detailed_reasons = compute_health_score(
-        merged_data,
-        insights,
-        logs
+    score, summary_text, reasons = compute_health_score(
+        merged_data, insights, logs
     )
 
-    # -------------------------------
-    # AAA Theme Colors
-    # -------------------------------
     navy = "#071E36"
     teal = "#00A6B6"
     gold = "#F4BD3B"
     soft_gold = "#F2C678"
 
-    # -------------------------------
-    # Score Card UI
-    # -------------------------------
-    st.markdown(f"""
-        <div style="background-color:{navy};
-                    padding:25px;
-                    border-radius:18px;
-                    margin-bottom:25px;
+    st.markdown(
+        f"""
+        <div style="background:{navy}; padding:25px; border-radius:18px;
                     border-left:5px solid {gold};
                     box-shadow:0 0 12px rgba(0,150,220,0.25);">
-            
             <div style="font-size:48px; font-weight:700; color:{soft_gold};
                         text-align:center;">
                 {score}
             </div>
-
-            <div style="text-align:center;
-                        font-size:20px;
-                        margin-top:10px;
+            <div style="text-align:center; font-size:20px; margin-top:10px;
                         color:{teal};">
                 Your Current AI Health Score
             </div>
-
-            <div style="margin-top:20px;
-                        font-size:15px;
-                        color:#DDEAFF;
+            <div style="margin-top:20px; font-size:15px; color:#DDEAFF;
                         text-align:center;">
                 {summary_text}
             </div>
         </div>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # -------------------------------
-    # Detailed Reasons
-    # -------------------------------
     st.markdown("<h4 style='color:#F2C678;'>Breakdown</h4>", unsafe_allow_html=True)
 
-    if detailed_reasons:
-        for r in detailed_reasons[:8]:
-            st.markdown(f"""
-                <div style="background:#102C45;
-                            padding:12px;
-                            margin:8px 0;
-                            border-radius:10px;
-                            font-size:15px;
-                            color:#DDEAFF;
+    if reasons:
+        for r in reasons[:8]:
+            st.markdown(
+                f"""
+                <div style="background:#102C45; padding:12px; margin:8px 0;
+                            border-radius:10px; color:#DDEAFF;
                             border-left:4px solid {teal};">
                     {r}
                 </div>
-            """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True,
+            )
     else:
         st.info("No additional risk indicators found.")
 
+    monetization_cta()
     aaa_footer()
 
 
@@ -2228,8 +2110,10 @@ def page_health_score_engine():
 # PAGE 17 — SUMMARY REPORT AI (PDF INTELLIGENCE)
 # ============================================================
 
-def page_summary_report():
+def page_summary_report_ai():
+    check_firewall("Summary Report AI", st.session_state.get("mode", "free"))
     aaa_header()
+
     st.subheader("📄 Summary Report AI (Premium)")
 
     if not is_premium():
@@ -2239,36 +2123,38 @@ def page_summary_report():
 
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            Generate a complete AI-powered PDF health report — combining your
-            health logs, vault documents, insights, trends and early warning indicators.
+        <div style="font-size:16px; margin-bottom:15px;">
+            Generate a complete AI-powered PDF health report — combining
+            logs, OCR, summaries, insights, and timeline events.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ---------------------------
-    # Load Data
-    # ---------------------------
     logs = load_json(HEALTH_LOG_FILE, [])
     insights = load_json(INSIGHTS_HISTORY_FILE, [])
-    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
 
     if not logs and not insights and not vault_files:
-        st.warning("Not enough data to generate a report. Add Health Logs or upload files in Vault.")
+        st.warning("Not enough data to generate a report.")
         monetization_cta()
         aaa_footer()
         return
 
-    st.markdown("### Report Options")
     include_logs = st.checkbox("Include Health Logs", True)
-    include_insights = st.checkbox("Include Insights History", True)
-    include_vault = st.checkbox("Include Vault File Summaries", True)
+    include_insights = st.checkbox("Include Insights", True)
+    include_vault = st.checkbox("Include Vault Files", True)
 
     if st.button("Generate PDF Report"):
-        with st.spinner("Generating your AAA PDF Intelligence Report…"):
+        with st.spinner("Generating report…"):
+
+            # PDF generator MUST exist in Block 4–6
+            temp_pdf = "/tmp/aaa_full_report.pdf"
+
             try:
-                temp_pdf = "/tmp/aaa_summary_report.pdf"
                 generate_pdf_report(
                     temp_pdf,
                     logs if include_logs else [],
@@ -2278,49 +2164,45 @@ def page_summary_report():
 
                 with open(temp_pdf, "rb") as f:
                     st.download_button(
-                        "📥 Download Summary Report (PDF)",
+                        "📥 Download Report",
                         f,
                         file_name="AAA_Health_Report.pdf",
                         mime="application/pdf",
                     )
+                st.success("Report ready!")
 
-                st.success("Report ready! Download above.")
             except Exception as e:
-                st.error(f"Error generating PDF report: {e}")
+                st.error(f"Error generating PDF: {e}")
 
+    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 18 — STRIPE MONETIZATION ENGINE (DEMO ONLY)
+# PAGE 18 — STRIPE MONETIZATION ENGINE (DEMO)
 # ============================================================
 
 def page_stripe_monetization_demo():
+    check_firewall("Stripe Demo", st.session_state.get("mode", "free"))
     aaa_header()
+
     st.subheader("💳 Stripe Monetization Engine (Demo)")
 
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.7; margin-bottom:10px;">
-            The Stripe Monetization Engine manages subscription payments for
-            Artigellence Premium.  
-            You are currently in <b>Demo Mode</b> — real checkout is disabled.
+        <div style="font-size:16px;">
+            This is a preview of Artigellence Premium billing.  
+            Demo mode — no real payments.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.info(
-        "Stripe live checkout is disabled. This is a demo preview of how "
-        "AAA Premium billing will work."
-    )
+    st.info("Stripe live checkout is disabled. This is a preview only.")
 
-    # ---------------------------------------------------------
-    # PRICING CARDS — DEMO
-    # ---------------------------------------------------------
     col1, col2, col3 = st.columns(3)
 
-    # AUSTRALIA — A$10
+    # AUSTRALIA
     with col1:
         st.markdown(
             """
@@ -2328,33 +2210,32 @@ def page_stripe_monetization_demo():
                 <h3 style='color:#5BB6FF;'>Australia</h3>
                 <h2 style='color:white;'>A$10 / month</h2>
                 <ul style='color:#D0EAFF; font-size:14px;'>
-                    <li>Unlimited AI Medical Summaries</li>
-                    <li>Deep Insights & Hybrid Engine</li>
-                    <li>PDF Health Reports & Snapshots</li>
+                    <li>Unlimited AI Summaries</li>
+                    <li>Deep Insights</li>
+                    <li>Merged View</li>
                 </ul>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # INDIA — ₹500
+    # INDIA
     with col2:
         st.markdown(
             """
-            <div style='background:#0F233A; padding:20px; border-radius:12px; border:1px solid #284F63;'>
+            <div style='background:#0F233A; padding:20px; border-radius:12px;'>
                 <h3 style='color:#5BB6FF;'>India</h3>
                 <h2 style='color:white;'>₹500 / month</h2>
-                <ul style='color:#D0EAFF; font-size:14px; font-weight:400;'>
-                    <li>All Premium Features</li>
-                    <li>Merged AI View (Doctor + Lab + Notes)</li>
-                    <li>Early Access to AAA Finance & Law</li>
+                <ul style='color:#D0EAFF; font-size:14px;'>
+                    <li>All Premium Tools</li>
+                    <li>AAA Hybrid Intelligence</li>
                 </ul>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # GLOBAL — $10
+    # GLOBAL
     with col3:
         st.markdown(
             """
@@ -2362,94 +2243,50 @@ def page_stripe_monetization_demo():
                 <h3 style='color:#5BB6FF;'>Global</h3>
                 <h2 style='color:white;'>$10 / month</h2>
                 <ul style='color:#D0EAFF; font-size:14px;'>
-                    <li>All Premium Intelligence Tools</li>
-                    <li>Priority Roadmap Voting</li>
-                    <li>Serene Frequency Indicators</li>
+                    <li>All Premium Features</li>
+                    <li>Priority Access</li>
                 </ul>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.warning("Checkout disabled in demo mode.")
 
-    # ---------------------------------------------------------
-    # BUTTONS — NON-ACTIVE IN DEMO MODE
-    # ---------------------------------------------------------
-    st.warning("Checkout buttons are disabled in Demo Mode.")
-
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.button("Subscribe — Australia (Demo)", disabled=True)
-
-    with c2:
-        st.button("Subscribe — India (Demo)", disabled=True)
-
-    with c3:
-        st.button("Subscribe — Global (Demo)", disabled=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ---------------------------------------------------------
-    # NEXT STEPS NOTE
-    # ---------------------------------------------------------
-    st.markdown(
-        """
-        <div style="background:#001a2b; padding:15px; border-radius:10px; 
-        border-left:4px solid #0af;">
-            <b>Coming Soon:</b><br>
-            • Stripe live checkout integration<br>
-            • Country-based pricing engine<br>
-            • One-time purchases (PDF Packs)<br>
-            • Workflow Packs Marketplace<br>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE — EDGE NODE MEMORY (BETA — FULLY FUNCTIONAL)
+# PAGE 19 — EDGE NODE MEMORY (AAA BETA)
 # ============================================================
 
 def page_edge_node_memory():
-
+    check_firewall("Edge Node Memory", st.session_state.get("mode", "free"))
     aaa_header()
 
     st.markdown(
         """
-        <h2 style="text-align:center; color:#00D4FF; margin-bottom:5px;">
-            🤖 AI Edge Node — Memory Layer (Beta)
+        <h2 style="text-align:center; color:#00D4FF;">
+            🤖 Edge Node Memory (Beta)
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            This is the adaptive memory layer that evolves with your health,
-            behaviour patterns, and AAA usage signals.  
-            Inspired by edge-AI processing — high-speed, personalised,
-            privacy-preserving augmentation.
+            Adaptive memory layer that evolves with your health patterns.
         </p>
         <br>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------
-    # MEMORY FILE
-    # -------------------------
     memory_file = os.path.join(DATA_DIR, "edge_memory.json")
     if not os.path.exists(memory_file):
         with open(memory_file, "w") as f:
             json.dump({"events": []}, f, indent=4)
 
-    # -------------------------
-    # ADD NEW MEMORY SIGNAL
-    # -------------------------
     st.subheader("🧠 Add Memory Signal")
-    signal = st.text_input("Describe a pattern, note, or observation:")
+    signal = st.text_input("Enter a pattern or observation:")
 
-    if st.button("Save Memory Signal"):
+    if st.button("Save Signal"):
         with open(memory_file, "r") as f:
             data = json.load(f)
 
@@ -2463,13 +2300,10 @@ def page_edge_node_memory():
         with open(memory_file, "w") as f:
             json.dump(data, f, indent=4)
 
-        st.success("Memory signal saved into your Edge-Node layer!")
+        st.success("Memory saved!")
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # -------------------------
-    # VIEW MEMORY LAYER ENTRIES
-    # -------------------------
     st.subheader("📡 Active Memory Streams")
 
     with open(memory_file, "r") as f:
@@ -2478,16 +2312,12 @@ def page_edge_node_memory():
     events = data.get("events", [])
 
     if not events:
-        st.info("No memory signals yet. Start adding patterns above.")
+        st.info("No memory signals yet.")
         monetization_cta()
         aaa_footer()
         return
 
-    # Show latest first
     for e in reversed(events):
-        ts = e["timestamp"]
-        sig = e["signal"]
-
         st.markdown(
             f"""
             <div style="
@@ -2496,16 +2326,15 @@ def page_edge_node_memory():
                 margin:8px 0;
                 border-radius:10px;
                 border-left:4px solid #00D4FF;
-                color:#D0E4FF;
-                line-height:1.5;
-            ">
-                <b>{ts}</b><br>
-                {sig}
+                color:#D0E4FF;">
+                <b>{e['timestamp']}</b><br>
+                {e['signal']}
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+    monetization_cta()
     aaa_footer()
 
 
@@ -2514,6 +2343,9 @@ def page_edge_node_memory():
 # ============================================================
 
 def page_snapshots():
+    # 🔒 Consistent firewall
+    check_firewall("Snapshots", st.session_state.get("mode", "free"))
+
     aaa_header()
 
     st.markdown(
@@ -2569,7 +2401,7 @@ def page_snapshots():
 
             st.write("Contains copies of logs, OCR results, photos, and AI summaries.")
 
-            col1, col2, col3 = st.columns([1,1,1])
+            col1, col2, col3 = st.columns([1, 1, 1])
 
             # --------------------------------------
             # RESTORE SNAPSHOT
@@ -2586,14 +2418,14 @@ def page_snapshots():
             # DOWNLOAD SNAPSHOT
             # --------------------------------------
             with col2:
-                zipped = shutil.make_archive(folder_path, 'zip', folder_path)
+                zipped = shutil.make_archive(folder_path, "zip", folder_path)
                 with open(zipped, "rb") as f:
                     st.download_button(
                         label="Download",
                         data=f,
                         file_name=f"{folder}.zip",
                         mime="application/zip",
-                        key=f"download_{folder}"
+                        key=f"download_{folder}",
                     )
 
             # --------------------------------------
@@ -2622,11 +2454,6 @@ from reportlab.lib.colors import HexColor
 def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
     """
     Generates a polished, presentation-ready PDF summary for AAA — Health Intelligence.
-    Includes:
-    - Gold–Teal headers
-    - Proper spacing + section separators
-    - Doctor-style AI summary block
-    - Clean list formatting
     """
 
     c = canvas.Canvas(path, pagesize=letter)
@@ -2637,7 +2464,7 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
     # TITLE BLOCK
     # ---------------------------------------------------------
     c.setFont("Helvetica-Bold", 22)
-    c.setFillColor(HexColor("#FACC15"))  # Gold accent
+    c.setFillColor(HexColor("#FACC15"))
     c.drawString(1 * inch, y, "AAA — Health Intelligence Report")
 
     y -= 0.4 * inch
@@ -2647,15 +2474,13 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
 
     y -= 0.5 * inch
 
-    # Horizontal line
-    c.setStrokeColor(HexColor("#38BDF8"))  # Teal
+    c.setStrokeColor(HexColor("#38BDF8"))
     c.setLineWidth(1)
     c.line(1 * inch, y, width - 1 * inch, y)
-
     y -= 0.5 * inch
 
     # ---------------------------------------------------------
-    # DOCTOR-STYLE SUMMARY BLOCK
+    # DOCTOR-STYLE SUMMARY
     # ---------------------------------------------------------
     if doctor_summary:
         c.setFont("Helvetica-Bold", 14)
@@ -2674,18 +2499,16 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
                 y = height - 1 * inch
 
         y -= 0.3 * inch
-
-        # Divider
         c.setStrokeColor(HexColor("#334155"))
         c.line(1 * inch, y, width - 1 * inch, y)
         y -= 0.4 * inch
 
     # ---------------------------------------------------------
-    # SECTION: HEALTH LOGS
+    # HEALTH LOGS
     # ---------------------------------------------------------
     if logs:
         c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(HexColor("#38BDF8"))  # Teal Header
+        c.setFillColor(HexColor("#38BDF8"))
         c.drawString(1 * inch, y, "📘 Health Logs")
         y -= 0.35 * inch
 
@@ -2704,7 +2527,7 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
         y -= 0.4 * inch
 
     # ---------------------------------------------------------
-    # SECTION: INSIGHTS HISTORY
+    # INSIGHTS HISTORY
     # ---------------------------------------------------------
     if insights:
         c.setFont("Helvetica-Bold", 14)
@@ -2715,7 +2538,9 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
         c.setFont("Helvetica", 11)
         c.setFillColor(HexColor("#E2E8F0"))
 
-        for item in insights[:10]:
+        insight_items = insights.get("history", [])
+
+        for item in insight_items[:10]:
             text = f"- {item.get('summary', '')}"
             c.drawString(1 * inch, y, text[:110])
             y -= 0.22 * inch
@@ -2727,7 +2552,7 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
         y -= 0.4 * inch
 
     # ---------------------------------------------------------
-    # SECTION: VAULT FILES
+    # VAULT FILES
     # ---------------------------------------------------------
     if vault_files:
         c.setFont("Helvetica-Bold", 14)
@@ -2753,21 +2578,23 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
     # ---------------------------------------------------------
     c.setFont("Helvetica", 9)
     c.setFillColor(HexColor("#94A3B8"))
-    c.drawString(1 * inch, 0.6 * inch, "Generated by Artigellence — AAA Health Intelligence · Private · Local · Secure")
+    c.drawString(
+        1 * inch,
+        0.6 * inch,
+        "Generated by Artigellence — AAA Health Intelligence · Private · Local · Secure"
+    )
 
     c.save()
 
 
 # ============================================================
 # PAGE 20 — AAA PATTERN TIMELINE AI
-# Neuralink-Style Signal Condenser (Premium Intelligence)
 # ============================================================
 
 def page_pattern_timeline_ai():
     aaa_header()
     st.subheader("🧩 AAA Pattern Timeline AI — Neuralink-Style Condensed Signals")
 
-    # Premium check
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -2776,83 +2603,51 @@ def page_pattern_timeline_ai():
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            This is AAA’s neural signal condenser — it compresses logs, documents, 
-            insights, memory signals, and patterns into a unified high-density health 
-            timeline. Inspired by Neuralink-style pattern compression and 
-            DeepMind-style sequence alignment, this engine identifies your key daily 
-            shifts and expresses them as condensed “signal bursts”.
+            AAA compresses logs, insights, and behavioural signals into a unified
+            high-density timeline. Inspired by Neuralink-style compression.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --------------------------------------------------------
-    # LOAD HEALTH LOGS
-    # --------------------------------------------------------
-    logs = load_json_data(HEALTH_LOG_FILE, default=[])
-    vault_files = [f for f in os.listdir(VAULT_DIR)]
-    insights = load_json_data(AI_SUMMARY_FILE, default={})
-    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
+    logs = load_json(HEALTH_LOG_FILE, [])
+    vault_files = os.listdir(VAULT_DIR)
+    insights = load_json(AI_SUMMARY_FILE, {})
+    memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
 
-    # --------------------------------------------------------
-    # TIME RANGE SELECT
-    # --------------------------------------------------------
     st.markdown("### 📅 Select Timeline Range")
-    range_choice = st.selectbox(
-        "Choose analysis period:",
-        ["Last 7 Days", "Last 14 Days", "Last 30 Days"]
-    )
+    range_choice = st.selectbox("Choose analysis period:", ["Last 7 Days", "Last 14 Days", "Last 30 Days"])
 
-    if range_choice == "Last 7 Days":
-        days = 7
-    elif range_choice == "Last 14 Days":
-        days = 14
-    else:
-        days = 30
-
+    days = 7 if range_choice == "Last 7 Days" else 14 if range_choice == "Last 14 Days" else 30
     cutoff = datetime.now().timestamp() - (days * 86400)
 
-    # Filter logs within range
-    filtered_logs = [
-        log for log in logs
-        if "timestamp" in log and log["timestamp"] >= cutoff
-    ]
+    filtered_logs = [l for l in logs if l.get("timestamp", 0) >= cutoff]
 
-    # --------------------------------------------------------
-    # TIMELINE SUMMARY
-    # --------------------------------------------------------
     st.markdown("### 🧠 Condensed Signal Timeline")
     if not filtered_logs:
-        st.info("No activity detected in the selected range.")
+        st.info("No activity detected in this range.")
     else:
         for log in filtered_logs:
             ts = datetime.fromtimestamp(log["timestamp"]).strftime("%Y-%m-%d %H:%M")
-            summary = log.get("summary", "No summary available.")
+            summary = log.get("summary", "")
 
             st.markdown(
                 f"""
                 <div style="background:#0d1b2a; padding:15px; border-radius:10px; margin-bottom:10px;">
                     <b>🗓 {ts}</b><br>
-                    <span style="font-size:15px;">{summary}</span>
+                    <span>{summary}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    # --------------------------------------------------------
-    # SIGNAL CONDENSER (AI)
-    # --------------------------------------------------------
     if st.button("🔮 Generate Condensed Pattern Summary"):
         with st.spinner("Analyzing behavioural & medical signals…"):
 
-            log_text = "\n".join([l.get("summary", "") for l in filtered_logs])
-            memory_text = "\n".join([m for m in memory_signals])
-            insight_text = json.dumps(insights, indent=2)
-
             combined_text = (
-                f"LOGS:\n{log_text}\n\n"
-                f"MEMORY SIGNALS:\n{memory_text}\n\n"
-                f"INSIGHTS:\n{insight_text}"
+                "\n".join([l.get("summary", "") for l in filtered_logs]) + "\n" +
+                "\n".join(memory_signals) + "\n" +
+                json.dumps(insights, indent=2)
             )
 
             try:
@@ -2860,28 +2655,22 @@ def page_pattern_timeline_ai():
                 response = ai.generate_content(
                     f"""
                     You are AAA Pattern Timeline AI.
-
                     TASK:
-                    - Read all logs, memory signals, insights.
-                    - Detect recurring health patterns.
-                    - Identify behaviour clusters.
-                    - Create a condensed Neuralink-style 'signal burst' summary.
-                    - Provide timeline trends and actionable signals.
+                    - Fuse logs, memory signals, insights
+                    - Detect behaviour clusters
+                    - Output condensed Neuralink-style summary
 
                     DATA:
                     {combined_text}
 
                     FORMAT:
-                    1. 🔶 High-Density Signal Burst (3–5 lines)
-                    2. 📌 Behavioural Clusters
-                    3. 📊 Medical Micro-Patterns
-                    4. 🔮 Predictive Early Indicators (next 7 days)
+                    1. High-density burst
+                    2. Behaviour clusters
+                    3. Micro patterns
+                    4. Predictive indicators
                     """
                 )
-
-                st.markdown("### 🔶 Condensed Signal Burst")
                 st.info(response.text)
-
             except Exception as e:
                 st.error(f"AI Error: {e}")
 
@@ -2889,143 +2678,74 @@ def page_pattern_timeline_ai():
 
 
 # ============================================================
-# PAGE 21 — AI Health Risk Engine (Premium)
+# PAGE 21 — AI HEALTH RISK ENGINE
 # ============================================================
 
 def page_risk_engine():
     aaa_header()
     st.subheader("⚠️ AI Health Risk Engine (Beta)")
 
-    # ------------------------------
-    # PREMIUM FIREWALL
-    # ------------------------------
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            AAA’s AI Health Risk Engine detects behavioural shifts, lifestyle patterns,
-            and early trends using your logs, summaries, memory signals, and insights.
-            <br><br>
-            <b>This is NOT medical advice</b> — it is pattern-based intelligence to help
-            you understand daily rhythms, deviations, and consistency trends.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    logs = load_json(HEALTH_LOG_FILE, [])
+    insights = load_json(AI_SUMMARY_FILE, {})
+    memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
 
-    # ------------------------------
-    # LOAD DATA
-    # ------------------------------
-    logs = load_json_data(HEALTH_LOG_FILE, default=[])
-    insights = load_json_data(AI_SUMMARY_FILE, default={})
-    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
-
-    # ------------------------------
-    # RANGE SELECTOR
-    # ------------------------------
     st.markdown("### 📅 Select Analysis Window")
-    window = st.selectbox(
-        "Analyze patterns for:",
-        ["Last 7 Days", "Last 14 Days", "Last 30 Days"]
-    )
+    window = st.selectbox("Analyze patterns for:", ["Last 7 Days", "Last 14 Days", "Last 30 Days"])
 
-    if window == "Last 7 Days":
-        days = 7
-    elif window == "Last 14 Days":
-        days = 14
-    else:
-        days = 30
-
+    days = 7 if window == "Last 7 Days" else 14 if window == "Last 14 Days" else 30
     cutoff = datetime.now().timestamp() - (days * 86400)
 
-    filtered_logs = [
-        log for log in logs
-        if "timestamp" in log and log["timestamp"] >= cutoff
-    ]
+    filtered_logs = [l for l in logs if l.get("timestamp", 0) >= cutoff]
 
     st.markdown("### 📊 Recent Activity Overview")
     if not filtered_logs:
-        st.info("No signals found in the selected period.")
+        st.info("No signals found.")
     else:
         for log in filtered_logs:
             ts = datetime.fromtimestamp(log["timestamp"]).strftime("%Y-%m-%d %H:%M")
-            summary = log.get("summary", "No summary available.")
-
+            summary = log.get("summary", "")
             st.markdown(
                 f"""
                 <div style="background:#0e1a25; padding:12px; border-radius:10px; margin-bottom:10px;">
-                    <b>🗓 {ts}</b><br>
-                    <span style="font-size:14px;">{summary}</span>
+                    <b>{ts}</b><br>{summary}
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
-    # ------------------------------
-    # AI RISK ANALYSIS
-    # ------------------------------
     if st.button("🚨 Run Risk Pattern Analysis"):
-        with st.spinner("Evaluating behavioural and lifestyle patterns…"):
-
-            log_text = "\n".join([l.get("summary", "") for l in filtered_logs])
-            insight_text = json.dumps(insights, indent=2)
-            memory_text = "\n".join([m for m in memory_signals])
+        with st.spinner("Evaluating patterns…"):
 
             combined = (
-                f"LOGS:\n{log_text}\n\n"
-                f"INSIGHTS:\n{insight_text}\n\n"
-                f"MEMORY SIGNALS:\n{memory_text}"
+                "\n".join([l.get("summary", "") for l in filtered_logs]) + "\n" +
+                json.dumps(insights, indent=2) + "\n" +
+                "\n".join(memory_signals)
             )
 
             try:
                 ai = genai.GenerativeModel("gemini-2.0-flash")
-                response = ai.generate_content(
+                resp = ai.generate_content(
                     f"""
-You are AAA — the Artigellence Augmentation Aggregator.
+You are AAA — Artigellence Augmentation Aggregator.
 
-Your task:
-Analyze logs, behavioural summaries, insights, and memory signals.
-Identify:
-- Behavioural deviations
-- Lifestyle risk contributors
-- Sleep / activity pattern misalignments
-- Stress & recovery cycles
-- High-level trend warnings (non-medical)
-- Consistency scoring
-- Early risk indicators (pattern-level, NOT diagnosis)
+Analyze logs, insights, and signals.
 
-DATA:
-{combined}
-
-Format output EXACTLY as:
-
-🔶 **Pattern Deviation Summary**
-- 2–3 lines
-
-📉 **Behavioural Risk Contributors**
-- Bullet list (3–5)
-
-🧩 **Lifestyle Pattern Weak Points**
-- Bullet list (3–5)
-
-🔮 **Early Pattern Indicators (Next 7 Days)**
-- 2–4 items
-
-📊 **Consistency Score (0–100)**  
-<short explanation>
-
-Keep everything pattern-based.  
-No medical claims.  
-"""
+FORMAT:
+🔶 Pattern Deviation Summary
+📉 Behavioural Risk Contributors
+🧩 Lifestyle Weak Points
+🔮 Early Indicators (7 Days)
+📊 Consistency Score (0–100)
+                    DATA:
+                    {combined}
+                    """
                 )
-
-                st.markdown("### 🚨 Pattern Risk Summary")
-                st.info(response.text)
-
+                st.info(resp.text)
             except Exception as e:
                 st.error(f"AI Error: {e}")
 
@@ -3033,69 +2753,47 @@ No medical claims.
 
 
 # ============================================================
-# PAGE 22 — INSIGHT FUSION LAYER (AAA Intelligence Core)
-# Multi-Signal Fusion → One Unified Intelligence Burst
+# PAGE 22 — INSIGHT FUSION LAYER
 # ============================================================
 
 def page_insight_fusion():
     aaa_header()
     st.subheader("🌐 Insight Fusion Layer — Unified Health Intelligence (Beta)")
 
-    # ------------------------------
-    # PREMIUM FIREWALL
-    # ------------------------------
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            This is AAA’s central intelligence layer.  
-            <br><br>
-            It fuses signals from health logs, summaries, OCR, PDFs, insights,
-            memory streams, risk patterns, and behavioural signals into one unified
-            high-density intelligence burst.
-            <br><br>
-            Inspired by multi-modal fusion engines (DeepMind × Neuralink × AGI),
-            this layer produces a complete picture of your health behaviour.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # -------------------------------
+    # LOAD ALL SIGNAL SOURCES SAFELY
+    # -------------------------------
+    logs = load_json(HEALTH_LOG_FILE, [])
+    insights = load_json(AI_SUMMARY_FILE, {})
+    memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
+    vault_data = load_json(os.path.join(DATA_DIR, "vault_data.json"), {})
+    score_history = load_json(os.path.join(DATA_DIR, "score_history.json"), [])
+    ocr_results = load_json(os.path.join(DATA_DIR, "ocr_results.json"), {})
 
-    # ------------------------------
-    # LOAD SIGNALS
-    # ------------------------------
-    logs = load_json_data(HEALTH_LOG_FILE, default=[])
-    insights = load_json_data(AI_SUMMARY_FILE, default={})
-    memory_signals = load_json_data(os.path.join(DATA_DIR, "memory_signals.json"), default=[])
-    vault_data = load_json_data(os.path.join(DATA_DIR, "vault_data.json"), default={})
-    score_history = load_json_data(os.path.join(DATA_DIR, "score_history.json"), default=[])
-
-    # OCR results
-    ocr_file = os.path.join(DATA_DIR, "ocr_results.json")
-    if os.path.exists(ocr_file):
-        with open(ocr_file, "r") as f:
-            ocr_results = json.load(f)
-    else:
-        ocr_results = {}
-
-    # Combine text blocks
-    log_text = "\n".join([l.get("summary","") for l in logs])
-    insight_text = json.dumps(insights, indent=2)
-    memory_text = "\n".join([m for m in memory_signals])
+    # -------------------------------
+    # PRECOMPUTE ALL TEXT BLOCKS
+    # -------------------------------
+    logs_text = "\n".join([l.get("summary", "") for l in logs])
+    memory_text = "\n".join(memory_signals)
+    insights_text = json.dumps(insights, indent=2)
     vault_text = json.dumps(vault_data, indent=2)
     ocr_text = json.dumps(ocr_results, indent=2)
     score_text = json.dumps(score_history, indent=2)
 
+    # -------------------------------
+    # FINAL SAFE COMBINED TEXT
+    # -------------------------------
     combined_text = f"""
 ==== LOG SUMMARIES ====
-{log_text}
+{logs_text}
 
 ==== INSIGHTS HISTORY ====
-{insight_text}
+{insights_text}
 
 ==== MEMORY SIGNALS ====
 {memory_text}
@@ -3110,138 +2808,87 @@ def page_insight_fusion():
 {score_text}
 """
 
-    # ------------------------------
-    # FUSION ENGINE
-    # ------------------------------
+    # -------------------------------
+    # RUN FUSION ENGINE
+    # -------------------------------
     if st.button("🌐 Generate Unified Intelligence"):
-        with st.spinner("Generating multi-signal fusion…"):
-
+        with st.spinner("Generating fusion…"):
             try:
-                ai = genai.GenerativeModel("gemini-2.0-flash")
-
-                response = ai.generate_content(
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                resp = model.generate_content(
                     f"""
-You are AAA — the Artigellence Augmentation Aggregator.
+You are AAA — Artigellence Augmentation Aggregator.
 
-Your task is to fuse ALL signals from the user's health data into one unified
-multi-modal intelligence summary.
+Fuse all signals into unified intelligence.
 
-DATA PROVIDED:
+FORMAT:
+🌐 Unified Intelligence Burst
+📊 Cross-Signal Patterns
+🧩 Hidden Correlations
+📉 Behavioural Drift
+🔮 7-Day Indicators
+📌 Recommended Action Loops
+
+DATA:
 {combined_text}
-
-Create output with the following structure:
-
-🌐 **AAA Unified Intelligence Burst (High-Density Summary)**
-- 4–6 lines, Neuralink-style compressed intelligence
-
-📊 **Cross-Signal Patterns**
-- What patterns persist across logs, OCR, insights, and memory signals?
-
-🧩 **Hidden Correlations**
-- What correlations emerge across behaviours, timing, and health scores?
-
-📉 **Behavioural Drift Detection**
-- Note any subtle deviations or changes in rhythm
-
-🔮 **7-Day Predictive Indicators**
-- Future-facing pattern-level predictions (non-medical)
-
-📌 **Recommended Action Loops**
-- Behavioural improvements
-- Insight reinforcement
-- Data collection suggestions
-
-Ensure tone is:
-- Non-medical
-- Insightful
-- Pattern-focused
-- Actionable
-- Calm and supportive
 """
                 )
-
-                st.markdown("## 🌐 Unified Intelligence Burst")
-                st.info(response.text)
+                st.info(resp.text)
 
             except Exception as e:
-                st.error(f"Fusion Engine Error: {e}")
+                st.error(f"Fusion Error: {e}")
 
     aaa_footer()
 
 
 # ============================================================
-# PAGE 23 — AAA Insight Graphs & Trend Visualizer
+# PAGE 23 — AAA INSIGHT GRAPHS
 # ============================================================
 
 def page_insight_graphs():
     aaa_header()
     st.subheader("📈 AAA Insight Graphs & Trend Visualizer")
 
-    # ------------------------------
-    # PREMIUM FIREWALL
-    # ------------------------------
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            Visual intelligence layer showing trends across logs, summaries,
-            insights, and AAA behavioural patterns.
-            <br><br>
-            These charts help you understand consistency, patterns,
-            and long-term behaviour.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    logs = load_json(HEALTH_LOG_FILE, [])
+    insights = load_json(AI_SUMMARY_FILE, {})
+    score_history = load_json(os.path.join(DATA_DIR, "score_history.json"), [])
 
-    # ------------------------------
-    # LOAD DATA
-    # ------------------------------
-    logs = load_json_data(HEALTH_LOG_FILE, default=[])
-    insights = load_json_data(AI_SUMMARY_FILE, default={})
-    score_history = load_json_data(os.path.join(DATA_DIR, "score_history.json"), default=[])
-
-    # Convert to DataFrames
     log_df = pd.DataFrame(logs)
     score_df = pd.DataFrame(score_history)
     insight_df = pd.DataFrame(insights.get("history", []))
 
     st.markdown("---")
 
-    # ============================================================
     # 1) HEALTH SCORE TREND
-    # ============================================================
     st.markdown("### 📈 Health Score Trend")
 
-    if not score_df.empty and "score" in score_df and "timestamp" in score_df:
+    if not score_df.empty:
         score_df["date"] = pd.to_datetime(score_df["timestamp"]).dt.date
 
         chart = alt.Chart(score_df).mark_line(point=True).encode(
             x="date:T",
             y=alt.Y("score:Q", scale=alt.Scale(domain=[0, 100])),
-            tooltip=["date", "score"]
+            tooltip=["date", "score"],
         ).properties(
             width="container",
             height=300
         )
 
         st.altair_chart(chart, use_container_width=True)
-
     else:
-        st.info("No health score data yet.")
+        st.info("No health scores yet.")
 
     st.markdown("---")
 
-    # ============================================================
     # 2) DAILY LOG FREQUENCY
-    # ============================================================
     st.markdown("### 📊 Daily Log Activity")
 
-    if not log_df.empty and "timestamp" in log_df:
+    if not log_df.empty:
         log_df["date"] = pd.to_datetime(log_df["timestamp"], unit="s").dt.date
         freq_df = log_df.groupby("date").size().reset_index(name="count")
 
@@ -3249,55 +2896,42 @@ def page_insight_graphs():
             x="date:T",
             y="count:Q",
             tooltip=["date", "count"]
-        ).properties(
-            width="container",
-            height=300
         )
 
         st.altair_chart(chart, use_container_width=True)
-
     else:
-        st.info("No logs found.")
+        st.info("No logs yet.")
 
     st.markdown("---")
 
-    # ============================================================
-    # 3) INSIGHT GENERATION TREND
-    # ============================================================
+    # 3) INSIGHT FREQUENCY
     st.markdown("### 🧩 Insight Frequency Trend")
 
-    if not insight_df.empty and "timestamp" in insight_df:
+    if not insight_df.empty:
         insight_df["date"] = pd.to_datetime(insight_df["timestamp"]).dt.date
-        insight_freq = insight_df.groupby("date").size().reset_index(name="count")
+        freq = insight_df.groupby("date").size().reset_index(name="count")
 
-        chart = alt.Chart(insight_freq).mark_area(opacity=0.5).encode(
+        chart = alt.Chart(freq).mark_area(opacity=0.5).encode(
             x="date:T",
             y="count:Q",
             tooltip=["date", "count"]
-        ).properties(
-            width="container",
-            height=300
         )
 
         st.altair_chart(chart, use_container_width=True)
-
     else:
-        st.info("No insights generated yet.")
+        st.info("No insights yet.")
 
     aaa_footer()
 
 
 # ============================================================
-# PAGE 24 — Medical Triptych Layer (Doctor + Lab + PDF Fusion)
+# PAGE 24 — MEDICAL TRIPTYCH
 # ============================================================
 
 def page_medical_triptych():
     aaa_header()
     st.subheader("🩺 Medical Triptych — Doctor + Lab + PDF Fusion (Beta)")
 
-    # -----------------------------
-    # PREMIUM FIREWALL
-    # -----------------------------
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -3305,120 +2939,84 @@ def page_medical_triptych():
 
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
-            This is AAA’s unified medical intelligence layer.
-            <br><br>
-            It fuses data from three streams:
-            <ul>
-                <li><b>Doctor Notes</b> — manual entries + OCR</li>
-                <li><b>Lab Reports</b> — extracted from PDFs</li>
-                <li><b>Medical PDFs</b> — uploaded into your Health Vault</li>
-            </ul>
-            AAA combines all signals into a single clinical summary,
-            trend analysis, and doctor-friendly briefing.
+        <div style='font-size:16px; margin-bottom:20px;'>
+            Fuses doctor notes, lab reports, and PDF vault documents.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ---------------------------------------------------------
-    # 1) DOCTOR NOTES INPUT
-    # ---------------------------------------------------------
-    st.markdown("### 🟦 Doctor Notes")
+    # Doctor notes
     doctor_notes = st.text_area(
-        "Add doctor notes or findings:",
+        "🟦 Doctor Notes",
         height=120,
-        placeholder="Enter clinical notes, symptoms, observations..."
+        placeholder="Enter clinical notes, symptoms…"
     )
 
-    # ---------------------------------------------------------
-    # 2) LAB REPORT EXTRACTION
-    # ---------------------------------------------------------
+    # Lab PDF
     st.markdown("### 🟧 Lab Report (PDF → Text)")
-
-    lab_pdf = st.file_uploader(
-        "Upload a lab report (PDF)",
-        type=["pdf"],
-        key="lab_pdf_uploader"
-    )
-
+    lab_pdf = st.file_uploader("Upload PDF", type=["pdf"], key="lab_pdf_uploader")
     lab_text = ""
+
     if lab_pdf:
         try:
             with open("temp_lab.pdf", "wb") as f:
                 f.write(lab_pdf.read())
             lab_text = extract_text_any("temp_lab.pdf")
-            st.success("Lab report extracted successfully.")
+            st.success("Lab report extracted.")
         except:
-            st.error("Unable to read the lab PDF.")
+            st.error("Unable to extract lab PDF.")
 
-    # ---------------------------------------------------------
-    # 3) MEDICAL PDF VAULT — QUICK SELECT
-    # ---------------------------------------------------------
-    st.markdown("### 🟩 Select a Medical PDF from Vault")
-
+    # Vault PDF selection
+    st.markdown("### 🟩 Select Medical PDF from Vault")
     vault_files = [f for f in os.listdir(VAULT_DIR) if f.endswith(".pdf")]
 
-    selected_pdf = st.selectbox(
-        "Choose a PDF:",
-        ["None"] + vault_files
-    )
-
+    selected_pdf = st.selectbox("Choose PDF:", ["None"] + vault_files)
     vault_text = ""
+
     if selected_pdf != "None":
         try:
             path = os.path.join(VAULT_DIR, selected_pdf)
             vault_text = extract_text_any(path)
             st.success(f"Loaded PDF: {selected_pdf}")
         except:
-            st.error("Failed to read selected PDF.")
+            st.error("Failed to read PDF.")
 
-    st.markdown("---")
-
-    # Combine all triptych data
     combined_triptych = f"""
-    DOCTOR NOTES:
-    {doctor_notes}
+DOCTOR NOTES:
+{doctor_notes}
 
-    LAB REPORT:
-    {lab_text}
+LAB REPORT:
+{lab_text}
 
-    MEDICAL PDF:
-    {vault_text}
-    """
+MEDICAL PDF:
+{vault_text}
+"""
 
-    # ---------------------------------------------------------
-    # GENERATE FUSED TRIPTYCH SUMMARY
-    # ---------------------------------------------------------
     if st.button("🔮 Generate Unified Medical Summary"):
         if not (doctor_notes or lab_text or vault_text):
-            st.warning("Please provide at least one input source.")
+            st.warning("Provide at least one input.")
             aaa_footer()
             return
 
-        with st.spinner("Fusing doctor + lab + medical documents…"):
+        with st.spinner("Generating…"):
             try:
                 ai = genai.GenerativeModel("gemini-2.0-flash")
                 resp = ai.generate_content(
                     f"""
-                    You are AAA Health Intelligence.
+Fuse DOCTOR NOTES + LAB REPORT + MEDICAL PDF.
 
-                    TASK:
-                    Fuse DOCTOR NOTES + LAB REPORT + MEDICAL PDF.
-                    Produce:
-                    1) 🩺 Unified Clinical Summary (5–7 lines)
-                    2) 📊 Key Trends (lab values, symptoms, behaviour)
-                    3) 🚦 Risk/Attention Layer (non-alarming)
-                    4) 🧑‍⚕️ Doctor-Friendly Briefing (clear, simple)
+FORMAT:
+1) Unified Clinical Summary
+2) Key Trends
+3) Risk/Attention Layer
+4) Doctor-Friendly Briefing
 
-                    RAW DATA:
-                    {combined_triptych}
-                    """
+DATA:
+{combined_triptych}
+"""
                 )
-
-                st.markdown("### 🩺 Unified Clinical Summary")
                 st.info(resp.text)
-
             except Exception as e:
                 st.error(f"AI Error: {e}")
 
@@ -3426,112 +3024,65 @@ def page_medical_triptych():
 
 
 # ============================================================
-# PAGE 25 — SERENE FREQUENCY INDICATORS
-# Health × Vibration × Energy Signal Mapper (Beta)
+# PAGE 25 — SERENE FREQUENCY
 # ============================================================
 
 def page_serene_frequency():
     aaa_header()
-    st.subheader("🎵 Serene Frequency Indicators — Vibration × Health Intelligence (Beta)")
+    st.subheader("🎵 Serene Frequency Indicators — Vibration × Health Intelligence")
 
-    # Premium firewall
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            This is AAA’s vibration-health synchronisation layer.  
-            It blends your emotional logs, sleep notes, medical summaries, 
-            and energy patterns to generate personalised frequency indicators.
-            <br><br>
-            Inspired by wellness sciences, meditation research, and 
-            mind–body coherence models, this module identifies:
-            <ul>
-                <li>• Daily emotional tone</li>
-                <li>• Mental clarity indicators</li>
-                <li>• Stress resonance levels</li>
-                <li>• Suggested healing frequencies</li>
-                <li>• Breath + focus guidance</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ----------------------------------------------
-    # LOAD LOGS + INSIGHTS
-    # ----------------------------------------------
-    logs = load_json_data(HEALTH_LOG_FILE, default=[])
-    insights = load_insights_history()
+    logs = load_json(HEALTH_LOG_FILE, [])
+    insights = load_json(AI_SUMMARY_FILE, {})
 
     if not logs and not insights:
-        st.info("No logs or insights available yet. Add logs to activate Serene Frequency Indicators.")
+        st.info("No logs or insights yet.")
         aaa_footer()
         return
 
-    # ----------------------------------------------
-    # USER SELECTOR
-    # ----------------------------------------------
     st.markdown("### 📅 Select Range")
-    freq_range = st.selectbox(
-        "Choose analysis window:",
-        ["Last 3 Days", "Last 7 Days", "Last 14 Days"]
-    )
+    freq_range = st.selectbox("Choose window:", ["Last 3 Days", "Last 7 Days", "Last 14 Days"])
 
     days = 3 if freq_range == "Last 3 Days" else 7 if freq_range == "Last 7 Days" else 14
     cutoff = datetime.now().timestamp() - (days * 86400)
 
-    filtered_logs = [
-        l for l in logs
-        if "timestamp" in l and l["timestamp"] >= cutoff
-    ]
+    filtered_logs = [l for l in logs if l.get("timestamp", 0) >= cutoff]
 
-    # ----------------------------------------------
-    # FREQUENCY SUMMARY PANEL
-    # ----------------------------------------------
     st.markdown("### 🎛 Coherence Summary")
 
     if not filtered_logs:
-        st.info("No recent logs in selected time range.")
+        st.info("No logs in this range.")
         aaa_footer()
         return
 
     combined_text = "\n".join([l.get("summary", "") for l in filtered_logs])
 
-    # ----------------------------------------------
-    # AI ENGINE — GEMINI
-    # ----------------------------------------------
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(
             f"""
-            You are Serene Frequency AI.
+You are Serene Frequency AI.
 
-            TASK:
-            - Study emotional logs, daily summaries, and behaviour patterns.
-            - Derive frequency alignment indicators.
-            - Provide vibration-health insights.
-            - Recommend frequencies (Hz), breathing patterns, or tones.
-            - Keep output non-medical and supportive.
+TASK:
+- Study emotional logs and behavioural patterns
+- Recommend healing frequencies & breath rhythms
 
-            LOG DATA:
-            {combined_text}
+FORMAT:
+1. Emotional Tone
+2. Frequency Recommendation
+3. Breath Rhythm
+4. Sound Style
+5. Gentle Affirmation
 
-            FORMAT:
-            1. 🌤 Emotional Tone (1 line)
-            2. 🔔 Frequency Recommendation (Hz)
-            3. 🧘 Breath Rhythm Suggestion
-            4. 🎵 Sound/Music Style Suggestion (Meditation, Alpha, Theta, Delta)
-            5. 💬 Gentle Affirmation
-            """
+DATA:
+{combined_text}
+"""
         )
-
-        st.markdown("### 🎶 Your Frequency Alignment")
         st.info(response.text)
-
     except Exception as e:
         st.error(f"AI Error: {e}")
 
@@ -3539,29 +3090,23 @@ def page_serene_frequency():
 
 
 # ============================================================
-# PAGE 26 — Mood × Sleep × Stress Radar (Mind–Body State Map)
+# PAGE 26 — MOOD × SLEEP × STRESS RADAR
 # ============================================================
 
 def page_mood_sleep_stress_radar():
     aaa_header()
-    st.subheader("🧘 Mood × Sleep × Stress Radar — Mind–Body State Map (Beta)")
+    st.subheader("🧘 Mood × Sleep × Stress Radar — Mind–Body State Map")
 
-    # 🔐 Premium Lock
     if not is_premium():
         feature_locked()
         monetization_cta()
         aaa_footer()
         return
 
-    # -------------------------------
-    # USER INPUTS — MIND–BODY CHECK-IN
-    # -------------------------------
     st.markdown(
         """
-        <div style="font-size:16px; line-height:1.6; margin-bottom:20px;">
-            Track your emotional state, sleep quality, and stress levels.
-            AAA will convert your inputs into a <b>Mind–Body Radar Map</b> to help you
-            understand your inner-state trends and health connections.
+        <div style='font-size:16px; margin-bottom:20px;'>
+            Input your state — AAA generates a Mind–Body Radar Map.
         </div>
         """,
         unsafe_allow_html=True,
@@ -3570,35 +3115,28 @@ def page_mood_sleep_stress_radar():
     col1, col2 = st.columns(2)
 
     with col1:
-        mood = st.slider("😊 Mood Level", 1, 10, 7)
+        mood = st.slider("😊 Mood", 1, 10, 7)
         sleep_quality = st.slider("😴 Sleep Quality", 1, 10, 6)
 
     with col2:
-        stress = st.slider("⚡ Stress Level", 1, 10, 4)
-        energy = st.slider("🔋 Energy Level", 1, 10, 6)
+        stress = st.slider("⚡ Stress", 1, 10, 4)
+        energy = st.slider("🔋 Energy", 1, 10, 6)
 
     st.markdown("---")
 
-    # -------------------------------
-    # GENERATE RADAR CHART
-    # -------------------------------
     if st.button("Generate Mind–Body Radar Map"):
-        with st.spinner("Generating your Mind–Body State Map…"):
-
-            # Data for radar
-            categories = ["Mood", "Sleep", "Stress", "Energy"]
-            values = [mood, sleep_quality, stress, energy]
-
-            # Radar chart (matplotlib)
+        with st.spinner("Generating radar…"):
             import matplotlib.pyplot as plt
             import numpy as np
 
-            angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+            categories = ["Mood", "Sleep", "Stress", "Energy"]
+            values = [mood, sleep_quality, stress, energy]
+
+            angles = np.linspace(0, 2*np.pi, len(categories), endpoint=False).tolist()
             values += values[:1]
             angles += angles[:1]
 
-            fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
-
+            fig, ax = plt.subplots(figsize=(5,5), subplot_kw=dict(polar=True))
             ax.plot(angles, values, linewidth=2)
             ax.fill(angles, values, alpha=0.25)
             ax.set_xticks(angles[:-1])
@@ -3607,48 +3145,39 @@ def page_mood_sleep_stress_radar():
 
             st.pyplot(fig)
 
-        st.success("Your Mind–Body State Map is ready.")
-
     st.markdown("---")
 
-    # -------------------------------
-    # AI INTERPRETATION — USING GEMINI/GPT
-    # -------------------------------
-    st.markdown("### 🔮 AI Interpretation")
+    if st.button("🔮 Generate AI Insight"):
+        with st.spinner("Analyzing mind–body pattern…"):
 
-    if st.button("Generate AI Insight"):
-        with st.spinner("Analyzing your mind–body pattern…"):
-
-            insight_prompt = f"""
-You are AAA Health Intelligence. Provide a short, warm, evidence-based interpretation of the user's
-Mood, Sleep, Stress, and Energy. Avoid medical claims.
+            prompt = f"""
+AAA Health Intelligence — interpret the user's Mind–Body State.
 
 Inputs:
-- Mood: {mood}/10
-- Sleep Quality: {sleep_quality}/10
-- Stress: {stress}/10
-- Energy: {energy}/10
+Mood: {mood}
+Sleep: {sleep_quality}
+Stress: {stress}
+Energy: {energy}
 
 Give:
-1. A 2-sentence summary.
-2. 2 actionable suggestions.
-3. A vibration alignment note (Serene Frequencies).
+1. 2-sentence summary
+2. 2 actionable suggestions
+3. Vibration alignment note
 """
 
-            try:
-                ai_response = call_gemini(insight_prompt)
-                st.markdown(
-                    f"""
-                    <div style="padding:15px; background:#0e1b2c; border-radius:10px;
-                    box-shadow:0 0 10px rgba(0,0,0,0.3); color:#cde3ff;">
-                        {ai_response}
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            except Exception as e:
-                st.error("AI interpretation failed. Please try again.")
-                st.exception(e)
+        try:
+            ai_response = call_gemini(prompt)
+            st.markdown(
+                f"""
+                <div style="padding:15px; background:#0e1b2c; border-radius:10px; color:#cde3ff;">
+                    {ai_response}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            st.error("AI failed.")
+            st.exception(e)
 
     aaa_footer()
 
@@ -3673,18 +3202,10 @@ def page_health_vibration_correlation():
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:15px;">
-            This module explores the relationship between your <b>physical health metrics</b> 
-            and <b>vibration indicators</b> from Serene Frequency & Mind-Body logs.
-            <br><br>
-            AAA Intelligence correlates:
-            <ul>
-                <li>📊 Blood markers & medical summary metrics</li>
-                <li>🎵 Frequency alignment scores</li>
-                <li>🧘 Mood × Sleep × Stress patterns</li>
-                <li>🔮 Serene Frequency Indicators</li>
-            </ul>
-            The engine reveals hidden patterns between health and vibration states,
-            giving you a 360° insight into your mind–body alignment.
+            Explore the relationship between <b>physical health metrics</b> 
+            and <b>vibration indicators</b> from Serene Frequency and Mind–Body logs.
+            AAA Intelligence discovers hidden correlations to show how your 
+            health and vibration states move together.
         </div>
         """,
         unsafe_allow_html=True,
@@ -3693,7 +3214,7 @@ def page_health_vibration_correlation():
     st.markdown("---")
 
     # -------------------------------
-    # USER INPUTS FOR CORRELATION
+    # USER INPUT SELECTION
     # -------------------------------
     st.markdown("### 🧩 Select Inputs for Correlation Analysis")
 
@@ -3702,8 +3223,8 @@ def page_health_vibration_correlation():
         [
             "Blood Pressure",
             "Blood Sugar (Fasting / PP)",
-            "Kidney Indicators (eGFR, Creatinine)",
-            "Liver Enzymes (ALT, AST, GGT)",
+            "Kidney Indicators (eGFR / Creatinine)",
+            "Liver Enzymes (ALT / AST / GGT)",
             "Hemoglobin / CBC",
             "Vitamin Profile",
             "Thyroid Panel",
@@ -3725,31 +3246,27 @@ def page_health_vibration_correlation():
     if st.button("🔍 Run Correlation Analysis"):
         with st.spinner("Running AAA Correlation Engine…"):
 
-            try:
-                # ----------------------------------------------------
-                # LOAD EXISTING DATA SOURCES
-                # ----------------------------------------------------
-                health_json = load_json("health_data.json")
-                vibration_json = load_json("serene_frequency_data.json")  # placeholder file
-                mindbody_json = load_json("mood_sleep_stress.json")       # placeholder file
+            import random
+            import matplotlib.pyplot as plt
 
-                # ----------------------------------------------------
-                # AAA CORRELATION ENGINE (Placeholder)
-                # ----------------------------------------------------
+            try:
+                # Load placeholders / user data
+                health_json = load_json(os.path.join(DATA_DIR, "health_data.json"), {})
+                vibration_json = load_json(os.path.join(DATA_DIR, "serene_frequency_data.json"), {})
+                mindbody_json = load_json(os.path.join(DATA_DIR, "mood_sleep_stress.json"), {})
+
+                # Placeholder correlation engine
                 result = {
                     "health_metric": health_option,
                     "vibration_metric": vibration_option,
                     "correlation_score": round(random.uniform(-1, 1), 2),
                     "interpretation": (
-                        "Positive correlation — improvements in vibration indicators align with better health outcomes."
+                        "Positive correlation — vibration improvements align with better health outcomes."
                         if random.random() > 0.5 else
                         "Negative correlation — vibration imbalance may be influencing health metrics."
                     ),
                 }
 
-                # -------------------------------
-                # DISPLAY RESULT SUMMARY
-                # -------------------------------
                 st.success("Correlation Analysis Complete")
 
                 st.markdown(
@@ -3765,9 +3282,7 @@ def page_health_vibration_correlation():
 
                 st.markdown("---")
 
-                # -------------------------------
-                # CORRELATION GRAPH (Matplotlib Placeholder)
-                # -------------------------------
+                # Scatter plot placeholder
                 fig, ax = plt.subplots()
                 ax.scatter(
                     [random.randint(1, 100) for _ in range(20)],
@@ -3804,9 +3319,9 @@ def page_trend_forecast_engine():
     st.markdown(
         """
         <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
-            This engine forecasts your upcoming health & vibration patterns using AI.
-            It studies your logs, insights, trends, emotional signals, sleep quality,
-            PDFs, and vibration metrics — then predicts what the next 7 days may look like.
+            AAA studies your logs, insights, emotional signals, sleep quality,
+            vibration markers, and medical summaries — then generates a 
+            predictive forecast for the upcoming days.
         </div>
         """,
         unsafe_allow_html=True,
@@ -3815,16 +3330,19 @@ def page_trend_forecast_engine():
     # --------------------------
     # LOAD DATA
     # --------------------------
-    insights = load_insights_history()
-    logs = load_logs()
+    insights_raw = load_json(AI_SUMMARY_FILE, {})
+    insights = insights_raw.get("history", [])
+
+    logs_raw = load_json(HEALTH_LOG_FILE, [])
+    logs = [l.get("summary", "") for l in logs_raw]
 
     if not insights and not logs:
-        st.warning("No historical data available for forecasting. Add logs or upload files.")
+        st.warning("No historical data available for forecasting.")
         aaa_footer()
         return
 
     # --------------------------
-    # USER SELECTS FORECAST WINDOW
+    # USER SELECT WINDOW
     # --------------------------
     window = st.selectbox(
         "Select forecast window:",
@@ -3836,32 +3354,29 @@ def page_trend_forecast_engine():
     # --------------------------
     if st.button("Generate Forecast"):
         with st.spinner("Building predictive model…"):
+
             try:
                 combined_text = ""
 
-                # combine raw logs
-                if logs:
-                    combined_text += "\n\n".join(logs)
+                for entry in logs:
+                    combined_text += f"\n{entry}"
 
-                # combine insights (summary + details)
-                if insights:
-                    for item in insights:
-                        combined_text += f"\n{item.get('summary','')}"
-                        combined_text += f"\n{item.get('details','')}"
+                for item in insights:
+                    combined_text += f"\n{item.get('short','')}"
+                    combined_text += f"\n{item.get('deep','')}"
 
                 forecast_prompt = f"""
-                You are AAA's predictive health and vibration intelligence engine.
+                You are AAA's Predictive Health & Vibration Intelligence Engine.
 
-                Using the historical combined dataset below, generate a clean, calm
-                and educational forecast for the following window: {window}.
+                Generate a calm, educational forecast for: {window}
 
                 Include:
-                - Health trend forecast
-                - Sleep forecast
-                - Mood & stress forecast
-                - Vibration/energy pattern shift prediction
-                - Red flags to watch (non-alarming)
-                - Simple lifestyle adjustments for the window
+                - Health trends
+                - Sleep patterns
+                - Stress & mood patterns
+                - Vibration / energy shifts
+                - Red flags (non-alarming)
+                - Simple lifestyle adjustments
 
                 DATA:
                 {combined_text}
@@ -3872,13 +3387,10 @@ def page_trend_forecast_engine():
                 st.success("Forecast ready.")
                 st.markdown(result)
 
-                # --------------------------
-                # MATPLOTLIB PREVIEW CHART
-                # (SIMPLE — RANDOMIZED PLACEHOLDER)
-                # --------------------------
-                st.markdown("### 📉 Forecast Trend Preview (Simulated)")
+                # Preview chart (placeholder)
+                import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
-                ax.plot([1, 2, 3, 4, 5, 6, 7], 
+                ax.plot([1, 2, 3, 4, 5, 6, 7],
                         [random.randint(40, 90) for _ in range(7)])
                 ax.set_title("Predictive Health-Vibration Curve (Sample)")
                 ax.set_xlabel("Days Ahead")
@@ -3909,9 +3421,9 @@ def page_unified_timeline_intel():
     st.markdown(
         """
         <p style="font-size:15px; line-height:1.6;">
-        A unified chronological view of <b>all your health signals</b> — logs, summaries, 
-        mood scores, sleep quality, stress levels, frequency indicators, and medical insights —
-        merged into a single timeline for easier pattern detection.
+        A unified chronological view of <b>all your health signals</b> —
+        logs, summaries, mood, sleep, stress, vibration indicators, 
+        AI insights — merged into one timeline for easier pattern detection.
         </p>
         """,
         unsafe_allow_html=True,
@@ -3919,20 +3431,16 @@ def page_unified_timeline_intel():
 
     st.markdown("---")
 
-    # -------------------------------
-    # PLACEHOLDER TIMELINE GRAPH
-    # -------------------------------
     try:
         import matplotlib.pyplot as plt
         import random
 
-        # Placeholder dates & values
         days = list(range(1, 16))
         health_scores = [random.randint(60, 85) for _ in days]
         mood_scores = [random.randint(40, 90) for _ in days]
         sleep_hours = [random.randint(4, 9) for _ in days]
 
-        fig, ax = plt.subplots(figsize=(10,4))
+        fig, ax = plt.subplots(figsize=(10, 4))
         ax.plot(days, health_scores, marker="o", label="Health Score")
         ax.plot(days, mood_scores, marker="s", label="Mood Score")
         ax.plot(days, sleep_hours, marker="^", label="Sleep Hours")
@@ -3951,18 +3459,17 @@ def page_unified_timeline_intel():
 
 
 # ============================================================
-# PAGE 30 — AAA INSIGHT MATRIX (Signal-to-Signal Relationship Grid)
+# PAGE 30 — AAA Insight Matrix (Signal-to-Signal Relationship Grid)
 # ============================================================
 
 def page_insight_matrix():
 
     aaa_header()
-
     st.subheader("🧩 AAA Insight Matrix — Signal-to-Signal Relationship Grid (Beta)")
 
-    # Premium Firewall
+    # Premium Lock
     if not is_premium():
-        st.warning("This feature is available for Premium members.")
+        feature_locked()
         monetization_cta()
         aaa_footer()
         return
@@ -3970,20 +3477,14 @@ def page_insight_matrix():
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:25px;">
-            The <b>AAA Insight Matrix</b> compares how different health and vibration signals 
-            interact, influence, and correlate with one another.  
-            <br><br>
-            Each cell visualizes the <b>strength</b> and <b>direction</b> of relationships using 
-            synthetic placeholder data. Future versions will draw from the unified data lake 
-            inside AAA-Health.
+            Compare how different health and vibration signals interact, influence,
+            or correlate with each other using a placeholder analytical grid.  
+            Future versions will use AAA’s unified data lake.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------------
-    # SIGNAL LIST
-    # -------------------------------
     signals = [
         "Heart Rate",
         "Blood Pressure",
@@ -3999,10 +3500,7 @@ def page_insight_matrix():
     st.markdown("### 🔢 Signals Included")
     st.write(signals)
 
-    # -------------------------------
-    # PLACEHOLDER MATRIX (Random Heatmap)
-    # -------------------------------
-    st.markdown("### 🔥 Relationship Matrix (Placeholder Heatmap)")
+    st.markdown("### 🔥 Relationship Matrix (Synthetic Placeholder)")
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -4026,20 +3524,6 @@ def page_insight_matrix():
     except Exception as e:
         st.error(f"Matrix generation error: {e}")
 
-    st.markdown(
-        """
-        <div style="font-size:15px; margin-top:20px; line-height:1.6;">
-            <b>Matrix Interpretation:</b><br>
-            • <b>Red</b> → Strong Positive Influence<br>
-            • <b>Blue</b> → Strong Negative Influence<br>
-            • <b>White</b> → Weak / No Correlation<br><br>
-            The Insight Matrix will evolve into a core analytical engine within AAA-Health, 
-            driving risk scoring, timelines, and forecast modules.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     aaa_footer()
 
 
@@ -4051,9 +3535,9 @@ def page_health_knowledge_graph():
     aaa_header()
     st.subheader("🧠 Health Knowledge Graph — AI Semantic Medical Map (Beta)")
 
-    # ---- Premium Lock ----
+    # Premium Lock
     if not is_premium():
-        st.warning("This feature is available for Premium members.")
+        feature_locked()
         monetization_cta()
         aaa_footer()
         return
@@ -4061,18 +3545,13 @@ def page_health_knowledge_graph():
     st.markdown(
         """
         <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
-            Explore an AI-generated semantic map of your health signals.
-            The AAA Health Knowledge Graph connects symptoms, biomarkers,
-            lifestyle factors, stress patterns, sleep cycles, and vibration
-            signals into one unified medical understanding layer.
+            Explore an AI-generated semantic map connecting symptoms, biomarkers,
+            lifestyle patterns, stress, sleep cycles, and vibration signals.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ------------------------------
-    # OPTIONS
-    # ------------------------------
     st.markdown("### 🔎 Generate Knowledge Graph")
 
     graph_type = st.selectbox(
@@ -4089,10 +3568,8 @@ def page_health_knowledge_graph():
 
     if st.button("Generate Graph"):
         try:
-            with st.spinner("Generating AI Semantic Medical Graph…"):
+            with st.spinner("Generating AI Semantic Graph…"):
 
-                # PLACEHOLDER — Replace with future Graph Engine
-                # Simulated JSON structure
                 example_graph = {
                     "nodes": [
                         {"id": "Stress", "group": 1},
@@ -4114,8 +3591,7 @@ def page_health_knowledge_graph():
                 st.json(example_graph)
 
                 st.info(
-                    "🔧 Full interactive graph (D3.js / PyVis) will be added in "
-                    "AAA-Health v0.9 after December roadmap integration."
+                    "🔧 Full interactive graph will be added in AAA-Health v0.9."
                 )
 
         except Exception as e:
@@ -4125,7 +3601,7 @@ def page_health_knowledge_graph():
 
 
 # ============================================================
-# PAGE 32 — MULTI-SIGNAL DIAGNOSTIC ENGINE (AI Differential Insights)
+# PAGE 32 — MULTI-SIGNAL DIAGNOSTIC ENGINE
 # ============================================================
 
 def page_multi_signal_engine():
@@ -4143,80 +3619,66 @@ def page_multi_signal_engine():
         <br>
     """, unsafe_allow_html=True)
 
-    # 🔒 Premium Access
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # COLLECT SIGNALS FROM ALL SOURCES
-    # ------------------------------------------------------------
     signals = []
 
-    # 1. Vault Files (PDF, images, TXT)
-    vault_files = [
-        f for f in os.listdir(VAULT_DIR)
-        if os.path.isfile(os.path.join(VAULT_DIR, f))
-    ]
+    # Vault files
+    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     for f in vault_files:
-        path = os.path.join(VAULT_DIR, f)
-        extracted = extract_text_any(path)
-        if extracted.strip():
-            signals.append(extracted)
+        text = extract_text_any(os.path.join(VAULT_DIR, f))
+        if text.strip():
+            signals.append(text)
 
-    # 2. OCR Results
+    # OCR results
     ocr_results = load_json(OCR_DATA_FILE, [])
     for item in ocr_results:
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
-    # 3. Health Log
-    health_log = load_json(HEALTH_LOG_FILE, [])
-    for entry in health_log:
-        if "note" in entry:
+    # Health logs
+    logs = load_json(HEALTH_LOG_FILE, [])
+    for entry in logs:
+        if entry.get("note", "").strip():
             signals.append(entry["note"])
 
-    # 4. Doctor Notes
+    # Doctor notes
     doctor_notes = load_json(DOCTOR_NOTES_FILE, [])
     if doctor_notes:
         signals.append("\n".join(doctor_notes))
 
-    # No data available
     if not signals:
-        st.info("No health signals available. Upload files or write logs to generate insights.")
+        st.info("No signals available. Upload files or write logs.")
         monetization_cta()
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # RUN THE ENGINE
-    # ------------------------------------------------------------
     if st.button("🚀 Run Diagnostic Engine"):
-        with st.spinner("Analyzing multi-source signals using AAA Intelligence…"):
+        with st.spinner("Analyzing multi-source signals…"):
             result = run_multi_signal_engine(signals)
 
-        # Display formatted diagnostic insights
         st.markdown(result["formatted"], unsafe_allow_html=True)
 
-        # Save into Insights History
         history = load_json(INSIGHTS_FILE, [])
         history.append({
             "date": datetime.now().strftime("%Y-%m-%d"),
             "title": "Multi-Signal Diagnostic Insight",
-            "short": result["json"]["summary"],
+            "short": result["json"].get("summary", ""),
             "deep": result["formatted"]
         })
         save_json(INSIGHTS_FILE, history)
 
-        st.success("Insights saved to Insights History successfully.")
+        st.success("Insight saved.")
 
     monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 33 — HEALTH SIGNATURE ENGINE (NEW ENGINE)
+# PAGE 33 — HEALTH SIGNATURE ENGINE
 # ============================================================
 
 def page_health_signature_engine():
@@ -4228,52 +3690,45 @@ def page_health_signature_engine():
             🩺 Health Signature Engine
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Generates a unified health signature across logs, biomarkers, PDFs and patterns.
-            (Strictly informational — no medical advice)
+            Generates a unified health signature across logs, biomarkers,
+            PDFs and behavioural patterns.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    # 🔒 Premium Block
     if not is_premium():
         feature_locked()
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # GATHER SIGNALS
-    # ------------------------------------------------------------
     signals = []
 
-    # 1) Vault files
+    # Vault files
     vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     for f in vault_files:
         text = extract_text_any(os.path.join(VAULT_DIR, f))
         if text.strip():
             signals.append(text)
 
-    # 2) OCR
+    # OCR
     ocr_data = load_json(OCR_DATA_FILE, [])
     for item in ocr_data:
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
-    # 3) Health logs
+    # Health logs
     logs = load_json(HEALTH_LOG_FILE, [])
     for entry in logs:
-        if entry.get("note", "").strip():
-            signals.append(entry["note"])
+        note = entry.get("note", "").strip()
+        if note:
+            signals.append(note)
 
-    # Validation
     if not signals:
-        st.info("No signals available. Please upload files or logs.")
+        st.info("No health signals available.")
         monetization_cta()
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # RUN ENGINE
-    # ------------------------------------------------------------
     if st.button("🚀 Generate Health Signature"):
         with st.spinner("Building your unified health signature…"):
             try:
@@ -4286,7 +3741,6 @@ def page_health_signature_engine():
         st.markdown("### 🔍 Your Health Signature")
         st.markdown(result["formatted"], unsafe_allow_html=True)
 
-        # Save to insights history
         history = load_json(INSIGHTS_FILE, [])
         history.append({
             "date": datetime.now().strftime("%Y-%m-%d"),
@@ -4296,38 +3750,7 @@ def page_health_signature_engine():
         })
         save_json(INSIGHTS_FILE, history)
 
-        st.success("Health Signature saved to Insights History.")
-
-    monetization_cta()
-    aaa_footer()
-
-
-    # ------------------------------------------------------------
-    # RUN ENGINE
-    # ------------------------------------------------------------
-    if st.button("🔬 Generate Health Signature"):
-        with st.spinner("Building your multi-layer Health Signature…"):
-            try:
-                model = genai.GenerativeModel("gemini-2.0-flash")
-                response = model.generate_content(signature_prompt)
-                ai_text = response.text or "(No response)"
-            except Exception as e:
-                ai_text = f"Error generating signature: {e}"
-
-        # Display Output
-        st.markdown(ai_text, unsafe_allow_html=True)
-
-        # Save into history
-        history = load_json(INSIGHTS_FILE, [])
-        history.append({
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "title": "Health Signature Engine Output",
-            "short": ai_text[:600],
-            "deep": ai_text
-        })
-        save_json(INSIGHTS_FILE, history)
-
-        st.success("Health Signature saved to Insights History.")
+        st.success("Health Signature saved.")
 
     monetization_cta()
     aaa_footer()
@@ -4352,7 +3775,7 @@ def page_unified_signal_comparison():
         <br>
     """, unsafe_allow_html=True)
 
-    # 🔒 Premium wall
+    # Premium wall
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -4363,24 +3786,24 @@ def page_unified_signal_comparison():
     # ------------------------------------------------------------
     signals = []
 
-    # Health Log
+    # Health Logs
     logs = load_json(HEALTH_LOG_FILE, [])
-    log_text = "\n".join([entry.get("note", "") for entry in logs])
+    log_text = "\n".join([entry.get("note", "") for entry in logs if entry.get("note")])
     if log_text.strip():
         signals.append(("Health Log", log_text))
 
     # OCR
     ocr_items = load_json(OCR_DATA_FILE, [])
-    ocr_text = "\n".join([t.get("text", "") for t in ocr_items if isinstance(t, dict)])
+    ocr_text = "\n".join([item.get("text", "") for item in ocr_items if isinstance(item, dict)])
     if ocr_text.strip():
         signals.append(("OCR Extracted Text", ocr_text))
 
-    # Vault PDFs / Images
+    # Vault PDFs
     vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     for f in vault_files:
-        text = extract_text_any(os.path.join(VAULT_DIR, f))
-        if text.strip():
-            signals.append((f, text))
+        extracted = extract_text_any(os.path.join(VAULT_DIR, f))
+        if extracted.strip():
+            signals.append((f, extracted))
 
     # Doctor Notes
     doctor = load_json(DOCTOR_NOTES_FILE, [])
@@ -4389,13 +3812,13 @@ def page_unified_signal_comparison():
 
     # Validation
     if not signals:
-        st.info("No signals available for comparison. Please upload files or add logs.")
+        st.info("No signals available. Please upload files or add logs.")
         monetization_cta()
         aaa_footer()
         return
 
     # ------------------------------------------------------------
-    # USER SELECTION — PICK ANY 2–4 SIGNALS TO COMPARE
+    # USER SELECT — PICK 2–4 SIGNALS
     # ------------------------------------------------------------
     st.markdown("### Select signals to compare")
 
@@ -4415,40 +3838,34 @@ def page_unified_signal_comparison():
     # ------------------------------------------------------------
     if st.button("🚀 Run Comparison Engine"):
         with st.spinner("Generating comparison across signals…"):
-            try:
-                prompt = f"""
-                You are AAA Intelligence. Compare these signals:
 
-                {str(selected)}
+            combined_data = ""
+            for name, text in signals:
+                if name in selected:
+                    combined_data += f"\n\n### {name}\n{text}\n"
 
-                For each signal, analyse:
-                - Key themes  
-                - Biomarker references  
-                - Symptoms & trends  
-                - Contradictions  
-                - Overlaps  
-                - Missing information  
-                - Agreement score (0–100)
+            prompt = f"""
+            You are AAA Intelligence. Compare these signals:
 
-                Output format (HTML):
-                1. Comparison Table  
-                2. Overlap Map  
-                3. Conflicts  
-                4. Agreement Score  
-                5. Short Summary (150 words)
-                """
+            {str(selected)}
 
-                model = genai.GenerativeModel("gemini-2.0-flash")
-                response = model.generate_content(prompt)
-                ai_text = response.text or "(No response)"
+            DATA:
+            {combined_data[:25000]}
 
-            except Exception as e:
-                ai_text = f"Error generating comparison: {e}"
+            FORMAT (HTML):
+            1. Comparison Table  
+            2. Overlap Map  
+            3. Conflicts  
+            4. Agreement Score (0–100)  
+            5. Summary (150 words)
+            """
+
+            ai_text = call_gemini(prompt)
 
         # Display
         st.markdown(ai_text, unsafe_allow_html=True)
 
-        # Save to history
+        # Save history
         history = load_json(INSIGHTS_FILE, [])
         history.append({
             "date": datetime.now().strftime("%Y-%m-%d"),
@@ -4477,12 +3894,13 @@ def page_signal_volatility_engine():
             📉 Signal Volatility Engine
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Detect variability, noise, instability, and fluctuations across all your health signals.
+            Detect variability, noise, instability, and fluctuations across your health signals.
             (Strictly informational — no medical advice)
         </p>
         <br>
     """, unsafe_allow_html=True)
 
+    # PREMIUM
     if not is_premium():
         feature_locked()
         aaa_footer()
@@ -4490,64 +3908,65 @@ def page_signal_volatility_engine():
 
     signals = []
 
+    # Vault
     vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
     for f in vault_files:
-        path = os.path.join(VAULT_DIR, f)
-        text = extract_text_any(path)
+        text = extract_text_any(os.path.join(VAULT_DIR, f))
         if text.strip():
             signals.append(text)
 
+    # OCR
     ocr = load_json(OCR_DATA_FILE, [])
     for item in ocr:
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
+    # Logs
     logs = load_json(HEALTH_LOG_FILE, [])
     for entry in logs:
-        signals.append(entry.get("note", ""))
+        note = entry.get("note", "")
+        if note:
+            signals.append(note)
 
+    # Doctor notes
     doctor = load_json(DOCTOR_NOTES_FILE, [])
     if doctor:
         signals.append("\n".join(doctor))
 
     if not signals:
-        st.info("No signals found. Please upload documents or logs first.")
+        st.info("No signals found.")
         monetization_cta()
         aaa_footer()
         return
 
+    # RUN ENGINE
     if st.button("🔍 Analyze Signal Volatility"):
         with st.spinner("Evaluating volatility patterns…"):
-            try:
-                combined = "\n\n---\n\n".join(signals)
-                prompt = """
-You are AAA — Artigellence Augmentation Aggregator.
 
-TASK:
-Analyze the combined signals and detect variability, instability, fluctuations,
-and high-volatility regions.
+            combined = "\n\n---\n\n".join(signals)[:30000]
 
-STRICT RULES:
-- No medical advice.
-- No diagnosis.
-- Observational patterns only.
+            prompt = """
+            You are AAA — Artigellence Augmentation Aggregator.
 
-FORMAT:
-1. High-Volatility Zones
-2. Low-Volatility Zones
-3. Noise / Outlier Regions
-4. Potential Correlation Instability
-5. Summary (100 words)
-"""
+            TASK:
+            Analyze variability, instability, fluctuations, and signal noise.
 
-                model = genai.GenerativeModel("gemini-2.0-flash")
-                response = model.generate_content(prompt + combined[:30000])
-                ai_text = response.text or "No response"
+            STRICT RULES:
+            - Observational only
+            - No diagnosis
+            - No medical claims
 
-            except Exception as e:
-                ai_text = f"Error generating volatility insights: {e}"
+            OUTPUT (HTML):
+            1. High-Volatility Zones  
+            2. Low-Volatility Zones  
+            3. Noise / Outlier Regions  
+            4. Instability Correlations  
+            5. Summary (100 words)
+            """
 
-        st.markdown(f"<div style='font-size:15px; line-height:1.7;'>{ai_text}</div>", unsafe_allow_html=True)
+            ai_text = call_gemini(prompt + combined)
+
+        st.markdown(ai_text, unsafe_allow_html=True)
 
     monetization_cta()
     aaa_footer()
@@ -4561,104 +3980,57 @@ def page_subscription_plans():
     aaa_header()
     st.subheader("💳 Subscription Plans — Artigellence Premium")
 
-    st.markdown(
-        """
-        <div style="font-size:15px; line-height:1.6; margin-bottom:20px; color:#C7D2FE;">
-            Choose how you want to explore <b>AAA — Health Intelligence</b>.
-            Free mode lets you try the essentials, while <b>Premium</b> unlocks full AI intelligence.
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.write(
+        "Choose how you want to explore **AAA — Health Intelligence**.\n"
+        "Free mode lets you try essentials. Premium unlocks full intelligence."
     )
 
     col1, col2, col3 = st.columns(3)
 
     # FREE PLAN
     with col1:
-        st.markdown(
+        st.markdown("### Free")
+        st.caption("Basic AAA features.")
+        st.markdown("**$0 / month**")
+        st.write(
             """
-            <div style="
-                border-radius:14px;
-                padding:18px;
-                background:linear-gradient(145deg, #020617, #0f172a);
-                border:1px solid #1f2937;
-            ">
-                <h3 style="color:#E5E7EB; margin-bottom:4px;">Free</h3>
-                <p style="color:#9CA3AF; font-size:13px;">Explore AAA basics.</p>
-                <div style="font-size:22px; font-weight:bold; color:#FACC15;">$0 / month</div>
-                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
-                    <li>Dashboard (Beta)</li>
-                    <li>Basic Health Log</li>
-                    <li>PDF Vault & OCR (limits apply)</li>
-                    <li>Demo Summary (Short)</li>
-                    <li>Snapshots (Beta)</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            • Dashboard  
+            • Health Log  
+            • Vault + OCR  
+            • Demo Summary  
+            • Snapshots  
+            """
         )
 
-    # PREMIUM INDIA ₹500
+    # PREMIUM INDIA
     with col2:
-        st.markdown(
+        st.markdown("### 🇮🇳 Premium — India")
+        st.caption("Accessible India pricing.")
+        st.markdown("**₹500 / month**")
+        st.write(
             """
-            <div style="
-                border-radius:14px;
-                padding:18px;
-                background:linear-gradient(145deg, #0b1120, #111827);
-                border:1px solid #4B5563;
-                box-shadow:0 0 18px rgba(56,189,248,0.35);
-            ">
-                <div style="font-size:11px; color:#22C55E; text-transform:uppercase;">
-                    Recommended
-                </div>
-                <h3 style="color:#E5E7EB;">Premium — India</h3>
-                <p style="color:#9CA3AF; font-size:13px;">
-                    Full AAA intelligence at accessible India pricing.
-                </p>
-                <div style="font-size:22px; font-weight:bold; color:#22C55E;">₹500 / month</div>
-                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
-                    <li>Unlimited Summaries</li>
-                    <li>Hybrid Engine</li>
-                    <li>Deep Insights + History</li>
-                    <li>AI PDFs</li>
-                    <li>Merged View</li>
-                    <li>Snapshots + Timeline</li>
-                    <li>Finance × Law Access</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            • Unlimited AI Summaries  
+            • Hybrid Engine  
+            • Insights + History  
+            • AI PDFs  
+            • Timeline + Snapshots  
+            • Finance × Law Access  
+            """
         )
+        st.success("Recommended")
 
-    # PREMIUM GLOBAL $10
+    # PREMIUM GLOBAL
     with col3:
-        st.markdown(
+        st.markdown("### 🌍 Premium — Global")
+        st.markdown("**$10 / month**")
+        st.write(
             """
-            <div style="
-                border-radius:14px;
-                padding:18px;
-                background:linear-gradient(145deg, #020617, #0f172a);
-                border:1px solid #1f2937;
-            ">
-                <h3 style="color:#E5E7EB;">Premium — Global</h3>
-                <p style="color:#9CA3AF; font-size:13px;">
-                    For users outside India.
-                </p>
-                <div style="font-size:22px; font-weight:bold; color:#38BDF8;">$10 / month</div>
-                <ul style="color:#D1D5DB; font-size:13px; padding-left:18px;">
-                    <li>All Premium Features</li>
-                    <li>AI-Generated PDFs</li>
-                    <li>Hybrid Engine + Insights</li>
-                    <li>Serene Frequencies (Beta)</li>
-                    <li>Roadmap Voting</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            • All Premium Features  
+            • AI PDFs  
+            • Hybrid Engine  
+            • Serene Frequencies (Beta)  
+            """
         )
-
-    st.markdown("---")
 
     st.info("Stripe payments not live yet. Pricing shown is preview only.")
 
@@ -4667,208 +4039,124 @@ def page_subscription_plans():
 
 
 # ============================================================
-# PAGE — PREMIUM (COMING SOON) — AAA GOLD–TEAL VERSION
+# PAGE — PREMIUM (COMING SOON)
 # ============================================================
 
 def page_premium():
     aaa_header()
 
-    st.markdown(
-        """
-        <h2 style="text-align:center; color:#FACC15;">
-            🌟 Artigellence Premium — Coming Soon
-        </h2>
-        <p style="text-align:center; color:#C7D2FE; font-size:15px;">
-            Unlock AAA’s full intelligence tier with advanced AI engines,
-            cross-document insights, vibration mapping and Finance × Law modules.
-        </p>
-        <br>
-        """,
-        unsafe_allow_html=True,
+    st.subheader("🌟 Artigellence Premium — Coming Soon")
+    st.caption(
+        "Unlock AAA’s full intelligence tier across Health × Vibration × Finance × Law."
     )
 
-    st.markdown(
+    st.markdown("### 🚀 AAA Premium (Full Intelligence Tier)")
+    st.write(
         """
-        <div style="
-            padding:22px;
-            border-radius:16px;
-            background:linear-gradient(135deg, #0b1120, #1e293b);
-            border:1px solid rgba(56,189,248,0.35);
-            box-shadow:0 0 28px rgba(56,189,248,0.28);
-        ">
-            <h2 style="color:#FACC15; font-size:24px; margin:0;">
-                🚀 AAA Premium (Full Intelligence Tier)
-            </h2>
-
-            <p style="color:#C7D2FE; font-size:14px; margin-top:10px;">
-                Experience AAA’s complete intelligence layer —
-                summaries → hybrid insights → forecasting →
-                vibration signals → volatility → unified timeline.
-            </p>
-
-            <ul style="color:#E2E8F0; font-size:14px; padding-left:22px; line-height:1.6;">
-                <li>Unlimited AI Medical Summaries</li>
-                <li>Hybrid Engine (Doctor × Lab × Notes)</li>
-                <li>Deep Insights + Full History</li>
-                <li>Timeline + Snapshots + Unified Logs</li>
-                <li>AI-Generated PDF Reports</li>
-                <li>Pattern Timeline AI + Forecasting</li>
-                <li>Health × Vibration Indicators</li>
-                <li>Volatility Map + Noise Detection</li>
-                <li>Access to AAA Finance × Law</li>
-                <li>Serene Frequencies Indicators</li>
-            </ul>
-
-            <div style="margin-top:18px; font-size:13px; color:#94A3B8;">
-                Final pricing will be announced soon. Demo mode is active.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+        Experience the complete AAA Intelligence layer:  
+        summaries ➜ hybrid insights ➜ forecasting ➜ vibration signals ➜ volatility ➜ unified timeline.
+        """
     )
 
-    st.markdown(
+    st.write(
         """
-        <div style="margin-top:25px; font-size:16px; color:#C7D2FE;">
-            Want early access? Premium launches with complete AI workflows.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        **Included in Premium:**  
+        • Unlimited AI Medical Summaries  
+        • Hybrid Engine (Doctor × Lab × Notes)  
+        • Deep Insights + Full History  
+        • Timeline + Snapshots + Unified Logs  
+        • AI-Generated PDF Reports  
+        • Pattern Timeline AI + Forecasting  
+        • Health × Vibration Indicators  
+        • Volatility Map + Noise Detection  
+        • Access to AAA Finance × Law  
+        • Serene Frequencies Indicators  
+        """
     )
+
+    st.info("Final pricing will be announced soon. Demo mode active.")
 
     monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PHASE-2 HELPERS — HEALTH SCORE + AI SUMMARY
-# PHASE-3 STEP-1 — SCORE HISTORY + MATPLOTLIB TREND
+# HEALTH SCORE + AI SUMMARY — HELPERS
 # ============================================================
-
-import json
-import os
-from datetime import datetime
-import google.generativeai as genai
-import matplotlib.pyplot as plt
 
 SCORE_HISTORY_FILE = "score_history.json"
 
 
-# -----------------------------
-# SIMPLE HEALTH SCORE V1
-# -----------------------------
 def compute_health_score(logs):
     if not logs:
-        return 50  # neutral
+        return 50
 
-    score = 70  # base
-
-    positive_words = ["energetic", "slept well", "good", "better", "ok", "improved"]
-    negative_words = ["pain", "tightness", "headache", "dizzy", "fatigue"]
+    score = 70
+    pos = ["energetic", "slept well", "good", "better", "ok", "improved"]
+    neg = ["pain", "tightness", "headache", "dizzy", "fatigue"]
 
     for entry in logs:
-        notes = entry.get("notes", "").lower()
-        for p in positive_words:
-            if p in notes:
+        note = entry.get("note", "").lower()
+        for p in pos:
+            if p in note:
                 score += 2
-        for n in negative_words:
-            if n in notes:
+        for n in neg:
+            if n in note:
                 score -= 3
 
-    # recency boost
-    try:
-        last_date = datetime.strptime(logs[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
-        days_ago = (datetime.now() - last_date).days
-        if days_ago <= 2:
-            score += 5
-    except:
-        pass
-
-    return max(1, min(score, 99))  # clamp
+    return max(1, min(score, 99))
 
 
-# -----------------------------
-# AI SUMMARY USING GEMINI
-# -----------------------------
 def generate_ai_health_summary(logs, merged_data):
     try:
-        combined_text = ""
-
+        combined = ""
         for l in logs:
-            combined_text += f"Log ({l.get('timestamp')}): {l.get('notes', '')}\n"
-
+            combined += f"Log ({l.get('timestamp')}): {l.get('note','')}\n"
         for item in merged_data:
             if item.get("type") == "summary":
-                combined_text += f"Summary: {item.get('text', '')}\n"
-            if item.get("type") == "photo":
-                combined_text += f"Photo metadata: {item.get('filename','')}\n"
-
+                combined += item.get("text", "") + "\n"
         prompt = f"""
-        You are a health summarization assistant.
-        Create a short, safe summary of the user's health patterns based on this data.
-        Avoid diagnosis. Avoid medical claims.
-        Keep it simple, optimistic, trend-based, and observation-only.
+        Summarize health patterns safely and calmly.
 
         DATA:
-        {combined_text}
+        {combined}
         """
-
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
-
-        return response.text
-
+        return call_gemini(prompt)
     except Exception as e:
-        return f"AI Summary could not load: {e}"
+        return f"AI summary error: {e}"
 
-
-# ============================================================
-# PHASE-3 STEP-1 — SCORE HISTORY + TREND GRAPH
-# ============================================================
 
 def load_score_history():
-    if not os.path.exists(SCORE_HISTORY_FILE):
-        with open(SCORE_HISTORY_FILE, "w") as f:
-            json.dump({"history": []}, f, indent=4)
-        return []
-
-    try:
-        with open(SCORE_HISTORY_FILE) as f:
-            return json.load(f).get("history", [])
-    except:
-        return []
+    data = load_json(SCORE_HISTORY_FILE, {"history": []})
+    return data.get("history", [])
 
 
 def save_score_history(latest_score):
-    history = load_score_history()
-
-    history.append({
+    hist = load_score_history()
+    hist.append({
         "score": latest_score,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
-
-    history = history[-30:]
-
-    with open(SCORE_HISTORY_FILE, "w") as f:
-        json.dump({"history": history}, f, indent=4)
-
-    return history
+    hist = hist[-30:]
+    save_json(SCORE_HISTORY_FILE, {"history": hist})
+    return hist
 
 
 def plot_score_trend(history):
     if not history:
         return None
 
+    import matplotlib.pyplot as plt
+
     scores = [h["score"] for h in history]
-    timestamps = [h["timestamp"][5:16] for h in history]
+    t = [h["timestamp"][5:16] for h in history]
 
     fig, ax = plt.subplots(figsize=(6, 2.5))
-    ax.plot(scores, marker="o", linestyle="-")
+    ax.plot(scores, marker="o")
     ax.set_title("Health Score Trend (Last 30 updates)", fontsize=10)
-    ax.set_xlabel("Timeline", fontsize=8)
-    ax.set_ylabel("Score", fontsize=8)
+    ax.set_xlabel("Timeline")
+    ax.set_ylabel("Score")
     ax.grid(True, linestyle="--", alpha=0.3)
-
     fig.tight_layout()
     return fig
 
@@ -4882,7 +4170,7 @@ def plot_score_trend(history):
 # ------------------------------------------------------------
 def get_health_status(score, logs):
     severe_keywords = ["pain", "pressure", "tightness", "bleeding", "faint", "severe"]
-    logs_text = " ".join([entry.get("notes", "").lower() for entry in logs]) if logs else ""
+    logs_text = " ".join([entry.get("note", "").lower() for entry in logs]) if logs else ""
 
     if any(w in logs_text for w in severe_keywords):
         return "critical"
@@ -4899,10 +4187,12 @@ def render_health_status_bar(status):
         color = "#0f3b2e"
         label = "🟢 Stable"
         desc = "Your health indicators look stable. No major concerns detected."
+
     elif status == "attention":
         color = "#b38800"
         label = "🟡 Needs Attention"
         desc = "Some parameters need attention. Keep monitoring closely."
+
     else:
         color = "#8b1a1a"
         label = "🔴 Critical Alerts Detected"
@@ -4926,6 +4216,7 @@ def render_health_status_bar(status):
 # HEALTH PULSE SCORE — PHASE-3 STEP-8
 # ------------------------------------------------------------
 def generate_health_pulse(logs, health_score, trend, recent_note, file_count):
+
     if not logs:
         return ("⚪", "Not enough data — add your first log to activate your daily Health Pulse.")
 
@@ -4966,24 +4257,13 @@ def page_dashboard():
     # ------------------------------------------------------------
     # LOAD HEALTH LOGS
     # ------------------------------------------------------------
-    logs = []
-    if os.path.exists("health_log.json"):
-        try:
-            with open("health_log.json") as f:
-                logs = json.load(f)
-        except:
-            pass
+    logs = load_json(HEALTH_LOG_FILE, [])
 
     # ------------------------------------------------------------
-    # LOAD MULTI-MODAL MERGED DATA
+    # LOAD MERGED MULTI-MODAL DATA
     # ------------------------------------------------------------
-    merged_data = []
-    if os.path.exists("health_data.json"):
-        try:
-            with open("health_data.json") as f:
-                merged_data = json.load(f).get("data", [])
-        except:
-            pass
+    merged_data_obj = load_json(MERGED_DATA_FILE, {"data": []})
+    merged_data = merged_data_obj.get("data", [])
 
     # ------------------------------------------------------------
     # METRICS
@@ -4992,7 +4272,7 @@ def page_dashboard():
     last_update = logs[-1]["timestamp"] if logs else "—"
     region = "Sydney, AU"
 
-    # Score history
+    # Score trend
     score_history = save_score_history(health_score)
     trend = 0
     if len(score_history) >= 2:
@@ -5008,23 +4288,20 @@ def page_dashboard():
     # METRICS DISPLAY
     # ------------------------------------------------------------
     col1, col2, col3 = st.columns(3)
-
     with col1:
         st.metric("Health Score", f"{health_score}", f"{trend:+}")
-
     with col2:
         st.metric("Last Update", last_update)
-
     with col3:
         st.metric("Region", region)
 
     st.markdown("---")
 
     # ------------------------------------------------------------
-    # HEALTH PULSE (now logs exist, variables exist)
+    # HEALTH PULSE
     # ------------------------------------------------------------
-    recent_note = logs[-1]["notes"] if logs else ""
-    file_count = len(os.listdir("vault_files")) if os.path.exists("vault_files") else 0
+    recent_note = logs[-1].get("note", "") if logs else ""
+    file_count = len(os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
 
     pulse_icon, pulse_text = generate_health_pulse(
         logs, health_score, trend, recent_note, file_count
@@ -5069,7 +4346,7 @@ def page_dashboard():
     st.markdown("---")
 
     # ------------------------------------------------------------
-    # AI SUMMARY (Phase-2)
+    # AI SUMMARY
     # ------------------------------------------------------------
     st.markdown("### 🧠 AI Health Summary")
     summary_text = generate_ai_health_summary(logs, merged_data)
@@ -5083,8 +4360,7 @@ def page_dashboard():
     st.markdown("### 🗂️ Daily Snapshot")
 
     snapshot_date = last_update.split(" ")[0] if last_update != "—" else "—"
-    recent_note = logs[-1]["notes"] if logs else "No logs yet."
-    file_count = len(os.listdir("vault_files")) if os.path.exists("vault_files") else 0
+    recent_note_preview = recent_note[:80] + ("..." if len(recent_note) > 80 else "")
 
     col_a, col_b, col_c = st.columns(3)
 
@@ -5094,7 +4370,7 @@ def page_dashboard():
 
     with col_b:
         st.markdown("#### 📝 Latest Note")
-        st.info(recent_note[:80] + ("..." if len(recent_note) > 80 else ""))
+        st.info(recent_note_preview)
 
     with col_c:
         st.markdown("#### 📄 Documents")
@@ -5121,14 +4397,15 @@ def page_dashboard():
     else:
         signals.append("⚪ Not enough data to evaluate logging frequency.")
 
+    note = recent_note.lower()
+
+    positive_markers = ["energetic", "better", "slept well", "okay", "improved"]
+    negative_markers = ["pain", "tightness", "headache", "fatigue", "dizzy"]
+
+    pos_flag = any(p in note for p in positive_markers)
+    neg_flag = any(n in note for n in negative_markers)
+
     if logs:
-        note = logs[-1]["notes"].lower()
-        positive_markers = ["energetic", "better", "slept well", "okay", " improved"]
-        negative_markers = ["pain", "tightness", "headache", "fatigue", "dizzy"]
-
-        pos_flag = any(p in note for p in positive_markers)
-        neg_flag = any(n in note for n in negative_markers)
-
         if pos_flag and not neg_flag:
             signals.append("🟢 **Your last note looks positive** — good indicators reported.")
         elif neg_flag and not pos_flag:
@@ -5137,11 +4414,9 @@ def page_dashboard():
             signals.append("🟡 **Mixed signals** — some good signs, some discomfort.")
         else:
             signals.append("⚪ No clear sentiment detected in last note.")
-    else:
-        signals.append("⚪ No logs yet — start adding health notes for signals.")
 
-    if os.path.exists("vault_files"):
-        doc_count = len(os.listdir("vault_files"))
+    if os.path.exists(VAULT_DIR):
+        doc_count = len(os.listdir(VAULT_DIR))
         if doc_count > 0:
             signals.append(f"🟢 **{doc_count} documents stored** — vault is active.")
         else:
@@ -5161,8 +4436,7 @@ def page_dashboard():
             ">
             {s}
             </div>
-            """,
-            unsafe_allow_html=True
+            """, unsafe_allow_html=True
         )
 
     st.markdown("---")
@@ -5175,13 +4449,15 @@ def page_dashboard():
     def generate_reasoning_layer(logs, recent_note, file_count):
         reasons = []
 
-        if "headache" in recent_note.lower():
+        lower = recent_note.lower()
+
+        if "headache" in lower:
             reasons.append("Headache often correlates with hydration levels or warm weather.")
 
-        if "tightness" in recent_note.lower():
+        if "tightness" in lower:
             reasons.append("Chest tightness patterns suggest exertion or hydration issues.")
 
-        if "slept well" in recent_note.lower() or "sleep" in recent_note.lower():
+        if "slept well" in lower or "sleep" in lower:
             reasons.append("Good sleep strongly correlates with positive energy and appetite.")
 
         if file_count > 0:
@@ -5221,11 +4497,12 @@ def page_dashboard():
     st.markdown("### 🔍 Early Warning Indicators (Last 7 Days)")
 
     recent_logs = logs[-7:] if len(logs) >= 7 else logs
-    text_blob = " ".join([l.get("notes", "") for l in recent_logs]).lower()
+    text_blob = " ".join([l.get("note", "") for l in recent_logs]).lower()
     warnings = []
 
     symptom_keywords = ["headache", "pain", "tightness", "pressure"]
     symptom_count = sum(text_blob.count(k) for k in symptom_keywords)
+
     if symptom_count >= 2:
         warnings.append("⚠️ **Recurring symptoms detected** — monitor patterns.")
 
@@ -5233,12 +4510,11 @@ def page_dashboard():
         warnings.append("⚠️ **Low logging frequency** — more logs improve accuracy.")
 
     if "water" in text_blob or "hydration" in text_blob:
-        warnings.append("💧 **Hydration-related pattern noted** — keep tracking water.")
+        warnings.append("💧 **Hydration-related pattern noted** — keep monitoring water intake.")
 
     sleep_keywords = ["sleep", "tired", "fatigue"]
-    if any(k in text_blob for k in sleep_keywords):
-        if "good" not in text_blob:
-            warnings.append("😴 **Sleep irregularity signals** — mixed notes detected.")
+    if any(k in text_blob for k in sleep_keywords) and "good" not in text_blob:
+        warnings.append("😴 **Sleep irregularity signals** — mixed notes detected.")
 
     doc_count = len(os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
     if doc_count >= 5:
@@ -5272,13 +4548,13 @@ def page_dashboard():
 
     if logs:
         for entry in logs[-10:][::-1]:
-            st.markdown(
-                f"""
-                **📅 {entry.get('date','')} — {entry.get('timestamp','')}**
-
-                {entry.get('notes','')}
-                """
-            )
+            ts = entry.get("timestamp", "")
+            dt = entry.get("date", "")
+            nt = entry.get("note", "")
+            st.markdown(f"""
+                **📅 {dt} — {ts}**  
+                {nt}
+            """)
     else:
         st.warning("No logs found.")
 
@@ -5290,9 +4566,9 @@ def page_dashboard():
     st.markdown("### 📂 Recent Documents")
 
     recent_docs = []
-    if os.path.exists("vault_files"):
-        for fname in os.listdir("vault_files"):
-            p = os.path.join("vault_files", fname)
+    if os.path.exists(VAULT_DIR):
+        for fname in os.listdir(VAULT_DIR):
+            p = os.path.join(VAULT_DIR, fname)
             if os.path.isfile(p):
                 recent_docs.append({"name": fname})
 
@@ -5324,19 +4600,12 @@ def page_dashboard():
 # FIREWALL + MONETIZATION (LIGHT MODE – SAFE FOR 5 DEC LAUNCH)
 # ============================================================
 
-# IMPORTANT:
-# Use the *exact* sidebar labels here (with emojis) for premium pages.
-# Do NOT include:
-# - "🌟 Premium (Coming Soon)"
-# - "💎 Subscription Plans"
-# - "💳 Stripe Monetization Demo"
-# Those should be visible in both free and premium modes.
-
 PREMIUM_PAGES = {
-    "🧬 Summary AI",
-    "📊 Insights AI",
-    "📘 Summary Report",
-    "✨ Merged View",
+    "Premium (Coming Soon)",
+    "Summary AI",
+    "Insights AI",
+    "Summary Report",
+    "Merged View",
 }
 
 def check_firewall(page_name: str, mode: str):
@@ -5344,22 +4613,28 @@ def check_firewall(page_name: str, mode: str):
     Light firewall:
     - Free mode → premium pages show upgrade notice.
     - Premium mode → fully unlocked.
+
+    This is the safest & cleanest version.
     """
+
     if mode == "free" and page_name in PREMIUM_PAGES:
         st.markdown("### 🔒 Premium Feature")
+
         st.info(
             """
             This feature is part of **AAA Premium**.
 
-            Premium unlocks:
+            Upgrade unlocks:
             - Advanced AI summaries  
-            - Hybrid Insights AI  
+            - Insights AI  
             - Deep merged view  
-            - Rich PDF summary reports  
+            - Rich PDF analytics  
+            - Priority processing  
 
-            👉 Full launch planned for December 2025.
+            👉 Coming December 2025.
             """
         )
+
         st.stop()
 
 # ============================================================
@@ -5372,16 +4647,12 @@ def main():
     # SIDEBAR NAVIGATION
     # -------------------------------
     with st.sidebar:
-
-        # SUBSCRIPTION MODE
         st.markdown("## 🔐 Subscription Mode (Demo)")
         mode = st.radio("Select mode:", ["free", "premium"])
         st.session_state["mode"] = mode
 
-        # HEADER
         st.markdown("## 💎 AAA — Health Intelligence (DEV)")
 
-        # NAVIGATION MENU
         choice = st.radio(
             "Navigate:",
             [
@@ -5425,17 +4696,15 @@ def main():
                 # ---- Future Intelligence Layer ----
                 "🧠 Edge Node Memory",
 
-                # ---- Upcoming Features ----
+                # ---- Coming Soon ----
                 "🌟 Premium (Coming Soon)",
                 "🧊 Snapshots",
             ]
         )
 
     # -------------------------------
-    # FIREWALL — DO NOT MOVE
+    # FIREWALL (Do Not Move)
     # -------------------------------
-    # Only lock actual premium engine pages.
-    # Subscription + Premium (Coming Soon) remain visible for both modes.
     if choice not in {
         "💎 Subscription Plans",
         "💳 Stripe Monetization Demo",
@@ -5552,6 +4821,5 @@ def main():
 # ============================================================
 # RUN
 # ============================================================
-
 if __name__ == "__main__":
     main()
