@@ -14,6 +14,8 @@ import base64
 from fpdf import FPDF
 import stripe
 import html            # for safe_render()
+import requests        # <-- NEW (needed for region auto-detect)
+import random          # (needed by forecast / graphs)
 
 # ============================================================
 # GLOBAL SAFE HTML SANITIZER — PREVENTS UI BREAKING
@@ -66,6 +68,33 @@ MERGED_DATA_FILE = os.path.join(DATA_DIR, "merged_health_data.json")
 AI_SUMMARY_FILE = os.path.join(DATA_DIR, "ai_summary.json")
 
 SUMMARY_REPORT_PDF = os.path.join(DATA_DIR, "health_summary_report.pdf")
+
+
+# ============================================================
+# STEP 2 — REGION AUTO-DETECT (India / Australia / Global)
+# ============================================================
+
+def detect_region():
+    """
+    Detects user region via IP — safe, no HTML, no UI changes.
+    Always returns one of: 'IN', 'AU', 'GLOBAL'
+    """
+
+    try:
+        r = requests.get("https://ipapi.co/json/", timeout=3)
+        data = r.json()
+        code = data.get("country_code", "").upper()
+
+        if code == "IN":
+            return "IN"
+        if code == "AU":
+            return "AU"
+
+        return "GLOBAL"
+
+    except:
+        return "GLOBAL"
+
 
 # ============================================================
 # INSIGHTS HISTORY (PREMIUM)
@@ -4024,177 +4053,407 @@ def page_subscription_plans():
     aaa_header()
     st.subheader("💳 Subscription Plans — Artigellence Premium")
 
+    # --------------------------------------------------------
+    # REGION AUTO-DETECT (IN / AU / GLOBAL)
+    # --------------------------------------------------------
+    user_region = detect_region()
+    st.caption(f"Detected Region: {user_region}")
+
+    # --------------------------------------------------------
+    # REGION SMART CTA BANNER
+    # --------------------------------------------------------
+    banner_text = {
+        "IN":     "🇮🇳 Save 70% with India regional pricing — ₹500/month",
+        "AU":     "🇦🇺 Local Plan Available — A$10/month",
+        "GLOBAL": "🌍 Global Premium Access — $10/month"
+    }.get(user_region, "🌍 Global Premium Access — $10/month")
+
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(90deg, #0e1a2b, #0c223a);
+            padding: 14px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.10);
+            margin: 10px 0 25px 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: #C7D2FE;
+            text-align: center;
+            box-shadow: 0px 2px 10px rgba(0,0,0,0.35);
+        ">
+            {banner_text}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.write(
-        "Choose how you want to explore **AAA — Health Intelligence**.\n"
+        "Choose how you want to explore **AAA — Health Intelligence**. "
         "Free mode lets you try essentials. Premium unlocks full intelligence."
     )
 
-    col1, col2, col3 = st.columns(3)
-
     # --------------------------------------------------------
-    # FREE PLAN
+    # GLOBAL CARD CSS (APPLE-CLASS + POLISH)
     # --------------------------------------------------------
-    with col1:
-        st.markdown("### 🆓 Free")
-        st.caption("Basic AAA features.")
-        st.markdown("**$0 / month**")
-
-        st.write(
-            """
-            **Includes:**  
-            • Dashboard  
-            • Health Log  
-            • Health Vault + OCR  
-            • Demo AI Summary  
-            • Snapshots (Basic)  
-            • PDF Preview (Basic)  
-            """
-        )
-
-    # --------------------------------------------------------
-    # PREMIUM INDIA — ₹500/month
-    # --------------------------------------------------------
-    with col2:
-        st.markdown("### 🇮🇳 Premium — India")
-        st.caption("Accessible India pricing.")
-        st.markdown("**₹500 / month**")
-
-        st.write(
-            """
-            **Includes:**  
-            • Unlimited AI Summaries  
-            • Hybrid Engine  
-            • Insights + Full History  
-            • AI PDF Reports  
-            • Timeline + Snapshots (Full)  
-            • Finance × Law Early Access  
-            • Vibration Indicators (Beta)  
-            """
-        )
-
-        st.markdown(
-            """
-            <a href="https://buy.stripe.com/6oU4gyelZ60Zf7q3L15ZC03" target="_blank">
-                <button style="padding:10px 18px; border-radius:8px; width:100%;">Subscribe — ₹500/mo</button>
-            </a>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.success("Recommended")
-
-    # --------------------------------------------------------
-    # PREMIUM GLOBAL — $10/month
-    # --------------------------------------------------------
-    with col3:
-        st.markdown("### 🌍 Premium — Global")
-        st.caption("For users outside India.")
-        st.markdown("**$10 / month**")
-
-        st.write(
-            """
-            **Includes:**  
-            • All Premium Features  
-            • Unlimited AI PDFs  
-            • Hybrid Engine  
-            • Vibration × Health Map  
-            • Serene Frequencies (Beta)  
-            """
-        )
-
-        st.markdown(
-            """
-            <a href="https://buy.stripe.com/bJecN4fq39dbf7q3L15ZC01" target="_blank">
-                <button style="padding:10px 18px; border-radius:8px; width:100%;">Subscribe — $10/mo</button>
-            </a>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-    # --------------------------------------------------------
-    # AUSTRALIA PLAN — A$10/month
-    # --------------------------------------------------------
-    st.markdown("### 🇦🇺 Australia (Local Pricing)")
-    st.markdown("**A$10 / month**")
     st.markdown(
         """
-        <a href="https://buy.stripe.com/28EdR8a5JfBze3m3L15ZC04" target="_blank">
-            <button style="padding:10px 18px; border-radius:8px; width:300px;">Subscribe — A$10/mo</button>
-        </a>
+        <style>
+            .pricing-wrapper {
+                margin-top: 10px;
+                margin-bottom: 30px;
+            }
+
+            .aaa-card {
+                background: rgba(255,255,255,0.03);
+                padding: 24px;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.10);
+                min-height: 360px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                transition: all 0.22s ease-in-out;
+            }
+
+            .aaa-card:hover {
+                transform: translateY(-4px) scale(1.018);
+                border: 1px solid rgba(0,255,174,0.40);
+                box-shadow: 0 0 20px rgba(0,255,174,0.18);
+            }
+
+            /* AI Glow Pulse */
+            @keyframes aaaPulse {
+                0%   { box-shadow: 0 0 0px rgba(0,255,174,0.0); }
+                50%  { box-shadow: 0 0 18px rgba(0,255,174,0.55); }
+                100% { box-shadow: 0 0 0px rgba(0,255,174,0.0); }
+            }
+
+            .aaa-active {
+                border: 2px solid rgba(0,255,174,0.75) !important;
+                animation: aaaPulse 2.8s infinite ease-in-out;
+            }
+
+            .aaa-card-title { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+            .aaa-price { font-size: 30px; font-weight: 700; margin-bottom: 14px; }
+            .aaa-list { font-size: 14px; line-height: 1.55; margin-top: 8px; }
+
+            .aaa-button {
+                width: 100%;
+                border-radius: 10px;
+                padding: 12px 0;
+                font-weight: 600;
+                margin-top: 14px;
+                background: #1f6feb;
+                color: white;
+                border: none;
+                cursor: pointer;
+                transition: all 0.18s ease-in-out;
+            }
+
+            .aaa-button:hover {
+                opacity: 0.92 !important;
+                transform: scale(1.04) !important;
+            }
+        </style>
         """,
-        unsafe_allow_html=True,
+        unsafe_allow_html=True
     )
+
+    # ACTIVE REGION HIGHLIGHT
+    active_in  = "aaa-active" if user_region == "IN" else ""
+    active_gl  = "aaa-active" if user_region == "GLOBAL" else ""
+    active_au  = "aaa-active" if user_region == "AU" else ""
+
+    # --------------------------------------------------------
+    # WRAPPER FOR PERFECT 4-COLUMN ALIGNMENT
+    # --------------------------------------------------------
+    st.markdown("<div class='pricing-wrapper'>", unsafe_allow_html=True)
+    col_free, col_global, col_india, col_aus = st.columns(4)
+
+    # ---------------------------
+    # FREE
+    # ---------------------------
+    with col_free:
+        st.markdown(
+            """
+            <div class="aaa-card">
+                <div>
+                    <div class="aaa-card-title">🆓 Free</div>
+                    <div class="aaa-price">$0 / month</div>
+                    <div class="aaa-list">
+                        • Dashboard<br>
+                        • Health Log<br>
+                        • Vault + OCR<br>
+                        • Demo AI Summary<br>
+                        • Snapshots (Basic)<br>
+                        • PDF Preview (Basic)
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # ---------------------------
+    # GLOBAL
+    # ---------------------------
+    st.markdown('<div id="global-section"></div>', unsafe_allow_html=True)
+
+    with col_global:
+        st.markdown(
+            f"""
+            <div class="aaa-card {active_gl}">
+                <div>
+                    <div class="aaa-card-title">🌍 Premium — Global</div>
+                    <div class="aaa-price">$10 / month</div>
+                    <div class="aaa-list">
+                        • Full Premium Access<br>
+                        • Unlimited AI PDFs<br>
+                        • Hybrid Engine<br>
+                        • Vibration × Health Map<br>
+                        • Serene Frequencies (Beta)
+                    </div>
+                </div>
+                <a href="https://buy.stripe.com/bJecN4fq39dbf7q3L15ZC01" target="_blank">
+                    <button class="aaa-button">Start Premium — $10/mo</button>
+                </a>
+                <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # ---------------------------
+    # INDIA
+    # ---------------------------
+    st.markdown('<div id="india-section"></div>', unsafe_allow_html=True)
+
+    with col_india:
+        st.markdown(
+            f"""
+            <div class="aaa-card {active_in}">
+                <div>
+                    <div class="aaa-card-title">🇮🇳 Premium — India</div>
+                    <div class="aaa-price">₹500 / month</div>
+                    <div class="aaa-list">
+                        • Unlimited AI Summaries<br>
+                        • Hybrid Engine<br>
+                        • Insights + Full History<br>
+                        • AI PDF Reports<br>
+                        • Timeline + Snapshots<br>
+                        • Finance × Law Early Access<br>
+                        • Vibration Indicators (Beta)
+                    </div>
+                </div>
+                <a href="https://buy.stripe.com/6oU4gyelZ60Zf7q3L15ZC03" target="_blank">
+                    <button class="aaa-button">Start Premium — ₹500/mo</button>
+                </a>
+                <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # ---------------------------
+    # AUSTRALIA
+    # ---------------------------
+    st.markdown('<div id="australia-section"></div>', unsafe_allow_html=True)
+
+    with col_aus:
+        st.markdown(
+            f"""
+            <div class="aaa-card {active_au}">
+                <div>
+                    <div class="aaa-card-title">🇦🇺 Premium — Australia</div>
+                    <div class="aaa-price">A$10 / month</div>
+                    <div class="aaa-list">
+                        • Unlimited AI Summaries<br>
+                        • Hybrid Engine<br>
+                        • Insights + Full History<br>
+                        • PDF Reports<br>
+                        • Timeline + Snapshots<br>
+                        • Vibration Indicators (Beta)
+                    </div>
+                </div>
+                <a href="https://buy.stripe.com/28EdR8a5JfBze3m3L15ZC04" target="_blank">
+                    <button class="aaa-button">Start Premium — A$10/mo</button>
+                </a>
+                <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)  # END WRAPPER
 
     # --------------------------------------------------------
     # COMPARISON TABLE
     # --------------------------------------------------------
     st.markdown("## 🔍 Free vs Premium — Feature Comparison")
 
-    st.markdown(
-        """
-        <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px 12px;
-            text-align: center;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
     st.table(
         {
             "Feature": [
-                "Dashboard",
-                "Health Log",
-                "Health Vault",
-                "OCR Extraction",
-                "AI Summary",
-                "Hybrid Engine",
-                "AI PDF Reports",
-                "Timeline View",
-                "Snapshots",
-                "Vibration Indicators",
-                "Finance × Law",
+                "Dashboard","Health Log","Health Vault","OCR Extraction",
+                "AI Summary","Hybrid Engine","AI PDF Reports","Timeline View",
+                "Snapshots","Vibration Indicators","Finance × Law",
             ],
             "Free": [
-                "✔",
-                "✔",
-                "✔",
-                "✔",
-                "Demo Only",
-                "✘",
-                "✘",
-                "Basic",
-                "Basic",
-                "✘",
-                "✘",
+                "✔","✔","✔","✔","Demo Only","✘","✘","Basic","Basic","✘","✘",
             ],
             "Premium": [
-                "✔ (Enhanced)",
-                "✔",
-                "✔",
-                "✔",
-                "Unlimited",
-                "Full Access",
-                "Yes",
-                "Advanced",
-                "Unlimited",
-                "Beta Access",
-                "Early Access",
+                "✔ (Enhanced)","✔","✔","✔","Unlimited","Full Access","Yes",
+                "Advanced","Unlimited","Beta Access","Early Access",
             ],
         }
     )
 
     st.info("Stripe payments are live. Your data always remains encrypted and fully owned by you.")
 
+    # --------------------------------------------------------
+    # AUTO-SCROLL TO CORRECT PLAN
+    # --------------------------------------------------------
+    anchor_map = {"IN": "india-section", "AU": "australia-section", "GLOBAL": "global-section"}
+    target_anchor = anchor_map.get(user_region)
+
+    if target_anchor:
+        st.markdown(
+            f"""
+            <script>
+                let t = document.getElementById("{target_anchor}");
+                if (t) {{
+                    setTimeout(() => {{
+                        t.scrollIntoView({{behavior:'smooth', block:'center'}});
+                    }}, 350);
+                }}
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # --------------------------------------------------------
+    # AI RECOMMENDATION ENGINE
+    # --------------------------------------------------------
+    st.markdown("### 🤖 Smart Recommendation (AI)")
+
+    logs = load_json(HEALTH_LOG_FILE, [])
+    ocr = load_json(OCR_DATA_FILE, [])
+    vault_items = len(logs) + len(ocr)
+
+    if user_region == "IN":
+        recommended = "India Premium — ₹500/month"
+    elif user_region == "AU":
+        recommended = "Australia Local Premium — A$10/month"
+    else:
+        recommended = "Global Premium — $10/month"
+
+    usage_note = (
+        "You're actively using AI summaries and Vault features."
+        if vault_items >= 3 else
+        "You're exploring the basics. Premium unlocks full intelligence."
+    )
+
+    st.markdown(
+        f"""
+        <div style="
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.10);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 25px;
+        ">
+            <div style="font-size:17px; font-weight:600; margin-bottom:8px;">
+                Recommended for you → {recommended}
+            </div>
+            <div style="font-size:14px; opacity:0.85;">
+                {usage_note}
+                Premium provides unlimited summaries, PDFs, Hybrid Engine, insights,
+                advanced timelines and early access to AAA Finance × Law.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --------------------------------------------------------
+    # SMART EXIT INTENT BAR
+    # --------------------------------------------------------
+    exit_region_map = {
+        "IN":     ("🇮🇳 India Premium — ₹500/month",  "https://buy.stripe.com/6oU4gyelZ60Zf7q3L15ZC03",  "Start Premium — ₹500/mo"),
+        "AU":     ("🇦🇺 Australia Premium — A$10/month","https://buy.stripe.com/28EdR8a5JfBze3m3L15ZC04","Start Premium — A$10/mo"),
+        "GLOBAL": ("🌍 Global Premium — $10/month","https://buy.stripe.com/bJecN4fq39dbf7q3L15ZC01","Start Premium — $10/mo"),
+    }
+
+    e_text, e_link, e_cta = exit_region_map.get(user_region, exit_region_map["GLOBAL"])
+
+    st.markdown(
+        f"""
+        <style>
+            #exit-intent-bar {{
+                position: fixed;
+                bottom: -200px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 96%;
+                max-width: 850px;
+                background: rgba(15, 25, 45, 0.92);
+                padding: 16px 22px;
+                color: #E2E8F0;
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.1);
+                box-shadow: 0 0 18px rgba(0,255,174,0.15);
+                transition: all 0.45s ease-in-out;
+                z-index: 9999;
+            }}
+            #exit-intent-bar.show {{
+                bottom: 20px;
+            }}
+            #exit-btn {{
+                background:#1f6feb;color:white;padding:10px 20px;
+                border-radius:10px;border:none;
+                font-size:15px;font-weight:600;
+                cursor:pointer;transition:0.2s;
+            }}
+            #exit-btn:hover {{
+                opacity:0.9; transform:scale(1.02);
+            }}
+        </style>
+
+        <div id="exit-intent-bar">
+            <div style="font-size:16px;font-weight:600;margin-bottom:6px;">{e_text}</div>
+            <a href="{e_link}" target="_blank"><button id="exit-btn">{e_cta}</button></a>
+        </div>
+
+        <script>
+            let lastScroll=0;
+            let bar=document.getElementById("exit-intent-bar");
+            let hideTimeout=null;
+
+            window.addEventListener("scroll", function() {{
+                let current=window.pageYOffset;
+
+                if(current < lastScroll && current > 80) {{
+                    bar.classList.add("show");
+                    clearTimeout(hideTimeout);
+                    hideTimeout=setTimeout(()=>bar.classList.remove("show"),6000);
+                }}
+
+                if((current-lastScroll) > 120) {{
+                    bar.classList.add("show");
+                    clearTimeout(hideTimeout);
+                    hideTimeout=setTimeout(()=>bar.classList.remove("show"),6000);
+                }}
+
+                lastScroll=current;
+            }});
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
     monetization_cta()
     aaa_footer()
-
 
 
 # ============================================================
