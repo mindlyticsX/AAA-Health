@@ -820,55 +820,99 @@ def page_snapshots():
 def page_summary():
     aaa_header()
     st.subheader("🧠 AI Summary (Demo)")
+    st.caption("Generate a simple, patient-friendly summary using your logs or scanned text.")
 
+    # -------------------------------
+    # LOAD DATA
+    # -------------------------------
     logs = load_json(HEALTH_LOG_FILE, [])
     ocr = load_json(OCR_DATA_FILE, [])
 
-    log_choice = (
-        st.selectbox(
-            "Select Health Log",
-            list(range(len(logs))) if logs else [],
-            format_func=lambda i: logs[i]["date"],
-        )
-        if logs else None
-    )
+    # -------------------------------
+    # INPUT SELECTORS
+    # -------------------------------
+    st.markdown("### Select Sources")
 
-    ocr_choice = (
-        st.selectbox(
-            "Select OCR Entry",
-            list(range(len(ocr))) if ocr else [],
-            format_func=lambda i: ocr[i]["filename"],
-        )
-        if ocr else None
-    )
+    col1, col2 = st.columns(2)
 
-    if st.button("Generate Summary"):
+    with col1:
+        log_choice = (
+            st.selectbox(
+                "Health Log",
+                list(range(len(logs))) if logs else [],
+                format_func=lambda i: logs[i].get("date", f"Log {i+1}"),
+            )
+            if logs else None
+        )
+
+    with col2:
+        ocr_choice = (
+            st.selectbox(
+                "OCR Entry",
+                list(range(len(ocr))) if ocr else [],
+                format_func=lambda i: ocr[i].get("filename", f"OCR {i+1}"),
+            )
+            if ocr else None
+        )
+
+    st.markdown("---")
+
+    # -------------------------------
+    # BUTTON
+    # -------------------------------
+    if st.button("Generate Summary", use_container_width=True):
         if log_choice is None and ocr_choice is None:
-            st.error("Select at least one source.")
+            st.error("Please select at least one source.")
             aaa_footer()
             return
 
         parts = []
         if log_choice is not None:
-            parts.append(str(logs[log_choice]))
+            parts.append(f"Log Entry:\n{logs[log_choice]}")
         if ocr_choice is not None:
-            parts.append(ocr[ocr_choice]["text"])
+            parts.append(f"OCR Text:\n{ocr[ocr_choice]['text']}")
 
+        combined_text = "\n\n---\n\n".join(parts)
+
+        # -------------------------------
+        # SAFE PROMPT
+        # -------------------------------
         prompt = f"""
-Convert the following into a structured, patient-friendly medical summary with:
-- Key Symptoms
-- Risk Markers
-- Trends
+Create a simple, patient-friendly summary of the following text.
+Do NOT give medical advice. 
+Focus only on:
 - Observations
-- Recommendations
+- Patterns
+- Notable mentions
+- General well-being indicators
 
 TEXT:
-{parts}
+{combined_text}
 """
 
-        resp_text = call_gemini(prompt)
-        st.markdown(resp_text)
+        response = call_gemini(prompt)
 
+        # -------------------------------
+        # OUTPUT BOX
+        # -------------------------------
+        st.markdown("### 📘 Your Summary")
+        st.markdown(
+            f"""
+            <div style="
+                background-color:#0d233b;
+                padding:18px;
+                border-radius:12px;
+                border:1px solid #1e3a5c;
+                color:white;
+                line-height:1.6;
+            ">
+            {response}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
     monetization_cta()
     aaa_footer()
 
@@ -3987,55 +4031,170 @@ def page_subscription_plans():
 
     col1, col2, col3 = st.columns(3)
 
+    # --------------------------------------------------------
     # FREE PLAN
+    # --------------------------------------------------------
     with col1:
-        st.markdown("### Free")
+        st.markdown("### 🆓 Free")
         st.caption("Basic AAA features.")
         st.markdown("**$0 / month**")
+
         st.write(
             """
+            **Includes:**  
             • Dashboard  
             • Health Log  
-            • Vault + OCR  
-            • Demo Summary  
-            • Snapshots  
+            • Health Vault + OCR  
+            • Demo AI Summary  
+            • Snapshots (Basic)  
+            • PDF Preview (Basic)  
             """
         )
 
-    # PREMIUM INDIA
+    # --------------------------------------------------------
+    # PREMIUM INDIA — ₹500/month
+    # --------------------------------------------------------
     with col2:
         st.markdown("### 🇮🇳 Premium — India")
         st.caption("Accessible India pricing.")
         st.markdown("**₹500 / month**")
+
         st.write(
             """
+            **Includes:**  
             • Unlimited AI Summaries  
             • Hybrid Engine  
-            • Insights + History  
-            • AI PDFs  
-            • Timeline + Snapshots  
-            • Finance × Law Access  
+            • Insights + Full History  
+            • AI PDF Reports  
+            • Timeline + Snapshots (Full)  
+            • Finance × Law Early Access  
+            • Vibration Indicators (Beta)  
             """
+        )
+
+        st.markdown(
+            """
+            <a href="https://buy.stripe.com/6oU4gyelZ60Zf7q3L15ZC03" target="_blank">
+                <button style="padding:10px 18px; border-radius:8px; width:100%;">Subscribe — ₹500/mo</button>
+            </a>
+            """,
+            unsafe_allow_html=True,
         )
         st.success("Recommended")
 
-    # PREMIUM GLOBAL
+    # --------------------------------------------------------
+    # PREMIUM GLOBAL — $10/month
+    # --------------------------------------------------------
     with col3:
         st.markdown("### 🌍 Premium — Global")
+        st.caption("For users outside India.")
         st.markdown("**$10 / month**")
+
         st.write(
             """
+            **Includes:**  
             • All Premium Features  
-            • AI PDFs  
+            • Unlimited AI PDFs  
             • Hybrid Engine  
+            • Vibration × Health Map  
             • Serene Frequencies (Beta)  
             """
         )
 
-    st.info("Stripe payments not live yet. Pricing shown is preview only.")
+        st.markdown(
+            """
+            <a href="https://buy.stripe.com/bJecN4fq39dbf7q3L15ZC01" target="_blank">
+                <button style="padding:10px 18px; border-radius:8px; width:100%;">Subscribe — $10/mo</button>
+            </a>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    # --------------------------------------------------------
+    # AUSTRALIA PLAN — A$10/month
+    # --------------------------------------------------------
+    st.markdown("### 🇦🇺 Australia (Local Pricing)")
+    st.markdown("**A$10 / month**")
+    st.markdown(
+        """
+        <a href="https://buy.stripe.com/28EdR8a5JfBze3m3L15ZC04" target="_blank">
+            <button style="padding:10px 18px; border-radius:8px; width:300px;">Subscribe — A$10/mo</button>
+        </a>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # COMPARISON TABLE
+    # --------------------------------------------------------
+    st.markdown("## 🔍 Free vs Premium — Feature Comparison")
+
+    st.markdown(
+        """
+        <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px 12px;
+            text-align: center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.table(
+        {
+            "Feature": [
+                "Dashboard",
+                "Health Log",
+                "Health Vault",
+                "OCR Extraction",
+                "AI Summary",
+                "Hybrid Engine",
+                "AI PDF Reports",
+                "Timeline View",
+                "Snapshots",
+                "Vibration Indicators",
+                "Finance × Law",
+            ],
+            "Free": [
+                "✔",
+                "✔",
+                "✔",
+                "✔",
+                "Demo Only",
+                "✘",
+                "✘",
+                "Basic",
+                "Basic",
+                "✘",
+                "✘",
+            ],
+            "Premium": [
+                "✔ (Enhanced)",
+                "✔",
+                "✔",
+                "✔",
+                "Unlimited",
+                "Full Access",
+                "Yes",
+                "Advanced",
+                "Unlimited",
+                "Beta Access",
+                "Early Access",
+            ],
+        }
+    )
+
+    st.info("Stripe payments are live. Your data always remains encrypted and fully owned by you.")
 
     monetization_cta()
     aaa_footer()
+
 
 
 # ============================================================
@@ -4046,15 +4205,13 @@ def page_premium():
     aaa_header()
 
     st.subheader("🌟 Artigellence Premium — Coming Soon")
-    st.caption(
-        "Unlock AAA’s full intelligence tier across Health × Vibration × Finance × Law."
-    )
+    st.caption("Unlock AAA’s full intelligence tier across Health × Vibration × Finance × Law.")
 
     st.markdown("### 🚀 AAA Premium (Full Intelligence Tier)")
     st.write(
         """
         Experience the complete AAA Intelligence layer:  
-        summaries ➜ hybrid insights ➜ forecasting ➜ vibration signals ➜ volatility ➜ unified timeline.
+        summaries ➜ hybrid insights ➜ forecasting ➜ vibration signals ➜ volatility maps ➜ unified timeline.
         """
     )
 
@@ -4062,15 +4219,15 @@ def page_premium():
         """
         **Included in Premium:**  
         • Unlimited AI Medical Summaries  
-        • Hybrid Engine (Doctor × Lab × Notes)  
-        • Deep Insights + Full History  
-        • Timeline + Snapshots + Unified Logs  
+        • Hybrid Engine (Doctor × Lab × Notes Fusion)  
+        • Deep Insights + Full Timeline History  
+        • Unified Logs + Pattern Recognition  
         • AI-Generated PDF Reports  
         • Pattern Timeline AI + Forecasting  
-        • Health × Vibration Indicators  
+        • Vibration × Health Indicators  
         • Volatility Map + Noise Detection  
-        • Access to AAA Finance × Law  
-        • Serene Frequencies Indicators  
+        • Early Access: AAA Finance × AAA Law  
+        • Serene Frequencies Layer (Beta)  
         """
     )
 
@@ -4250,6 +4407,48 @@ def generate_health_pulse(logs, health_score, trend, recent_note, file_count):
 # ------------------------------------------------------------
 def page_dashboard():
     aaa_header()
+
+    # ------------------------------------------------------------
+    # SIMPLE VIEW — FIRST SCREEN
+    # ------------------------------------------------------------
+    st.subheader("📊 Dashboard — Simple Overview")
+
+    st.markdown(
+        """
+        <div style="font-size:15px; line-height:1.6; color:#C7D2FE; margin-bottom:20px;">
+            A quick snapshot of your AAA Health activity.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    colS1, colS2 = st.columns(2)
+
+    with colS1:
+        if st.button("📝 Health Log\n(Your notes & entries)", use_container_width=True):
+            st.session_state["nav"] = "🩺 Health Log"
+
+        if st.button("📄 Documents\n(PDFs & images)", use_container_width=True):
+            st.session_state["nav"] = "📥 Health Vault"
+
+    with colS2:
+        if st.button("🤖 AI Insights (Premium)\n(Summary)", use_container_width=True):
+            st.session_state["nav"] = "🧠 AI Summary"
+
+        if st.button("📈 Advanced Metrics\n(Expand full dashboard)", use_container_width=True):
+            st.session_state["show_full_dashboard"] = not st.session_state.get("show_full_dashboard", False)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # If full dashboard is OFF → Stop here
+    if not st.session_state.get("show_full_dashboard", False):
+        aaa_footer()
+        return
+
+    # ------------------------------------------------------------
+    # ORIGINAL FULL DASHBOARD STARTS BELOW (unchanged)
+    # ------------------------------------------------------------
+
     st.subheader("📊 AAA Health Intelligence — Tailored Dashboard (Beta)")
     st.markdown("This is your personalised health overview. More data unlocks as you upload documents, logs, or summaries.")
     st.markdown("")
@@ -4601,11 +4800,11 @@ def page_dashboard():
 # ============================================================
 
 PREMIUM_PAGES = {
-    "Premium (Coming Soon)",
-    "Summary AI",
-    "Insights AI",
-    "Summary Report",
-    "Merged View",
+    "✨ Merged View (Combined Data)",
+    "🧬 Summary AI (Advanced Summary)",
+    "📊 Insights AI (Deep Insights)",
+    "📘 Summary Report (PDF Generator)",
+    "🌟 Premium (Coming Soon)",
 }
 
 def check_firewall(page_name: str, mode: str):
@@ -4613,8 +4812,6 @@ def check_firewall(page_name: str, mode: str):
     Light firewall:
     - Free mode → premium pages show upgrade notice.
     - Premium mode → fully unlocked.
-
-    This is the safest & cleanest version.
     """
 
     if mode == "free" and page_name in PREMIUM_PAGES:
@@ -4637,6 +4834,8 @@ def check_firewall(page_name: str, mode: str):
 
         st.stop()
 
+
+
 # ============================================================
 # MAIN NAVIGATION
 # ============================================================
@@ -4647,175 +4846,186 @@ def main():
     # SIDEBAR NAVIGATION
     # -------------------------------
     with st.sidebar:
+
+        # Subscription toggle
         st.markdown("## 🔐 Subscription Mode (Demo)")
         mode = st.radio("Select mode:", ["free", "premium"])
         st.session_state["mode"] = mode
 
+        # Header
         st.markdown("## 💎 AAA — Health Intelligence (DEV)")
 
+        # -------------------------------
+        # NAVIGATION MENU (Simple meanings added)
+        # -------------------------------
         choice = st.radio(
             "Navigate:",
             [
                 # ---- Core Health Intelligence ----
-                "📊 Dashboard",
-                "🩺 Health Log",
-                "📥 Health Vault",
-                "📁 Vault Manager",
-                "🗑 Recycle Bin",
-                "📄 PDF Preview",
-                "🔍 OCR",
+                "📊 Dashboard (Overview)",
+                "🩺 Health Log (Notes)",
+                "📥 Health Vault (Uploads)",
+                "📁 Vault Manager (Manage Files)",
+                "🗑 Recycle Bin (Deleted Items)",
+                "📄 PDF Preview (Reports)",
+                "🔍 OCR (Scan Text)",
 
                 # ---- AI Intelligence Layer ----
                 "🧠 Summary (Demo)",
-                "✨ Merged View",
-                "🧬 Summary AI",
-                "📊 Insights AI",
-                "📚 Insights History",
-                "📘 Summary Report",
-                "🚨 AI Health Risk Engine",
-                "🧬 Pattern Timeline AI",
-                "🌐 Insight Fusion Layer",
-                "📈 Insight Graphs",
-                "🩺 Medical Triptych",
-                "🎵 Serene Frequencies",
-                "🧘 Mood × Sleep × Stress Radar",
-                "🔮 Health × Vibration Correlation Map",
-                "📈 Trend Forecast Engine",
-                "📅 Unified Timeline Intelligence",
-                "🧩 Insight Matrix",
-                "🧠 Health Knowledge Graph",
-                "🧬 Multi-Signal Diagnostic Engine",
-                "🧬 Health Signature Engine",
-                "🧬 Unified Signal Comparison",
-                "📉 Signal Volatility Engine",
+                "✨ Merged View (Combined Data)",
+                "🧬 Summary AI (Advanced Summary)",
+                "📊 Insights AI (Deep Insights)",
+                "📚 Insights History (Past Insights)",
+                "📘 Summary Report (PDF Generator)",
+                "🚨 AI Health Risk Engine (Risk Signals)",
+                "🧬 Pattern Timeline AI (Patterns Over Time)",
+                "🌐 Insight Fusion Layer (Fusion Intelligence)",
+                "📈 Insight Graphs (Visual Charts)",
+                "🩺 Medical Triptych (3-Panel View)",
+                "🎵 Serene Frequencies (Audio Wellness)",
+                "🧘 Mood × Sleep × Stress Radar (Wellbeing Map)",
+                "🔮 Health × Vibration Correlation Map (Energy Map)",
+                "📈 Trend Forecast Engine (Predictions)",
+                "📅 Unified Timeline Intelligence (Time-Line View)",
+                "🧩 Insight Matrix (Matrix View)",
+                "🧠 Health Knowledge Graph (Knowledge Map)",
+                "🧬 Multi-Signal Diagnostic Engine (Multi-Signal Analysis)",
+                "🧬 Health Signature Engine (Signature View)",
+                "🧬 Unified Signal Comparison (Compare Signals)",
+                "📉 Signal Volatility Engine (Volatility Analysis)",
 
                 # ---- Monetization Layer ----
-                "💎 Subscription Plans",
-                "💳 Stripe Monetization Demo",
+                "💎 Subscription Plans (Pricing)",
+                "💳 Stripe Monetization Demo (Pay Demo)",
 
                 # ---- Future Intelligence Layer ----
-                "🧠 Edge Node Memory",
+                "🧠 Edge Node Memory (Memory Layer)",
 
                 # ---- Coming Soon ----
                 "🌟 Premium (Coming Soon)",
-                "🧊 Snapshots",
+                "🧊 Snapshots (Records)",
             ]
         )
+
+        st.session_state["nav"] = choice
+
 
     # -------------------------------
     # FIREWALL (Do Not Move)
     # -------------------------------
     if choice not in {
-        "💎 Subscription Plans",
-        "💳 Stripe Monetization Demo",
+        "💎 Subscription Plans (Pricing)",
+        "💳 Stripe Monetization Demo (Pay Demo)",
         "🌟 Premium (Coming Soon)",
     }:
         check_firewall(choice, mode)
 
+
     # -------------------------------
     # PAGE ROUTING
     # -------------------------------
-    if choice == "📊 Dashboard":
+    if choice.startswith("📊 Dashboard"):
         page_dashboard()
 
-    elif choice == "🩺 Health Log":
+    elif choice.startswith("🩺 Health Log"):
         page_health_log()
 
-    elif choice == "📥 Health Vault":
+    elif choice.startswith("📥 Health Vault"):
         page_health_vault()
 
-    elif choice == "📁 Vault Manager":
+    elif choice.startswith("📁 Vault Manager"):
         page_vault_manager()
 
-    elif choice == "🗑 Recycle Bin":
+    elif choice.startswith("🗑 Recycle Bin"):
         page_recycle_bin()
 
-    elif choice == "📄 PDF Preview":
+    elif choice.startswith("📄 PDF Preview"):
         page_pdf_preview()
 
-    elif choice == "🔍 OCR":
+    elif choice.startswith("🔍 OCR"):
         page_ocr()
 
     elif choice == "🧠 Summary (Demo)":
         page_summary()
 
-    elif choice == "✨ Merged View":
+    elif choice.startswith("✨ Merged View"):
         page_merged()
 
-    elif choice == "🧬 Summary AI":
+    elif choice.startswith("🧬 Summary AI"):
         page_summary_ai()
 
-    elif choice == "📊 Insights AI":
+    elif choice.startswith("📊 Insights AI"):
         page_insights_ai()
 
-    elif choice == "📚 Insights History":
+    elif choice.startswith("📚 Insights History"):
         page_insights_history()
 
-    elif choice == "📘 Summary Report":
+    elif choice.startswith("📘 Summary Report"):
         page_summary_report()
 
-    elif choice == "🚨 AI Health Risk Engine":
+    elif choice.startswith("🚨 AI Health Risk Engine"):
         page_risk_engine()
 
-    elif choice == "🧬 Pattern Timeline AI":
+    elif choice.startswith("🧬 Pattern Timeline AI"):
         page_pattern_timeline_ai()
 
-    elif choice == "🌐 Insight Fusion Layer":
+    elif choice.startswith("🌐 Insight Fusion Layer"):
         page_insight_fusion()
 
-    elif choice == "📈 Insight Graphs":
+    elif choice.startswith("📈 Insight Graphs"):
         page_insight_graphs()
 
-    elif choice == "🩺 Medical Triptych":
+    elif choice.startswith("🩺 Medical Triptych"):
         page_medical_triptych()
 
-    elif choice == "🎵 Serene Frequencies":
+    elif choice.startswith("🎵 Serene Frequencies"):
         page_serene_frequency()
 
-    elif choice == "🧘 Mood × Sleep × Stress Radar":
+    elif choice.startswith("🧘 Mood × Sleep × Stress Radar"):
         page_mood_sleep_stress_radar()
 
-    elif choice == "🔮 Health × Vibration Correlation Map":
+    elif choice.startswith("🔮 Health × Vibration Correlation Map"):
         page_health_vibration_correlation()
 
-    elif choice == "📈 Trend Forecast Engine":
+    elif choice.startswith("📈 Trend Forecast Engine"):
         page_trend_forecast_engine()
 
-    elif choice == "📅 Unified Timeline Intelligence":
+    elif choice.startswith("📅 Unified Timeline Intelligence"):
         page_unified_timeline_intel()
 
-    elif choice == "🧩 Insight Matrix":
+    elif choice.startswith("🧩 Insight Matrix"):
         page_insight_matrix()
 
-    elif choice == "🧠 Health Knowledge Graph":
+    elif choice.startswith("🧠 Health Knowledge Graph"):
         page_health_knowledge_graph()
 
-    elif choice == "🧬 Multi-Signal Diagnostic Engine":
+    elif choice.startswith("🧬 Multi-Signal Diagnostic Engine"):
         page_multi_signal_engine()
 
-    elif choice == "🧬 Health Signature Engine":
+    elif choice.startswith("🧬 Health Signature Engine"):
         page_health_signature_engine()
 
-    elif choice == "🧬 Unified Signal Comparison":
+    elif choice.startswith("🧬 Unified Signal Comparison"):
         page_unified_signal_comparison()
 
-    elif choice == "📉 Signal Volatility Engine":
+    elif choice.startswith("📉 Signal Volatility Engine"):
         page_signal_volatility_engine()
 
-    elif choice == "💎 Subscription Plans":
+    elif choice.startswith("💎 Subscription Plans"):
         page_subscription_plans()
 
-    elif choice == "💳 Stripe Monetization Demo":
+    elif choice.startswith("💳 Stripe Monetization Demo"):
         page_stripe_monetization_demo()
 
-    elif choice == "🧠 Edge Node Memory":
+    elif choice.startswith("🧠 Edge Node Memory"):
         page_edge_node_memory()
 
-    elif choice == "🌟 Premium (Coming Soon)":
+    elif choice.startswith("🌟 Premium (Coming Soon)"):
         page_premium()
 
-    elif choice == "🧊 Snapshots":
+    elif choice.startswith("🧊 Snapshots"):
         page_snapshots()
+
 
 
 # ============================================================
