@@ -843,24 +843,51 @@ def page_snapshots():
     aaa_footer()
 
 # ============================================================
-# PAGE 6 — AI SUMMARY (BASIC — FREE DEMO)
+# PAGE 6 — AI SUMMARY (BASIC — FREE DEMO) — FINAL + TEXT INPUT
 # ============================================================
 
 def page_summary():
     aaa_header()
     st.subheader("🧠 AI Summary (Demo)")
-    st.caption("Generate a simple, patient-friendly summary using your logs or scanned text.")
+    st.caption("Generate a simple, patient-friendly summary using your logs, scanned text, or a direct question.")
 
-    # -------------------------------
-    # LOAD DATA
-    # -------------------------------
+    # ------------------------------------------------------------
+    # 1) DIRECT QUESTION INPUT (RESTORED)
+    # ------------------------------------------------------------
+    st.markdown("### 💬 Ask anything to AAA-Health Intelligence")
+
+    user_q = st.text_input(
+        "Ask a question:",
+        placeholder="Example: Explain my health pattern…"
+    )
+
+    if st.button("Submit Question"):
+        if user_q.strip() == "":
+            st.warning("Please type your question first.")
+        else:
+            try:
+                ai_ans = call_gemini(
+                    f"""
+Provide a calm, safe, patient-friendly explanation.
+Avoid medical advice.
+
+QUESTION:
+{user_q}
+"""
+                )
+                st.info(ai_ans)
+            except Exception as e:
+                st.error(f"AI error: {e}")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------
+    # 2) SELECT SOURCES (YOUR ORIGINAL WORKING SECTION)
+    # ------------------------------------------------------------
+    st.markdown("### Select Sources")
+
     logs = load_json(HEALTH_LOG_FILE, [])
     ocr = load_json(OCR_DATA_FILE, [])
-
-    # -------------------------------
-    # INPUT SELECTORS
-    # -------------------------------
-    st.markdown("### Select Sources")
 
     col1, col2 = st.columns(2)
 
@@ -886,9 +913,9 @@ def page_summary():
 
     st.markdown("---")
 
-    # -------------------------------
-    # BUTTON
-    # -------------------------------
+    # ------------------------------------------------------------
+    # 3) GENERATE SUMMARY FROM SOURCES (UNCHANGED)
+    # ------------------------------------------------------------
     if st.button("Generate Summary", use_container_width=True):
         if log_choice is None and ocr_choice is None:
             st.error("Please select at least one source.")
@@ -903,12 +930,9 @@ def page_summary():
 
         combined_text = "\n\n---\n\n".join(parts)
 
-        # -------------------------------
-        # SAFE PROMPT
-        # -------------------------------
         prompt = f"""
 Create a simple, patient-friendly summary of the following text.
-Do NOT give medical advice. 
+Do NOT give medical advice.
 Focus only on:
 - Observations
 - Patterns
@@ -921,9 +945,6 @@ TEXT:
 
         response = call_gemini(prompt)
 
-        # -------------------------------
-        # OUTPUT BOX
-        # -------------------------------
         st.markdown("### 📘 Your Summary")
         st.markdown(
             f"""
@@ -4172,7 +4193,7 @@ def page_subscription_plans():
     col_free, col_global, col_india, col_aus = st.columns(4)
 
     # ---------------------------
-    # FREE
+    # FREE PLAN
     # ---------------------------
     with col_free:
         st.markdown(
@@ -4191,12 +4212,11 @@ def page_subscription_plans():
                     </div>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """, unsafe_allow_html=True
         )
 
     # ---------------------------
-    # GLOBAL
+    # GLOBAL PLAN
     # ---------------------------
     st.markdown('<div id="global-section"></div>', unsafe_allow_html=True)
 
@@ -4220,12 +4240,11 @@ def page_subscription_plans():
                 </a>
                 <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """, unsafe_allow_html=True
         )
 
     # ---------------------------
-    # INDIA
+    # INDIA PLAN
     # ---------------------------
     st.markdown('<div id="india-section"></div>', unsafe_allow_html=True)
 
@@ -4251,12 +4270,11 @@ def page_subscription_plans():
                 </a>
                 <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """, unsafe_allow_html=True
         )
 
     # ---------------------------
-    # AUSTRALIA
+    # AUSTRALIA PLAN
     # ---------------------------
     st.markdown('<div id="australia-section"></div>', unsafe_allow_html=True)
 
@@ -4281,11 +4299,36 @@ def page_subscription_plans():
                 </a>
                 <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """, unsafe_allow_html=True
         )
 
-    st.markdown("</div>", unsafe_allow_html=True)  # END WRAPPER
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # SUBSCRIPTION README (CLEAN MARKDOWN)
+    # --------------------------------------------------------
+    st.markdown("## 📘 Subscription README — How AAA Premium Works")
+
+    st.markdown(
+        """
+**Free Mode:**  
+Try the AAA experience, view health logs, upload files, use the demo AI summary,  
+and explore the dashboard. Premium unlocks full intelligence.
+
+**Premium Mode:**  
+Unlock unlimited AI summaries, deep insights, advanced timelines, hybrid engine,  
+PDF reports, snapshots, and early access to AAA Finance × Law.
+
+**Region Smart Pricing:**  
+Prices automatically adjust for Australia / India / USA.
+
+**Upgrade Anytime:**  
+One click → instant activation → full access.
+
+**Your Data:**  
+Always encrypted. Never sold. You remain the owner of your data.
+        """
+    )
 
     # --------------------------------------------------------
     # COMPARISON TABLE
@@ -4312,7 +4355,7 @@ def page_subscription_plans():
     st.info("Stripe payments are live. Your data always remains encrypted and fully owned by you.")
 
     # --------------------------------------------------------
-    # AUTO-SCROLL TO CORRECT PLAN
+    # AUTO-SCROLL
     # --------------------------------------------------------
     anchor_map = {"IN": "india-section", "AU": "australia-section", "GLOBAL": "global-section"}
     target_anchor = anchor_map.get(user_region)
@@ -4377,7 +4420,7 @@ def page_subscription_plans():
     )
 
     # --------------------------------------------------------
-    # SMART EXIT INTENT BAR
+    # SMART EXIT BAR
     # --------------------------------------------------------
     exit_region_map = {
         "IN":     ("🇮🇳 India Premium — ₹500/month",  "https://buy.stripe.com/6oU4gyelZ60Zf7q3L15ZC03",  "Start Premium — ₹500/mo"),
@@ -4502,7 +4545,6 @@ def page_premium():
 
 SCORE_HISTORY_FILE = "score_history.json"
 
-
 def compute_health_score(logs):
     if not logs:
         return 50
@@ -4531,12 +4573,14 @@ def generate_ai_health_summary(logs, merged_data):
         for item in merged_data:
             if item.get("type") == "summary":
                 combined += item.get("text", "") + "\n"
+
         prompt = f"""
         Summarize health patterns safely and calmly.
 
         DATA:
         {combined}
         """
+
         return call_gemini(prompt)
     except Exception as e:
         return f"AI summary error: {e}"
@@ -4578,186 +4622,232 @@ def plot_score_trend(history):
 
 
 # ============================================================
-# AAA HEALTH INTELLIGENCE — DASHBOARD (PHASE-2 + PHASE-3)
+# HEALTH STATUS BAR — COMPLETE VERSION
 # ============================================================
 
-# ------------------------------------------------------------
-# HEALTH STATUS BAR (PHASE-3 STEP-5)
-# ------------------------------------------------------------
 def get_health_status(score, logs):
-    severe_keywords = ["pain", "pressure", "tightness", "bleeding", "faint", "severe"]
-    logs_text = " ".join([entry.get("note", "").lower() for entry in logs]) if logs else ""
-
-    if any(w in logs_text for w in severe_keywords):
-        return "critical"
-
+    if score >= 85:
+        return "excellent"
     if score >= 70:
-        return "stable"
-    elif 55 <= score < 70:
-        return "attention"
+        return "good"
+    if score >= 55:
+        return "ok"
+    if score >= 40:
+        return "concern"
     return "critical"
 
 
 def render_health_status_bar(status):
-    if status == "stable":
-        color = "#0f3b2e"
-        label = "🟢 Stable"
-        desc = "Your health indicators look stable. No major concerns detected."
+    colors = {
+        "excellent": "#00e676",
+        "good": "#1de9b6",
+        "ok": "#ffea00",
+        "concern": "#ff9100",
+        "critical": "#ff1744"
+    }
 
-    elif status == "attention":
-        color = "#b38800"
-        label = "🟡 Needs Attention"
-        desc = "Some parameters need attention. Keep monitoring closely."
-
-    else:
-        color = "#8b1a1a"
-        label = "🔴 Critical Alerts Detected"
-        desc = "Potential issues detected. Review logs or consult a professional."
+    text = {
+        "excellent": "Excellent — stable positive indicators.",
+        "good": "Good — overall positive, mild fluctuations.",
+        "ok": "Okay — neutral signals, keep monitoring.",
+        "concern": "Concern — noticeable negative patterns.",
+        "critical": "Critical — immediate attention recommended."
+    }
 
     st.markdown(f"""
-    <div style="
-        background-color:{color};
-        padding:18px;
-        border-radius:10px;
-        margin-bottom:20px;
-        border:1px solid rgba(255,255,255,0.2);
-    ">
-        <h3 style="margin:0; color:white; font-size:22px;">{label}</h3>
-        <p style="margin:5px 0 0 0; color:white; opacity:0.85;">{desc}</p>
-    </div>
+        <div style="
+            background-color:#0d1a2b;
+            padding:14px;
+            border-radius:10px;
+            margin-bottom:20px;
+            border-left:6px solid {colors[status]};
+        ">
+            <span style="color:{colors[status]}; font-size:18px; font-weight:600;">
+                ● {status.upper()}
+            </span>
+            <div style="margin-top:6px; color:white; opacity:0.85; font-size:15px;">
+                {text[status]}
+            </div>
+        </div>
     """, unsafe_allow_html=True)
 
 
-# ------------------------------------------------------------
-# HEALTH PULSE SCORE — PHASE-3 STEP-8
-# ------------------------------------------------------------
-def generate_health_pulse(logs, health_score, trend, recent_note, file_count):
+# ============================================================
+# HEALTH PULSE — FIXED
+# ============================================================
 
-    if not logs:
-        return ("⚪", "Not enough data — add your first log to activate your daily Health Pulse.")
+def generate_health_pulse(logs, score, trend, note, file_count):
+    if score >= 85: icon = "💚"
+    elif score >= 70: icon = "💙"
+    elif score >= 55: icon = "🟡"
+    elif score >= 40: icon = "🟠"
+    else: icon = "🔴"
 
-    text = recent_note.lower()
-    symptom_flags = ["pain", "tightness", "pressure", "headache", "fatigue", "dizzy"]
-    positive_flags = ["energetic", "better", "slept well", "good", "improved"]
-
-    has_negative = any(k in text for k in symptom_flags)
-    has_positive = any(k in text for k in positive_flags)
-
-    if has_negative and trend < 0:
-        return ("🔴", "Your health pulse is critical — recurring symptoms and a declining score detected.")
-
-    if has_negative and trend >= 0:
-        return ("🟡", "Your health pulse needs monitoring — discomfort indicators logged recently.")
-
-    if has_positive and trend > 0:
-        return ("🟢", "Your health pulse is stable today — positive markers outweigh negative ones.")
-
+    msg = ""
     if trend > 0:
-        return ("🟢", "Your health pulse looks positive — score improving steadily.")
+        msg += "Your score is improving. "
+    elif trend < 0:
+        msg += "Your score is declining slightly. "
+    else:
+        msg += "Your score is stable. "
 
-    if len(logs) < 3:
-        return ("🟡", "Your health pulse is neutral — add more logs for a sharper daily insight.")
+    if "pain" in note.lower():
+        msg += "Pain indicators detected. "
 
-    return ("⚪", "Your health pulse is stable — no significant changes detected today.")
+    if file_count > 0:
+        msg += f"{file_count} health documents stored. "
+
+    return icon, msg.strip()
 
 
-# ------------------------------------------------------------
-# DASHBOARD
-# ------------------------------------------------------------
-def page_dashboard():
+# ============================================================
+# RED ASK AAA-HEALTH INTELLIGENCE BUTTON — FIXED (SOLID RED)
+# ============================================================
+
+st.markdown("""
+<style>
+.aaa-red-btn > button {
+    background-color: #b91c1c !important;
+    color: white !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 10px !important;
+    font-size: 16px !important;
+}
+.aaa-red-btn > button:hover {
+    background-color: #7f0000 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# DASHBOARD — FULL, FINAL, FIXED (NO ALIGNMENT ISSUES)
+# ============================================================
+
+def page_dashboard(switch_to):
     aaa_header()
 
-    # ------------------------------------------------------------
-    # SIMPLE VIEW — FIRST SCREEN
-    # ------------------------------------------------------------
-    st.subheader("📊 Dashboard — Simple Overview")
+    # --------------------------------------------------------
+    # FIX 1: Dashboard toggle preserved
+    # --------------------------------------------------------
+    if "show_full_dashboard" not in st.session_state:
+        st.session_state["show_full_dashboard"] = False
 
+    # --------------------------------------------------------
+    # FIX 2: Red Ask AAA Button (Right aligned)
+    # --------------------------------------------------------
+    cA, cB = st.columns([8, 2])
+    with cB:
+        if st.button("Ask AAA-Health Intelligence", key="askAAA",
+                     use_container_width=True, help="AI Summary",
+                     type="primary"):
+            switch_to("🧠 Summary (Demo)")
+            return
+
+    # --------------------------------------------------------
+    # INSERTED SECTION — TEXT INPUT FOR ASK AAA (SAFE)
+    # --------------------------------------------------------
     st.markdown(
-        """
-        <div style="font-size:15px; line-height:1.6; color:#C7D2FE; margin-bottom:20px;">
-            A quick snapshot of your AAA Health activity.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        "<div style='margin-top:12px; font-size:16px; opacity:0.85;'>"
+        "📝 <b>Ask anything to AAA-Health Intelligence</b><br>"
+        "<span style='font-size:13px; opacity:0.65;'>Type your question below:</span>"
+        "</div>",
+        unsafe_allow_html=True
     )
 
-    colS1, colS2 = st.columns(2)
+    user_query = st.text_input(
+        "Ask a question:",
+        "",
+        key="dashboard_free_text",
+        placeholder="Example: Explain my health pattern…"
+    )
 
-    with colS1:
-        if st.button("📝 Health Log\n(Your notes & entries)", use_container_width=True):
-            st.session_state["nav"] = "🩺 Health Log"
+    if st.button("Submit Question", key="dashboard_query_btn"):
+        if not user_query.strip():
+            st.warning("Please enter a question.")
+        else:
+            st.info(
+                f"Your question has been received:<br><br>"
+                f"<b>{user_query}</b><br><br>"
+                "This feature unlocks fully in AAA-Premium.",
+                icon="🤖"
+            )
 
-        if st.button("📄 Documents\n(PDFs & images)", use_container_width=True):
-            st.session_state["nav"] = "📥 Health Vault"
+    # --------------------------------------------------------
+    # SIMPLE OVERVIEW SECTION
+    # --------------------------------------------------------
+    st.subheader("📊 Dashboard — Simple Overview")
+    st.markdown("""
+        <div style="font-size:15px; color:#C7D2FE; margin-bottom:20px;">
+            Your health activity at a glance — click any tile to dive deeper.
+        </div>
+    """, unsafe_allow_html=True)
 
-    with colS2:
-        if st.button("🤖 AI Insights (Premium)\n(Summary)", use_container_width=True):
-            st.session_state["nav"] = "🧠 AI Summary"
+    # --------------------------------------------------------
+    # DASHBOARD TILES — FIXED ROUTING + ALIGNMENT
+    # --------------------------------------------------------
+    col1, col2 = st.columns(2)
 
-        if st.button("📈 Advanced Metrics\n(Expand full dashboard)", use_container_width=True):
-            st.session_state["show_full_dashboard"] = not st.session_state.get("show_full_dashboard", False)
+    with col1:
+        if st.button("📝 Health Log (Your notes & entries)", key="t1", use_container_width=True):
+            switch_to("🩺 Health Log (Notes)")
+            return
+
+        if st.button("📄 Documents (PDFs & images)", key="t2", use_container_width=True):
+            switch_to("📥 Health Vault (Uploads)")
+            return
+
+    with col2:
+        if st.button("🤖 AI Insights (Premium Summary)", key="t3", use_container_width=True):
+            switch_to("🧠 Summary (Demo)")
+            return
+
+        if st.button("📈 Advanced Metrics (Full Dashboard)", key="t4", use_container_width=True):
+            st.session_state["show_full_dashboard"] = True
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # If full dashboard is OFF → Stop here
-    if not st.session_state.get("show_full_dashboard", False):
+    # --------------------------------------------------------
+    # STOP HERE IF FULL DASHBOARD NOT EXPANDED
+    # --------------------------------------------------------
+    if not st.session_state["show_full_dashboard"]:
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # ORIGINAL FULL DASHBOARD STARTS BELOW (unchanged)
-    # ------------------------------------------------------------
-
+    # --------------------------------------------------------
+    # FULL ADVANCED DASHBOARD (UNCHANGED LOGIC)
+    # --------------------------------------------------------
     st.subheader("📊 AAA Health Intelligence — Tailored Dashboard (Beta)")
-    st.markdown("This is your personalised health overview. More data unlocks as you upload documents, logs, or summaries.")
-    st.markdown("")
+    st.markdown("This is your personalised health overview. More data unlocks deeper insights.")
 
-    # ------------------------------------------------------------
-    # LOAD HEALTH LOGS
-    # ------------------------------------------------------------
     logs = load_json(HEALTH_LOG_FILE, [])
-
-    # ------------------------------------------------------------
-    # LOAD MERGED MULTI-MODAL DATA
-    # ------------------------------------------------------------
     merged_data_obj = load_json(MERGED_DATA_FILE, {"data": []})
     merged_data = merged_data_obj.get("data", [])
 
-    # ------------------------------------------------------------
-    # METRICS
-    # ------------------------------------------------------------
     health_score = compute_health_score(logs)
     last_update = logs[-1]["timestamp"] if logs else "—"
     region = "Sydney, AU"
 
-    # Score trend
     score_history = save_score_history(health_score)
-    trend = 0
-    if len(score_history) >= 2:
-        trend = score_history[-1]["score"] - score_history[-2]["score"]
+    trend = score_history[-1]["score"] - score_history[-2]["score"] if len(score_history) >= 2 else 0
 
-    # ------------------------------------------------------------
-    # HEALTH STATUS BAR
-    # ------------------------------------------------------------
+    # STATUS BAR
     status = get_health_status(health_score, logs)
     render_health_status_bar(status)
 
-    # ------------------------------------------------------------
-    # METRICS DISPLAY
-    # ------------------------------------------------------------
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # METRIC CARDS
+    colA, colB, colC = st.columns(3)
+    with colA:
         st.metric("Health Score", f"{health_score}", f"{trend:+}")
-    with col2:
+    with colB:
         st.metric("Last Update", last_update)
-    with col3:
+    with colC:
         st.metric("Region", region)
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # HEALTH PULSE
-    # ------------------------------------------------------------
     recent_note = logs[-1].get("note", "") if logs else ""
     file_count = len(os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
 
@@ -4765,34 +4855,28 @@ def page_dashboard():
         logs, health_score, trend, recent_note, file_count
     )
 
-    st.markdown(f"""
-    <div style="
-        background-color:#0d1a2b;
-        padding:16px;
-        border-radius:10px;
-        margin-top:10px;
-        margin-bottom:25px;
-        border:1px solid rgba(255,255,255,0.15);
-    ">
-        <h3 style="margin:0; color:white; font-size:22px;">{pulse_icon} Health Pulse</h3>
-        <p style="margin-top:6px; color:white; opacity:0.85; font-size:16px;">
-            {pulse_text}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#0d1a2b;
+            padding:16px;
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,0.15);
+        ">
+            <h3 style="margin:0; color:white;">{pulse_icon} Health Pulse</h3>
+            <p style="color:white; opacity:0.85;">{pulse_text}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # TREND GRAPH
-    # ------------------------------------------------------------
     st.markdown("### 📈 Health Score Trend")
-
     fig = plot_score_trend(score_history)
     if fig:
         st.pyplot(fig)
-    else:
-        st.info("Trend graph will appear after more score updates.")
 
     if trend > 0:
         st.success(f"📈 Trend: Improving (+{trend})")
@@ -4803,46 +4887,40 @@ def page_dashboard():
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # AI SUMMARY
-    # ------------------------------------------------------------
     st.markdown("### 🧠 AI Health Summary")
     summary_text = generate_ai_health_summary(logs, merged_data)
     st.info(summary_text)
-
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # DAILY SNAPSHOT
-    # ------------------------------------------------------------
     st.markdown("### 🗂️ Daily Snapshot")
 
     snapshot_date = last_update.split(" ")[0] if last_update != "—" else "—"
     recent_note_preview = recent_note[:80] + ("..." if len(recent_note) > 80 else "")
 
-    col_a, col_b, col_c = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with col_a:
+    with col1:
         st.markdown("#### 📅 Last Update")
         st.info(snapshot_date)
 
-    with col_b:
+    with col2:
         st.markdown("#### 📝 Latest Note")
         st.info(recent_note_preview)
 
-    with col_c:
+    with col3:
         st.markdown("#### 📄 Documents")
         st.info(f"{file_count} files")
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # TODAY'S SIGNALS
-    # ------------------------------------------------------------
     st.markdown("### 🌤️ Today’s Signals")
 
     signals = []
 
+    # logging frequency
     if len(logs) >= 2:
         t1 = datetime.strptime(logs[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
         t2 = datetime.strptime(logs[-2]["timestamp"], "%Y-%m-%d %H:%M:%S")
@@ -4855,8 +4933,8 @@ def page_dashboard():
     else:
         signals.append("⚪ Not enough data to evaluate logging frequency.")
 
+    # sentiment markers
     note = recent_note.lower()
-
     positive_markers = ["energetic", "better", "slept well", "okay", "improved"]
     negative_markers = ["pain", "tightness", "headache", "fatigue", "dizzy"]
 
@@ -4873,6 +4951,7 @@ def page_dashboard():
         else:
             signals.append("⚪ No clear sentiment detected in last note.")
 
+    # vault status
     if os.path.exists(VAULT_DIR):
         doc_count = len(os.listdir(VAULT_DIR))
         if doc_count > 0:
@@ -4882,6 +4961,7 @@ def page_dashboard():
     else:
         signals.append("⚪ Vault directory missing.")
 
+    # render signals
     for s in signals:
         st.markdown(
             f"""
@@ -4892,46 +4972,37 @@ def page_dashboard():
                 margin-bottom:8px;
                 border:1px solid #1e3a5c;
             ">
-            {s}
+                {s}
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
         )
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # WHY THESE SIGNALS MATTER
-    # ------------------------------------------------------------
     st.markdown("### 🧠 Why These Signals Matter")
 
     def generate_reasoning_layer(logs, recent_note, file_count):
         reasons = []
-
         lower = recent_note.lower()
 
         if "headache" in lower:
             reasons.append("Headache often correlates with hydration levels or warm weather.")
-
         if "tightness" in lower:
             reasons.append("Chest tightness patterns suggest exertion or hydration issues.")
-
         if "slept well" in lower or "sleep" in lower:
             reasons.append("Good sleep strongly correlates with positive energy and appetite.")
-
         if file_count > 0:
             reasons.append(f"You have {file_count} documents stored — this helps AAA detect deeper patterns.")
-
         if len(logs) < 7:
             reasons.append("More logs over a longer period will produce stronger insights.")
-
         if not reasons:
             reasons.append("Signals look stable today. More data will unlock deeper personalised insights.")
 
         return reasons
 
-    reasoning_items = generate_reasoning_layer(logs, recent_note, file_count)
-
-    for r in reasoning_items:
+    for r in generate_reasoning_layer(logs, recent_note, file_count):
         st.markdown(
             f"""
             <div style="
@@ -4941,7 +5012,7 @@ def page_dashboard():
                 margin-bottom:8px;
                 border:1px solid #1e3a5c;
             ">
-            {r}
+                {r}
             </div>
             """,
             unsafe_allow_html=True
@@ -4949,9 +5020,7 @@ def page_dashboard():
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # EARLY WARNING INDICATORS
-    # ------------------------------------------------------------
     st.markdown("### 🔍 Early Warning Indicators (Last 7 Days)")
 
     recent_logs = logs[-7:] if len(logs) >= 7 else logs
@@ -4959,9 +5028,7 @@ def page_dashboard():
     warnings = []
 
     symptom_keywords = ["headache", "pain", "tightness", "pressure"]
-    symptom_count = sum(text_blob.count(k) for k in symptom_keywords)
-
-    if symptom_count >= 2:
+    if sum(text_blob.count(k) for k in symptom_keywords) >= 2:
         warnings.append("⚠️ **Recurring symptoms detected** — monitor patterns.")
 
     if len(recent_logs) <= 3:
@@ -4974,7 +5041,7 @@ def page_dashboard():
     if any(k in text_blob for k in sleep_keywords) and "good" not in text_blob:
         warnings.append("😴 **Sleep irregularity signals** — mixed notes detected.")
 
-    doc_count = len(os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
+    doc_count = len(os.path.exists(VAULT_DIR) and os.listdir(VAULT_DIR)) if os.path.exists(VAULT_DIR) else 0
     if doc_count >= 5:
         warnings.append("📄 **Multiple documents stored** — new reports may contain important info.")
 
@@ -4999,9 +5066,7 @@ def page_dashboard():
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # LAST 10 LOGS
-    # ------------------------------------------------------------
     st.markdown("### 📅 Last 10 Health Logs")
 
     if logs:
@@ -5009,50 +5074,42 @@ def page_dashboard():
             ts = entry.get("timestamp", "")
             dt = entry.get("date", "")
             nt = entry.get("note", "")
-            st.markdown(f"""
-                **📅 {dt} — {ts}**  
-                {nt}
-            """)
+            st.markdown(f"""**📅 {dt} — {ts}**  
+{nt}""")
     else:
         st.warning("No logs found.")
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # RECENT DOCUMENTS
-    # ------------------------------------------------------------
     st.markdown("### 📂 Recent Documents")
 
     recent_docs = []
     if os.path.exists(VAULT_DIR):
         for fname in os.listdir(VAULT_DIR):
-            p = os.path.join(VAULT_DIR, fname)
-            if os.path.isfile(p):
-                recent_docs.append({"name": fname})
+            if os.path.isfile(os.path.join(VAULT_DIR, fname)):
+                recent_docs.append(fname)
 
     if recent_docs:
         for doc in recent_docs[:10]:
-            st.markdown(f"📄 **{doc['name']}**")
+            st.markdown(f"📄 **{doc}**")
     else:
         st.warning("No documents found.")
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # REGIONAL INSIGHTS
-    # ------------------------------------------------------------
     st.markdown("### 🧭 Regional Insights")
     st.info("Sydney health season: High pollen, warm weather, moderate UV. Flu season tapering.")
 
     st.markdown("---")
 
-    # ------------------------------------------------------------
     # CLOSE CIRCLE
-    # ------------------------------------------------------------
     st.markdown("### 👪 Close Circle Sharing")
     st.info("Add trusted family members to receive summaries (coming soon).")
 
     aaa_footer()
+
 
 # ============================================================
 # FIREWALL + MONETIZATION (LIGHT MODE – SAFE FOR 5 DEC LAUNCH)
@@ -5072,10 +5129,8 @@ def check_firewall(page_name: str, mode: str):
     - Free mode → premium pages show upgrade notice.
     - Premium mode → fully unlocked.
     """
-
     if mode == "free" and page_name in PREMIUM_PAGES:
         st.markdown("### 🔒 Premium Feature")
-
         st.info(
             """
             This feature is part of **AAA Premium**.
@@ -5090,9 +5145,22 @@ def check_firewall(page_name: str, mode: str):
             👉 Coming December 2025.
             """
         )
-
         st.stop()
 
+
+# ============================================================
+# NAVIGATION SWITCH HELPER (CRITICAL FIX FOR BUTTONS)
+# ============================================================
+
+def switch_to(page_name: str):
+    """
+    Safe navigation switch:
+    - We never write directly to session_state['nav'] inside pages.
+    - Instead, we store a pending target and rerun.
+    - main() applies the redirect BEFORE the sidebar radio is built.
+    """
+    st.session_state["pending_nav"] = page_name
+    st.rerun()
 
 
 # ============================================================
@@ -5101,26 +5169,38 @@ def check_firewall(page_name: str, mode: str):
 
 def main():
 
-    # -------------------------------
+    # --------------------------------------------------------
+    # INIT NAVIGATION DEFAULT
+    # --------------------------------------------------------
+    if "nav" not in st.session_state:
+        st.session_state["nav"] = "📊 Dashboard (Overview)"
+
+    # --------------------------------------------------------
+    # APPLY ANY PENDING REDIRECT BEFORE WIDGETS
+    # --------------------------------------------------------
+    if "pending_nav" in st.session_state:
+        st.session_state["nav"] = st.session_state["pending_nav"]
+        del st.session_state["pending_nav"]
+
+    # --------------------------------------------------------
     # SIDEBAR NAVIGATION
-    # -------------------------------
+    # --------------------------------------------------------
     with st.sidebar:
 
-        # Subscription toggle
         st.markdown("## 🔐 Subscription Mode (Demo)")
         mode = st.radio("Select mode:", ["free", "premium"])
         st.session_state["mode"] = mode
 
-        # Header
         st.markdown("## 💎 AAA — Health Intelligence (DEV)")
 
-        # -------------------------------
-        # NAVIGATION MENU (Simple meanings added)
-        # -------------------------------
+        # --------------------------------------------------------
+        # NAVIGATION MENU (KEY = 'nav' – CONTROLLED HERE ONLY)
+        # --------------------------------------------------------
         choice = st.radio(
             "Navigate:",
             [
-                # ---- Core Health Intelligence ----
+
+                # ---- Core ----
                 "📊 Dashboard (Overview)",
                 "🩺 Health Log (Notes)",
                 "📥 Health Vault (Uploads)",
@@ -5129,7 +5209,7 @@ def main():
                 "📄 PDF Preview (Reports)",
                 "🔍 OCR (Scan Text)",
 
-                # ---- AI Intelligence Layer ----
+                # ---- AI Intelligence ----
                 "🧠 Summary (Demo)",
                 "✨ Merged View (Combined Data)",
                 "🧬 Summary AI (Advanced Summary)",
@@ -5153,25 +5233,23 @@ def main():
                 "🧬 Unified Signal Comparison (Compare Signals)",
                 "📉 Signal Volatility Engine (Volatility Analysis)",
 
-                # ---- Monetization Layer ----
+                # ---- Monetization ----
                 "💎 Subscription Plans (Pricing)",
                 "💳 Stripe Monetization Demo (Pay Demo)",
 
-                # ---- Future Intelligence Layer ----
+                # ---- Future ----
                 "🧠 Edge Node Memory (Memory Layer)",
 
                 # ---- Coming Soon ----
                 "🌟 Premium (Coming Soon)",
                 "🧊 Snapshots (Records)",
-            ]
+            ],
+            key="nav",
         )
 
-        st.session_state["nav"] = choice
-
-
-    # -------------------------------
-    # FIREWALL (Do Not Move)
-    # -------------------------------
+    # --------------------------------------------------------
+    # FIREWALL (KEEP EXACTLY HERE)
+    # --------------------------------------------------------
     if choice not in {
         "💎 Subscription Plans (Pricing)",
         "💳 Stripe Monetization Demo (Pay Demo)",
@@ -5179,12 +5257,12 @@ def main():
     }:
         check_firewall(choice, mode)
 
-
-    # -------------------------------
+    # --------------------------------------------------------
     # PAGE ROUTING
-    # -------------------------------
+    # --------------------------------------------------------
     if choice.startswith("📊 Dashboard"):
-        page_dashboard()
+        # pass switch_to so dashboard buttons can navigate safely
+        page_dashboard(switch_to)
 
     elif choice.startswith("🩺 Health Log"):
         page_health_log()
@@ -5207,84 +5285,158 @@ def main():
     elif choice == "🧠 Summary (Demo)":
         page_summary()
 
+    # ---- PLACEHOLDERS ----
     elif choice.startswith("✨ Merged View"):
         page_merged()
-
     elif choice.startswith("🧬 Summary AI"):
         page_summary_ai()
-
     elif choice.startswith("📊 Insights AI"):
         page_insights_ai()
-
     elif choice.startswith("📚 Insights History"):
         page_insights_history()
-
     elif choice.startswith("📘 Summary Report"):
         page_summary_report()
-
     elif choice.startswith("🚨 AI Health Risk Engine"):
         page_risk_engine()
-
     elif choice.startswith("🧬 Pattern Timeline AI"):
         page_pattern_timeline_ai()
-
     elif choice.startswith("🌐 Insight Fusion Layer"):
         page_insight_fusion()
-
     elif choice.startswith("📈 Insight Graphs"):
         page_insight_graphs()
-
     elif choice.startswith("🩺 Medical Triptych"):
         page_medical_triptych()
-
     elif choice.startswith("🎵 Serene Frequencies"):
         page_serene_frequency()
-
     elif choice.startswith("🧘 Mood × Sleep × Stress Radar"):
         page_mood_sleep_stress_radar()
-
     elif choice.startswith("🔮 Health × Vibration Correlation Map"):
         page_health_vibration_correlation()
-
     elif choice.startswith("📈 Trend Forecast Engine"):
         page_trend_forecast_engine()
-
     elif choice.startswith("📅 Unified Timeline Intelligence"):
         page_unified_timeline_intel()
-
     elif choice.startswith("🧩 Insight Matrix"):
         page_insight_matrix()
-
     elif choice.startswith("🧠 Health Knowledge Graph"):
         page_health_knowledge_graph()
-
     elif choice.startswith("🧬 Multi-Signal Diagnostic Engine"):
         page_multi_signal_engine()
-
     elif choice.startswith("🧬 Health Signature Engine"):
         page_health_signature_engine()
-
     elif choice.startswith("🧬 Unified Signal Comparison"):
         page_unified_signal_comparison()
-
     elif choice.startswith("📉 Signal Volatility Engine"):
         page_signal_volatility_engine()
 
+    # ---- Monetization ----
     elif choice.startswith("💎 Subscription Plans"):
         page_subscription_plans()
-
     elif choice.startswith("💳 Stripe Monetization Demo"):
         page_stripe_monetization_demo()
 
+    # ---- Future ----
     elif choice.startswith("🧠 Edge Node Memory"):
         page_edge_node_memory()
 
+    # ---- Coming Soon ----
     elif choice.startswith("🌟 Premium (Coming Soon)"):
         page_premium()
-
     elif choice.startswith("🧊 Snapshots"):
         page_snapshots()
 
+
+# ============================================================
+# UNIFIED PLACEHOLDER HANDLER
+# ============================================================
+
+def page_coming_soon(title):
+    aaa_header()
+    st.subheader(title)
+    st.markdown(
+        """
+        <div style="font-size:15px; opacity:0.8; margin-top:10px;">
+            This feature belongs to AAA — Premium Intelligence Layer.<br>
+            It will be activated after the Dec 5 monetization launch.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    aaa_footer()
+
+
+# ============================================================
+# PLACEHOLDER ROUTERS — ALL PREMIUM MODULES
+# ============================================================
+
+def page_merged():
+    page_coming_soon("✨ Merged View (Coming Soon)")
+
+def page_summary_ai():
+    page_coming_soon("🧬 Summary AI (Premium Intelligence)")
+
+def page_insights_ai():
+    page_coming_soon("📊 Insights AI (Deep Intelligence)")
+
+def page_insights_history():
+    page_coming_soon("📚 Insights History (Timeline Intelligence)")
+
+def page_summary_report():
+    page_coming_soon("📘 Summary Report (AI PDF Generator)")
+
+def page_risk_engine():
+    page_coming_soon("🚨 AI Health Risk Engine")
+
+def page_pattern_timeline_ai():
+    page_coming_soon("🧬 Pattern Timeline AI")
+
+def page_insight_fusion():
+    page_coming_soon("🌐 Insight Fusion Layer")
+
+def page_insight_graphs():
+    page_coming_soon("📈 Insight Graphs")
+
+def page_medical_triptych():
+    page_coming_soon("🩺 Medical Triptych (3-Panel View)")
+
+def page_serene_frequency():
+    page_coming_soon("🎵 Serene Frequencies (Audio Wellness)")
+
+def page_mood_sleep_stress_radar():
+    page_coming_soon("🧘 Mood × Sleep × Stress Radar")
+
+def page_health_vibration_correlation():
+    page_coming_soon("🔮 Vibration × Health Map")
+
+def page_trend_forecast_engine():
+    page_coming_soon("📈 Trend Forecast Engine")
+
+def page_unified_timeline_intel():
+    page_coming_soon("📅 Unified Timeline Intelligence")
+
+def page_insight_matrix():
+    page_coming_soon("🧩 Insight Matrix")
+
+def page_health_knowledge_graph():
+    page_coming_soon("🧠 Health Knowledge Graph")
+
+def page_multi_signal_engine():
+    page_coming_soon("🧬 Multi-Signal Diagnostic Engine")
+
+def page_health_signature_engine():
+    page_coming_soon("🧬 Health Signature Engine")
+
+def page_unified_signal_comparison():
+    page_coming_soon("🧬 Unified Signal Comparison")
+
+def page_signal_volatility_engine():
+    page_coming_soon("📉 Signal Volatility Engine")
+
+def page_premium():
+    page_coming_soon("🌟 Premium Intelligence (Coming Soon)")
+
+def page_snapshots():
+    page_coming_soon("🧊 Snapshots")
 
 
 # ============================================================
