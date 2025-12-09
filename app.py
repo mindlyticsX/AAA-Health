@@ -821,7 +821,7 @@ def page_recycle_bin():
     aaa_footer()
 
 # ============================================================
-# PAGE 3 — PDF PREVIEW
+# PAGE 3 — PDF PREVIEW (SAFE MODE)
 # ============================================================
 
 def page_pdf_preview():
@@ -835,13 +835,52 @@ def page_pdf_preview():
         return
 
     selected = st.selectbox("Select PDF to preview:", files)
+
     if selected:
         path = os.path.join(VAULT_DIR, selected)
+
+        # Read PDF for iframe
         with open(path, "rb") as f:
             base64_pdf = base64.b64encode(f.read()).decode("utf-8")
 
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700" type="application/pdf"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        # -------------------------------
+        # Primary attempt — inline preview
+        # -------------------------------
+        st.markdown(
+            f"""
+            <iframe
+                src="data:application/pdf;base64,{base64_pdf}"
+                width="100%"
+                height="700"
+                style="border:none;"
+            ></iframe>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.info("If the PDF does not appear above, click the button below to open it.")
+
+        # -------------------------------
+        # Fallback — open in new tab
+        # -------------------------------
+        pdf_url = f"data:application/pdf;base64,{base64_pdf}"
+        st.markdown(
+            f"""
+            <a href="{pdf_url}" target="_blank">
+                <button style="
+                    background:#1363DF;
+                    color:white;
+                    padding:10px 18px;
+                    border:none;
+                    border-radius:6px;
+                    cursor:pointer;
+                    font-size:16px;">
+                    🔗 Open PDF in New Tab (Fallback)
+                </button>
+            </a>
+            """,
+            unsafe_allow_html=True,
+        )
 
     monetization_cta()
     aaa_footer()
