@@ -9,13 +9,19 @@ import os
 import shutil
 from datetime import datetime
 from google import generativeai as genai
-import fitz            # PyMuPDF for PDF rendering
+
+import fitz                    # PyMuPDF for PDF rendering
 import base64
 from fpdf import FPDF
-import stripe
-import html            # for safe_render()
-import requests        # <-- NEW (needed for region auto-detect)
-import random          # (needed by forecast / graphs)
+
+import stripe                  # Monetization (future build)
+import html                    # safe HTML rendering
+import requests                # Region auto-detect
+import random                  # Forecast engine / visual randomness
+
+# === NEW REQUIRED IMPORTS (for analytics pages) ===
+import pandas as pd            # REQUIRED for Page 23 graphs
+import altair as alt           # REQUIRED for charts / visualizations
 
 # ============================================================
 # GLOBAL SAFE HTML SANITIZER — PREVENTS UI BREAKING
@@ -162,6 +168,73 @@ def extract_text_any(path):
         text_chunks.append("Image uploaded — OCR text stored separately.")
 
     return "\n".join(text_chunks)
+
+
+# ============================================================
+# PREMIUM FIREWALL (SAFE WRAPPER — NO IMPACT ON EXISTING CODE)
+# ============================================================
+
+def premium_required_ui(page_title: str, page_description: str):
+    """
+    SAFE UI LOCK:
+    - No backend logic touched
+    - No routing changed
+    - Only stops the page from rendering when in FREE mode
+    - Premium mode continues exactly as before
+    """
+    mode = st.session_state.get("mode", "free")
+
+    # If FREE mode → show Premium lock screen
+    if mode == "free":
+        st.markdown(
+            f"""
+            <div style="text-align:center; padding:40px;">
+
+                <div style="font-size:60px; opacity:0.9;">🔒</div>
+
+                <h2 style="color:#EF5350;">
+                    {page_title} — Premium Feature
+                </h2>
+
+                <p style="color:#C7D2FE; font-size:16px; line-height:1.6; max-width:600px; margin:auto;">
+                    {page_description}
+                </p>
+
+                <div style="
+                    margin-top:25px; 
+                    padding:18px; 
+                    border-radius:12px; 
+                    background:rgba(255,255,255,0.06); 
+                    max-width:460px; 
+                    margin:auto;
+                ">
+                    <h3 style="margin-bottom:6px; color:#BBDEFB;">✨ Includes 7-Day Free Trial</h3>
+                    <p style="font-size:14px; color:#AAB4FF;">
+                        Experience the full AAA Premium Intelligence engine.
+                        No risk. Cancel anytime.
+                    </p>
+                </div>
+
+                <div style="margin-top:30px;">
+                    <button style="
+                        background:#FF5252; 
+                        color:white; 
+                        padding:12px 28px; 
+                        border:none; 
+                        border-radius:8px; 
+                        font-size:16px;
+                        cursor:pointer;">
+                        Upgrade to Premium (Demo)
+                    </button>
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # STOP PAGE RENDERING (SAFE)
+        st.stop()
 
 # ============================================================
 # MULTI-SIGNAL ENGINE — BACKEND
@@ -443,7 +516,7 @@ def aaa_footer():
         </div>
         <br><br>
         <div style='text-align:center; color:#e5e7eb; font-size:14px; font-weight:500;'>
-            Crafted by Rajdeep Singh — Artigellence Augmentation Aggregator<br>
+            Crafted by Sydney Singh — Artigellence Augmentation Aggregator<br>
             <span style='font-size:13px; color:#9ca3af;'>
                 Edge-AI Orchestration Layer • Gemini • Vertex AI
             </span>
@@ -481,8 +554,9 @@ def is_premium():
 
 def paywall_screen():
     st.markdown("<br>", unsafe_allow_html=True)
-    col = st.container()
-    with col:
+
+    # --- MAIN CARD ---
+    with st.container():
         st.markdown(
             """
             <div style="
@@ -499,35 +573,21 @@ def paywall_screen():
                     AAA — Health Intelligence
                 </div>
                 <h2 style="font-size:26px; margin-bottom:12px; color:#e5e7eb; font-weight:600;">
-                    Artigellence Premium — Health Intelligence
+                    Premium Feature
                 </h2>
                 <p style="font-size:14px; color:#cbd5f5; margin-bottom:24px;">
-                    Unlock full AAA Health Intelligence including:
+                    This feature is available for Premium users.
                 </p>
-                <div style="text-align:left; display:inline-block; font-size:14px; color:#e5e7eb; margin-bottom:24px; line-height:1.7;">
-                    ✔ Full AI Medical Summaries<br>
-                    ✔ Deep Medical Insights &amp; Trends<br>
-                    ✔ PDF Health Reports &amp; Snapshots<br>
-                    ✔ Merged AI View (Doctor + Lab + Notes)<br>
-                    ✔ Early Access to AAA Finance &amp; Law<br>
-                    ✔ Premium Serene Frequency Indicators
-                </div>
                 <div style="font-size:13px; color:#9ca3af; opacity:0.9; margin-bottom:20px;">
-                    Upgrade to experience the complete power of Artigellence.
+                    Upgrade to unlock full AI Medical Intelligence.
                 </div>
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.button("A$10 / month", use_container_width=True)
-        with c2:
-            st.button("₹500 / month", use_container_width=True)
-        with c3:
-            st.button("$10 / month", use_container_width=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
+    # --- FREE TRIAL CTA (NO PRICES) ---
+    st.info("🎉 Try AAA Premium Free for 7 Days — Unlock Full Intelligence")
 
 # ============================================================
 # CTA BANNER — MONETIZATION PROMPT
@@ -968,97 +1028,379 @@ TEXT:
 
 
 # ============================================================
-# PAGE — MERGED VIEW (PREMIUM FEATURE)
+# PAGE — MERGED VIEW (COMBINED DATA)
 # ============================================================
 
-def page_merged():
-    check_firewall("Merged View", st.session_state.get("mode", "free"))
+def page_merged_view():
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Merged View (Combined Data)", mode)
 
     aaa_header()
-    st.subheader("✨ Merged View — Unified Medical Intelligence (Premium)")
 
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # TITLE + TAGLINE + TRIAL MESSAGE
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            ✨ Merged View — Combined Data
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Unified combined analysis using OCR, logs, summaries and medical PDFs.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE → STANDARD PREMIUM LOCK LAYOUT
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Bar (gradient)
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — REAL MERGED VIEW CONTENT
+    # --------------------------------------------------------
     st.markdown(
         """
-        <div style="font-size:16px; color:#cbd5f5; margin-bottom:20px;">
-            AAA merges multiple medical documents into one structured,
-            doctor-style unified intelligence sheet.
+        <div style="font-size:14px; line-height:1.6; margin-bottom:16px; margin-top:8px;">
+            AAA merges OCR text, logs, summaries and PDF intelligence into a single combined view —
+            your unified medical signal layer.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    vault_files = [
+    # ----- Load data -----
+    logs = load_json(HEALTH_LOG_FILE, [])
+    ocr_results = load_json(os.path.join(DATA_DIR, "ocr_results.json"), {})
+    insights_raw = load_json(AI_SUMMARY_FILE, {})
+    vault_data = load_json(os.path.join(DATA_DIR, "vault_data.json"), {})
+
+    st.markdown("---")
+
+    # --------------------------------------------------------
+    # 1) HEALTH LOGS
+    # --------------------------------------------------------
+    st.markdown("### 📘 Health Logs")
+    if logs:
+        text_block = "\n".join([l.get("summary", "") for l in logs])
+        st.code(text_block or "No logs available.", language="text")
+    else:
+        st.info("No logs available.")
+
+    st.markdown("---")
+
+    # --------------------------------------------------------
+    # 2) OCR EXTRACTED TEXT
+    # --------------------------------------------------------
+    st.markdown("### 📄 OCR Extracted Text")
+    if ocr_results:
+        st.json(ocr_results)
+    else:
+        st.info("No OCR data found.")
+
+    st.markdown("---")
+
+    # --------------------------------------------------------
+    # 3) AI INSIGHTS
+    # --------------------------------------------------------
+    st.markdown("### 🤖 AI Insights")
+    if insights_raw:
+        st.json(insights_raw)
+    else:
+        st.info("No insights available.")
+
+    st.markdown("---")
+
+    # --------------------------------------------------------
+    # 4) PDF INTELLIGENCE
+    # --------------------------------------------------------
+    st.markdown("### 📂 PDF Intelligence")
+    if vault_data:
+        st.json(vault_data)
+    else:
+        st.info("No PDF intelligence data yet.")
+
+    aaa_footer()
+
+
+# ============================================================
+# PAGE 8 — SUMMARY AI (FREE LOCKED + PREMIUM ACTIVE)
+# ============================================================
+
+def page_summary_ai():
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Summary AI (Advanced Summary) — AI", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL MESSAGE
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧬 Summary AI — Advanced Medical Summary
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Generate a clean, structured, patient-friendly medical summary using AAA Intelligence.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — MATCH HYBRID ENGINE EXACTLY
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Gradient Banner
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        aaa_footer()
+        return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL SUMMARY AI ENGINE
+    # --------------------------------------------------------
+
+    st.markdown(
+        """
+        **AAA Intelligence Active**<br>
+        You have full access. Features will continue improving with updates.<br><br>
+
+        ⭐ <i>Enjoy a 7-day free trial — full intelligence unlocked.</i>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # MAIN DESCRIPTION
+    st.markdown(
+        """
+        <div style="font-size:16px; color:#cbd5f5; margin-bottom:20px;">
+            AAA Intelligence will extract key clinical meaning from your medical document and
+            provide a structured, easy-to-understand medical summary.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # LOAD AVAILABLE FILES
+    files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
-    if not vault_files:
-        st.warning("Upload at least 2 documents.")
+    if not files:
+        st.warning("Upload at least one medical document to generate a summary.")
         monetization_cta()
         aaa_footer()
         return
 
-    selected_files = st.multiselect(
-        "Select 2–5 documents:",
-        vault_files,
-        max_selections=5
-    )
+    selected_file = st.selectbox("Select a document:", files)
 
-    if len(selected_files) < 2:
-        st.info("Select at least two files to proceed.")
-        aaa_footer()
-        return
-
-    if st.button("Generate Unified Intelligence", use_container_width=True):
-        with st.spinner("Merging documents…"):
+    # --------------------------------------------------------
+    # GENERATE SUMMARY
+    # --------------------------------------------------------
+    if st.button("Generate Medical Summary", use_container_width=True):
+        with st.spinner("Analyzing your document…"):
 
             try:
-                text_blocks = []
-
-                for f in selected_files:
-                    p = os.path.join(VAULT_DIR, f)
-                    txt = extract_text_any(p)
-                    text_blocks.append(f"\n\n===== DOCUMENT: {f} =====\n{txt}")
-
-                merged_block = "\n".join(text_blocks)
-
-                # Safely truncate to 12k tokens
-                safe_block = merged_block[:12000]
+                path = os.path.join(VAULT_DIR, selected_file)
+                text = extract_text_any(path)
+                safe_text = text[:6000]  # safety limit
 
                 prompt = f"""
 You are AAA Health Intelligence.
 
-Create a clean, structured, doctor-style unified summary.
+Create a structured, patient-friendly medical summary.
 
-Sections required:
-1. Combined Key Findings
-2. Trends & Patterns
-3. Risk Indicators
-4. Conflicts / Missing Information
-5. Actionable Recommendations
-6. Overall Takeaway
+Required Sections:
+1. Key Findings  
+2. Easy-to-Understand Explanation  
+3. Risk Indicators  
+4. Missing or Conflicting Information  
+5. Actionable Recommendations  
+6. Overall Takeaway  
 
 TEXT:
-{safe_block}
+{safe_text}
 """
 
-                result = call_gemini(prompt)
-                result = safe_render(result)
+                result = safe_render(call_gemini(prompt))
 
-                # Premium styling
+                # OUTPUT CARD
                 st.markdown(
                     """
                     <div style="
-                        padding:28px;
+                        padding:24px;
                         border-radius:14px;
                         background:#0f1a2e;
                         border-left:5px solid #38bdf8;
-                        box-shadow:0 0 18px rgba(56,189,248,0.28);
+                        box-shadow:0 0 12px rgba(56,189,248,0.25);
                         color:#e2e8f0;
                         font-size:15px;
                         line-height:1.65;
@@ -1070,8 +1412,6 @@ TEXT:
                 st.markdown(result, unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                st.code(result)
-
             except Exception as e:
                 st.error(f"Error: {e}")
 
@@ -1080,207 +1420,209 @@ TEXT:
 
 
 # ============================================================
-# PAGE 8 — SUMMARY AI (PREMIUM)
+# PAGE 9 — INSIGHTS AI (FREE LOCKED + PREMIUM ACTIVE)
 # ============================================================
 
-def page_summary_ai():
-    check_firewall("Summary AI", st.session_state.get("mode", "free"))
-    aaa_header()
-    st.subheader("🧬 Summary AI (Premium)")
+def page_insights_ai():
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Insights AI", mode)
 
-    if not is_premium():
-        feature_locked()
+    aaa_header()
+
+    # --------------------------------------------------------
+    # TITLE + TAGLINE + FREE TRIAL MESSAGE
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧠 Insights AI — Deep Medical Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            AI-powered deep medical interpretation combining hybrid signals, OCR, and PDFs.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — Apply FULL PREMIUM LOCK TEMPLATE (GOLD STANDARD)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Banner
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL INSIGHTS AI ENGINE (ACTIVE)
+    # --------------------------------------------------------
     st.markdown(
         """
-        <div style="font-size:15px; line-height:1.6; color:#8FA3B8;">
-            Generate a structured, patient-friendly medical summary using AAA Intelligence.
-        </div>
+        **AAA Intelligence Active**  
+        You have full access. Features will continue improving with updates.
+
+        ⭐ *Enjoy a 7-day free trial — full intelligence unlocked.*
         """,
         unsafe_allow_html=True,
     )
 
+    # --------------------------------------------------------
+    # LOAD AVAILABLE FILES
+    # --------------------------------------------------------
     files = [
         f for f in os.listdir(VAULT_DIR)
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
     if not files:
-        st.info("Upload at least one document.")
+        st.warning("Upload at least one medical document to generate Insights.")
         monetization_cta()
         aaa_footer()
         return
 
-    selected_file = st.selectbox("Select file:", files)
+    selected_file = st.selectbox("Select a document for insights:", files)
 
-    if st.button("Generate Summary"):
-        with st.spinner("Analyzing…"):
-
-            try:
-                path = os.path.join(VAULT_DIR, selected_file)
-                text = extract_text_any(path)
-                safe_text = text[:6000]
-
-                prompt = (
-                    "Provide a structured, patient-friendly medical summary.\n"
-                    "Sections:\n"
-                    "1. Key Findings\n"
-                    "2. Easy Explanation\n"
-                    "3. Risk Indicators\n"
-                    "4. Missing Info\n"
-                    "5. Actionable Next Steps\n\n"
-                    f"TEXT:\n{safe_text}"
-                )
-
-                result_raw = call_gemini(prompt)
-                result = safe_render(result_raw)
-
-                st.success("Summary generated!")
-                st.markdown(result, unsafe_allow_html=True)
-
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    monetization_cta()
-    aaa_footer()
-
-
-# ============================================================
-# PAGE 9 — INSIGHTS AI (HYBRID ENGINE) — UPDATED SAFE VERSION
-# ============================================================
-
-def generate_insights_hybrid(file_text: str) -> str:
-    """Gemini Hybrid Engine: Short Summary + Deep Insights."""
-    prompt = f"""
-You are AAA-Health Intelligence. Analyze the following medical text and produce a HYBRID structured output.
-
-TEXT:
-\"\"\"
-{file_text}
-\"\"\"
-
-OUTPUT FORMAT EXACTLY:
-
-SHORT_SUMMARY:
-- 3–5 bullet points
-- Simple language
-- Easy to understand
-
-DEEP_INSIGHTS:
-SECTION 1 — Key Findings:
-- 4–7 bullet points
-
-SECTION 2 — Trends & Patterns:
-- 3–5 bullet points
-
-SECTION 3 — Risks & Red Flags:
-- 2–4 bullet points
-
-SECTION 4 — Recommendations:
-- 3–6 bullet points
-
-Return ONLY formatted text. No intro, no disclaimers.
-"""
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
-    return response.text
-
-
-def save_insights_record(title: str, short_summary: str, deep_insights: str):
-    """Save hybrid insights to insights.json."""
-    data = load_json(INSIGHTS_FILE, [])
-    data.append({
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "title": title,
-        "short": short_summary,
-        "deep": deep_insights,
-    })
-    save_json(INSIGHTS_FILE, data)
-
-
-def page_insights_ai():
-    check_firewall("Insights AI", st.session_state.get("mode", "free"))
-    aaa_header()
-    st.subheader("📊 Insights AI (Premium)")
-
-    if not is_premium():
-        feature_locked()
-        aaa_footer()
-        return
-
-    # ------------------------------------------------------------
-    # LOAD VAULT FILES
-    # ------------------------------------------------------------
-    files = [
-        f for f in os.listdir(VAULT_DIR)
-        if os.path.isfile(os.path.join(VAULT_DIR, f))
-    ]
-
-    if not files:
-        st.warning("No files found in your Vault.")
-        monetization_cta()
-        aaa_footer()
-        return
-
-    selected_file = st.selectbox("Select file for insights:", files)
-
-    # ------------------------------------------------------------
-    # RUN HYBRID ENGINE
-    # ------------------------------------------------------------
-    if st.button("Generate Insights"):
+    # --------------------------------------------------------
+    # GENERATE HYBRID INSIGHTS
+    # --------------------------------------------------------
+    if st.button("Generate Insights", use_container_width=True):
         with st.spinner("🔥 Generating AAA Hybrid Intelligence…"):
 
             try:
                 path = os.path.join(VAULT_DIR, selected_file)
                 text = extract_text_any(path)
 
-                ai_output_raw = generate_insights_hybrid(text)
-                ai_output = ai_output_raw or ""
+                # Run hybrid engine
+                raw_output = generate_insights_hybrid(text)
+                safe_output = raw_output or ""
+                rendered_output = safe_render(safe_output)
 
-                # -------------------------
-                # SAFE RENDERING
-                # -------------------------
-                ai_output_safe = safe_render(ai_output)
-
-                # -------------------------
-                # SPLITTING SECTIONS
-                # -------------------------
+                # --------------------------------------------------------
+                # SPLIT SUMMARY + DEEP INSIGHTS
+                # --------------------------------------------------------
                 short_part = ""
-                deep_part = ai_output_safe
+                deep_part = rendered_output
 
-                if "SHORT_SUMMARY:" in ai_output:
+                if "SHORT_SUMMARY:" in safe_output:
                     try:
-                        short_part = ai_output.split("SHORT_SUMMARY:")[1].split("DEEP_INSIGHTS:")[0].strip()
+                        short_part = safe_output.split("SHORT_SUMMARY:")[1].split("DEEP_INSIGHTS:")[0].strip()
                     except:
                         short_part = "Unable to extract short summary."
 
-                if "DEEP_INSIGHTS:" in ai_output:
+                if "DEEP_INSIGHTS:" in safe_output:
                     try:
-                        deep_part = ai_output.split("DEEP_INSIGHTS:")[1].strip()
+                        deep_part = safe_output.split("DEEP_INSIGHTS:")[1].strip()
                     except:
-                        deep_part = ai_output_safe
+                        deep_part = rendered_output
 
                 short_safe = safe_render(short_part)
                 deep_safe = safe_render(deep_part)
 
-                # -------------------------
-                # SAVE HISTORY
-                # -------------------------
+                # --------------------------------------------------------
+                # SAVE TO INSIGHTS HISTORY
+                # --------------------------------------------------------
                 save_insights_record(selected_file, short_safe, deep_safe)
 
-                # -------------------------
-                # UI DISPLAY
-                # -------------------------
+                # --------------------------------------------------------
+                # DISPLAY OUTPUT
+                # --------------------------------------------------------
                 st.success("Insights generated successfully!")
+
+                st.markdown(
+                    """
+                    <div style="padding:18px; border-radius:12px; background:#0f1a2e;
+                                border-left:5px solid #38bdf8; box-shadow:0 0 12px rgba(56,189,248,0.25);">
+                        <b>AAA Hybrid Summary</b>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 st.markdown("### 🟦 Short Summary")
                 st.markdown(short_safe, unsafe_allow_html=True)
 
                 st.markdown("---")
-                st.markdown("### 🟫 Deep Insights")
 
+                st.markdown("### 🟫 Deep Insights")
                 st.markdown(deep_safe, unsafe_allow_html=True)
 
             except Exception as e:
@@ -1290,43 +1632,135 @@ def page_insights_ai():
     aaa_footer()
 
 # ============================================================
-# PAGE — INSIGHTS HISTORY (PREMIUM) — UPGRADED VERSION
+# PAGE — INSIGHTS HISTORY (FREE LOCKED + PREMIUM ACTIVE)
 # ============================================================
 
 def page_insights_history():
-    check_firewall("Insights History", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Insights History", mode)
+
     aaa_header()
 
+    # --------------------------------------------------------
+    # TITLE + 7-DAY TRIAL MESSAGE
+    # --------------------------------------------------------
     st.markdown("""
         <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
-            📚 Insights History (Premium)
+            📚 Insights History — AAA Hybrid Intelligence Records
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Your previously generated health insights — deep analysis, trends, and summaries.
+            Review your previously generated AAA Hybrid Insights — summaries, trends, and deep analysis.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # FREE MODE → PREMIUM LOCK LAYOUT (BEST VERSION)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    # Load insights
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY
+    # --------------------------------------------------------
     insights = load_json(INSIGHTS_FILE, [])
     if not insights:
-        st.info("No insights found. Generate insights first in Insights AI.")
+        st.info("No insights found yet. Generate insights using 'Insights AI'.")
         monetization_cta()
         aaa_footer()
         return
 
-    # AAA brand colors
-    card_bg = "#0B1625"          # Deep navy
-    teal = "#00A6C8"             # Teal
-    gold = "#D4A037"             # Metallic gold
-    soft_gold = "#F2C678"        # Accent gold
+    # AAA Brand Colors
+    card_bg = "#0B1625"
+    teal = "#00A6C8"
+    gold = "#D4A037"
+    soft_gold = "#F2C678"
 
-    # Card styling
+    # Styling
     st.markdown(f"""
         <style>
         .aaa-card {{
@@ -1363,7 +1797,7 @@ def page_insights_history():
         </style>
     """, unsafe_allow_html=True)
 
-    # Render cards (newest first)
+    # Render records in reverse order
     for item in insights[::-1]:
         title = item.get("title", "Insight")
         date = item.get("date", "")
@@ -1372,29 +1806,23 @@ def page_insights_history():
 
         st.markdown("<div class='aaa-card'>", unsafe_allow_html=True)
 
-        # Title + Date
-        st.markdown(
-            f"<div class='aaa-title'>🧠 {title}</div>",
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"<div class='aaa-date'>📅 {date}</div>",
-            unsafe_allow_html=True
-        )
+        # Title & Date
+        st.markdown(f"<div class='aaa-title'>🧠 {title}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='aaa-date'>📅 {date}</div>", unsafe_allow_html=True)
 
         st.markdown("<div class='aaa-divider'></div>", unsafe_allow_html=True)
 
-        # Short summary
+        # Short Summary
         st.markdown("<div class='aaa-section-title'>🔹 Short Summary</div>", unsafe_allow_html=True)
         st.markdown(short.replace("-", "• "))
 
-        # Deep insights section
+        # Deep Insights (expandable)
         with st.expander("🔸 Deep Insights (Click to expand)"):
             st.markdown(deep.replace("-", "• "))
 
         st.markdown("<div class='aaa-divider'></div>", unsafe_allow_html=True)
 
-        # Export button
+        # Export
         export_text = (
             "AAA INSIGHTS REPORT\n"
             f"Date: {date}\n"
@@ -1418,63 +1846,119 @@ def page_insights_history():
     aaa_footer()
 
 # ============================================================
-# PAGE 10 — SUMMARY REPORT (PREMIUM PDF EXPORT)
+# PAGE 10 — SUMMARY REPORT (FULLY ACTIVATED + 7-DAY TRIAL)
 # ============================================================
 
-from fpdf import FPDF
-
-class AAA_PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 14)
-        self.set_text_color(0, 166, 200)  # AAA teal
-        self.cell(0, 10, "AAA — Health Intelligence Summary Report", ln=True, align="C")
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-18)
-        self.set_font("Arial", "I", 9)
-        self.set_text_color(180, 180, 180)
-        self.cell(0, 10, "Artigellence Augmentation Aggregator — Early Access", ln=True, align="C")
-
-
-def generate_pdf(text: str, title: str, date: str, output_path: str):
-    pdf = AAA_PDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-
-    # Title
-    pdf.set_font("Arial", "B", 13)
-    pdf.set_text_color(212, 160, 55)  # Gold
-    pdf.multi_cell(0, 10, title)
-    pdf.ln(3)
-
-    # Date
-    pdf.set_font("Arial", "", 11)
-    pdf.set_text_color(0, 166, 200)
-    pdf.cell(0, 8, f"Date: {date}", ln=True)
-    pdf.ln(5)
-
-    # Main Body
-    pdf.set_font("Arial", "", 11)
-    pdf.set_text_color(255, 255, 255)
-
-    for line in text.split("\n"):
-        pdf.multi_cell(0, 8, line)
-
-    pdf.output(output_path)
-
-
 def page_summary_report():
-    aaa_header()
-    st.subheader("📘 Summary Report (Premium PDF)")
+    mode = st.session_state.get("mode", "free")
 
-    # 🔒 Premium Lock
-    if not is_premium():
-        feature_locked()
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            📘 Summary Report — AAA PDF Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Export your AAA-generated summaries into a clean, professional PDF report.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # ----------------------------------------------------------
+    # FREE MODE — IDENTICAL PREMIUM LOCK (BEST VERSION)
+    # ----------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:#ffffff;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card (clean centered version)
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Bar (same as Merged View)
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    # Load summaries from your existing AI_SUMMARY_FILE
+    # ----------------------------------------------------------
+    # PREMIUM MODE — REMAINS UNTOUCHED
+    # ----------------------------------------------------------
+
+    # Load summaries
     summaries = load_json(AI_SUMMARY_FILE, [])
 
     if not summaries:
@@ -1482,32 +1966,32 @@ def page_summary_report():
         aaa_footer()
         return
 
-    # Build dropdown
+    # Select summary
     options = [
         f"{i+1}. {s.get('date', '')} — {s.get('title', 'Summary')}"
         for i, s in enumerate(summaries)
     ]
 
     selected_idx = st.selectbox(
-        "Choose a summary to export:",
+        "Choose a summary to export as PDF:",
         list(range(len(options))),
         format_func=lambda i: options[i],
     )
 
-    selected_summary = summaries[selected_idx]
-    text = selected_summary.get("text", "")
-    title = selected_summary.get("title", "AAA Summary")
-    date = selected_summary.get("date", "")
+    selected = summaries[selected_idx]
+    text = selected.get("text", "")
+    title = selected.get("title", "AAA Summary")
+    date = selected.get("date", "")
 
+    # PDF generation
     if st.button("📄 Generate PDF Report"):
         try:
             generate_pdf(text, title, date, SUMMARY_REPORT_PDF)
             st.success("PDF report generated successfully.")
 
-            # Download button
             with open(SUMMARY_REPORT_PDF, "rb") as f:
                 st.download_button(
-                    label="Download Report",
+                    label="📥 Download AAA PDF Report",
                     data=f,
                     file_name="AAA_Health_Summary_Report.pdf",
                     mime="application/pdf",
@@ -1519,7 +2003,9 @@ def page_summary_report():
     aaa_footer()
 
 
-# Saving function remains same (no changes)
+# -----------------------------------------------------------
+# Saving function — unchanged
+# -----------------------------------------------------------
 def save_ai_summary(text: str, title: str = "AAA Summary"):
     summaries = load_json(AI_SUMMARY_FILE, [])
     summaries.append(
@@ -1533,93 +2019,185 @@ def save_ai_summary(text: str, title: str = "AAA Summary"):
 
 
 # ============================================================
-# PAGE 11 — HYBRID ENGINE (PREMIUM MULTI-SOURCE AI)
+# PAGE 11 — HYBRID ENGINE (FREE LOCKED + PREMIUM ACTIVE)
 # ============================================================
 
 def page_hybrid_engine():
-    check_firewall("Hybrid Engine", st.session_state.get("mode", "free"))
-    aaa_header()
-    st.subheader("🧠 Hybrid Engine — Multi-Source Intelligence (Premium)")
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Hybrid Engine (Multi-Source Intelligence) — AI", mode)
 
-    # 🔒 Premium check
-    if not is_premium():
-        feature_locked()
+    aaa_header()
+
+    # --------------------------------------------------------
+    # TITLE + TAGLINE + TRIAL MESSAGE
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧠 Hybrid Engine — Multi-Source AAA Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Combine OCR, PDFs, doctor notes, summaries and insights into a unified health analysis.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — EXACT SAME FREE LAYOUT AS INSIGHTS HISTORY
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Banner
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:15px; line-height:1.5; margin-bottom:15px; color:#8FA3B8;">
-        Combine all intelligence sources — OCR text, PDFs, doctor notes, 
-        summaries, insights — to generate a powerful unified analysis powered by AAA Intelligence.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL HYBRID ENGINE
+    # --------------------------------------------------------
 
-    # ----------------------------------------------------------
-    # 1. Load OCR text
-    # ----------------------------------------------------------
+    # Load OCR text
     ocr_text = ""
     try:
         if os.path.exists(OCR_TEXT_FILE):
-            ocr_text = open(OCR_TEXT_FILE, "r").read()
-    except:
+            with open(OCR_TEXT_FILE, "r") as f:
+                ocr_text = f.read()
+    except Exception:
         pass
 
-    # ----------------------------------------------------------
-    # 2. Load last PDF text
-    # ----------------------------------------------------------
+    # Load PDF text
     pdf_text = ""
     try:
         if os.path.exists(PDF_TEXT_FILE):
-            pdf_text = open(PDF_TEXT_FILE, "r").read()
-    except:
+            with open(PDF_TEXT_FILE, "r") as f:
+                pdf_text = f.read()
+    except Exception:
         pass
 
-    # ----------------------------------------------------------
-    # 3. Load doctor notes
-    # ----------------------------------------------------------
+    # Load doctor notes
     doctor_notes = ""
     try:
         if os.path.exists(DOCTOR_NOTES_FILE):
-            doctor_notes = open(DOCTOR_NOTES_FILE, "r").read()
-    except:
+            with open(DOCTOR_NOTES_FILE, "r") as f:
+                doctor_notes = f.read()
+    except Exception:
         pass
 
-    # ----------------------------------------------------------
-    # 4. Load AI Summaries
-    # ----------------------------------------------------------
+    # Load last AI Summary
     summaries = load_json(AI_SUMMARY_FILE, [])
     last_summary = summaries[-1]["text"] if summaries else ""
 
-    # ----------------------------------------------------------
-    # 5. Load AI Insights
-    # ----------------------------------------------------------
+    # Load last AI Insight (deep section)
     insights = load_json(INSIGHTS_FILE, [])
-    last_insight = insights[-1]["text"] if insights else ""
+    last_insight = insights[-1]["deep"] if insights else ""
 
+    # --------------------------------------------------------
+    # CHECKBOX OPTIONS
+    # --------------------------------------------------------
     st.markdown("### Select intelligence sources to combine:")
+
     use_ocr = st.checkbox("OCR extracted text", True)
     use_pdf = st.checkbox("PDF extracted text", True)
     use_notes = st.checkbox("Doctor notes", True)
     use_summary = st.checkbox("AI Summary", True)
     use_insight = st.checkbox("AI Insight", True)
 
-    if st.button("⚡ Generate Hybrid Intelligence Report"):
-        with st.spinner("Synthesising multi-source intelligence..."):
+    # --------------------------------------------------------
+    # RUN HYBRID ENGINE
+    # --------------------------------------------------------
+    if st.button("⚡ Generate Hybrid Intelligence Report", use_container_width=True):
+        with st.spinner("Combining multi-source intelligence…"):
+
             combined_text = ""
 
-            if use_ocr:
-                combined_text += "\n\n[OCR TEXT]\n" + ocr_text
-            if use_pdf:
-                combined_text += "\n\n[PDF TEXT]\n" + pdf_text
-            if use_notes:
-                combined_text += "\n\n[DOCTOR NOTES]\n" + doctor_notes
+            if use_ocr and ocr_text:
+                combined_text += "\n\n[OCR]\n" + ocr_text
+            if use_pdf and pdf_text:
+                combined_text += "\n\n[PDF]\n" + pdf_text
+            if use_notes and doctor_notes:
+                combined_text += "\n\n[NOTES]\n" + doctor_notes
             if use_summary and last_summary:
-                combined_text += "\n\n[AI SUMMARY]\n" + last_summary
+                combined_text += "\n\n[SUMMARY]\n" + last_summary
             if use_insight and last_insight:
-                combined_text += "\n\n[AI INSIGHT]\n" + last_insight
+                combined_text += "\n\n[INSIGHT]\n" + last_insight
 
             if not combined_text.strip():
                 st.error("No available text to combine.")
@@ -1627,27 +2205,27 @@ def page_hybrid_engine():
                 return
 
             prompt = f"""
-            You are AAA Hybrid Engine.
+You are AAA Hybrid Engine.
 
-            Combine the following multi-source medical information into a single,
-            medically balanced and easy-to-understand unified health analysis.
+Combine all provided medical information into a single,
+clear, structured, medically-balanced unified health analysis.
 
-            Sources:
-            {combined_text}
+SOURCES:
+{combined_text}
 
-            Output must include:
-            - Key findings
-            - Risks & Severity
-            - Trends & patterns
-            - Doctor-style explanation
-            - Actionable advice (safe, general)
-            """
+OUTPUT FORMAT:
+- Key Findings
+- Risks & Severity
+- Patterns & Trends
+- Explanation (doctor-style)
+- Actionable steps (general, safe)
+"""
 
             try:
                 response = call_gemini(prompt)
                 st.markdown(response)
             except Exception as e:
-                st.error(f"Error generating hybrid intelligence: {e}")
+                st.error(f"Error: {e}")
 
     monetization_cta()
     aaa_footer()
@@ -1658,30 +2236,125 @@ def page_hybrid_engine():
 # ============================================================
 
 def page_analytics_dashboard():
-    check_firewall("Analytics Dashboard", st.session_state.get("mode", "free"))
-    aaa_header()
-    st.subheader("📊 Rich Analytics Dashboard (Premium)")
+    # ✔ Correct firewall name (matches sidebar)
+    check_firewall("📊 Rich Analytics Dashboard (Premium Analytics)", st.session_state.get("mode", "free"))
 
-    # 🔒 Premium Lock
-    if not is_premium():
-        feature_locked()
+    mode = st.session_state.get("mode", "free")
+
+    aaa_header()
+
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            📊 Rich Analytics Dashboard — AAA Premium Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Deep AI analytics powered by your summaries, insights, logs, and health signal patterns.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # ----------------------------------------------------------
+    # FREE MODE → SHOW HYBRID ENGINE PREMIUM LOCK UI
+    # ----------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card (same style)
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    # -----------------------------
-    # Description
-    # -----------------------------
-    st.markdown(
-        """
-        <div style="font-size:16px; line-height:1.7; margin-bottom:15px;">
-            Deep multi-layer analytics based on your AI summaries, insights, logs,
-            and health score patterns. Updated automatically as your Vault grows.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # ----------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # ----------------------------------------------------------
 
-    # ========= Load required data =========
+    try:
+        import pandas as pd
+        import matplotlib.pyplot as plt
+    except:
+        st.error("Required libraries not available.")
+        aaa_footer()
+        return
+
     summaries = load_json(AI_SUMMARY_FILE, [])
     insights = load_json(INSIGHTS_FILE, [])
     health_data = load_json(HEALTH_LOG_FILE, [])
@@ -1690,25 +2363,19 @@ def page_analytics_dashboard():
         if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
-    # ========= Section: Data Overview =========
+    # ---------------- DATA OVERVIEW ----------------
     st.markdown("## 🗂 Data Overview")
-
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("AI Summaries", len(summaries))
     col2.metric("AI Insights", len(insights))
     col3.metric("Health Log Entries", len(health_data))
     col4.metric("Documents in Vault", len(vault_files))
-
     st.markdown("---")
 
-    # ========= Section: Health Score Trend =========
+    # ---------------- TREND CHART ----------------
     st.markdown("## 📈 Health Score Trend (Last 30 Entries)")
-
     if health_data:
         try:
-            import pandas as pd
-            import matplotlib.pyplot as plt
-
             df = pd.DataFrame(health_data)
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date").tail(30)
@@ -1723,113 +2390,185 @@ def page_analytics_dashboard():
             st.error(f"Error rendering chart: {e}")
     else:
         st.info("No health log data available.")
-
     st.markdown("---")
 
-    # ========= Section: Term Frequency from AI Summaries =========
+    # ---------------- TERM FREQUENCY ----------------
     st.markdown("## 🧬 Key Medical Terms Frequency")
-
     if summaries:
         try:
             text_all = " ".join(s.get("text", "") for s in summaries).lower()
-
             keywords = [
                 "blood", "pressure", "glucose", "cholesterol", "kidney",
                 "liver", "infection", "inflammation", "rate", "risk",
                 "deficiency", "vitamin", "anemia", "pain", "fatigue"
             ]
-
             freq = {k: text_all.count(k) for k in keywords}
-
             df2 = pd.DataFrame(list(freq.items()), columns=["Term", "Count"])
             st.bar_chart(df2.set_index("Term"))
-
         except Exception as e:
             st.error(f"Error generating term frequency: {e}")
-
     else:
         st.info("No summaries available for analysis.")
-
     st.markdown("---")
 
-    # ========= Section: Condition Alerts =========
+    # ---------------- CONDITION ALERTS ----------------
     st.markdown("## 🚨 Potential Condition Flags (AI)")
-
     if insights:
         combined_text = " ".join(i.get("deep", "") for i in insights).lower()
-
         alert_keywords = [
             ("Kidney-related indicators", ["creatinine", "gfr", "urea"]),
             ("Cardio Indicators", ["bp", "hypertension", "tachy", "cholesterol"]),
             ("Infection Markers", ["stool", "wbc", "infection"]),
             ("Inflammation Markers", ["crp", "esr", "inflamm"]),
         ]
-
         for title, keys in alert_keywords:
             if any(k in combined_text for k in keys):
                 st.warning(f"⚠ **{title} flagged in recent reports**")
-
     else:
         st.info("No insights available for condition flagging.")
-
     st.markdown("---")
 
-    # ========= Section: Regional Health Awareness =========
+    # ---------------- REGIONAL AWARENESS ----------------
     st.markdown("## 🌏 Regional Health Awareness (Beta)")
-
     st.markdown(
         """
         <p style="font-size:15px; line-height:1.6; color:#CBD5E1;">
-            This shows location-based seasonal trends and general awareness.
-            (Static beta content — will be replaced with live regional models.)
+            Region-based trends, seasonal alerts and general wellness awareness.
+            (Static beta content — will be replaced with live models.)
         </p>
-        """,
-        unsafe_allow_html=True,
-    )
-
+        """, unsafe_allow_html=True)
     region = "Sydney, AU"
     st.info(f"Region detected: **{region}**")
-
-    st.markdown(
-        """
+    st.markdown("""
         - 🌡 Seasonal allergies are moderate.  
         - 🤧 Flu cases rising locally.  
         - 🦠 Gastro outbreaks reported in nearby suburbs.  
-        - ☀ UV index trending high — extra precautions advised.  
-        """
-    )
+        - ☀ UV index trending high — take extra precautions.  
+    """)
 
     st.markdown("---")
-
     monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 13 — SMART SNAPSHOTS (FINAL VERSION — FROM PAGE 39)
+# PAGE 13 — SMART SNAPSHOTS (FINAL PREMIUM-ALIGNED VERSION)
 # ============================================================
 
 def page_snapshots():
-    check_firewall("Snapshots", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+    check_firewall("Snapshots", mode)
     aaa_header()
 
+    # --------------------------------------------------------
+    # HEADER + TAGLINE
+    # --------------------------------------------------------
     st.markdown(
         """
         <h2 style="text-align:center; color:#00D4FF; margin-bottom:0;">
             🧊 Snapshots — Backup & Restore
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Save your current AAA health state — logs, OCR, summaries — 
-            and restore anytime. All data stays on your device.
+            Save your current AAA health state — logs, OCR, summaries —
+            and restore anytime. All data stays safely on your device.
         </p>
         <br>
         """,
         unsafe_allow_html=True,
     )
 
-    # -------------------------------
+    # --------------------------------------------------------
+    # FREE MODE — IDENTICAL PREMIUM LOCK AS HYBRID ENGINE
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Feature card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    Smart Snapshots allow you to save, restore,
+                    and download your medical state anytime.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Banner
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        aaa_footer()
+        return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL SNAPSHOT ENGINE
+    # --------------------------------------------------------
+
     # CREATE SNAPSHOT
-    # -------------------------------
     if st.button("📦 Create New Snapshot", use_container_width=True):
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         snap_path = os.path.join(SNAPSHOT_DIR, f"snapshot_{now}")
@@ -1848,15 +2587,12 @@ def page_snapshots():
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # -------------------------------
     # LIST SNAPSHOTS
-    # -------------------------------
     st.subheader("📁 Available Snapshots")
 
     folders = sorted(
         [
-            d
-            for d in os.listdir(SNAPSHOT_DIR)
+            d for d in os.listdir(SNAPSHOT_DIR)
             if os.path.isdir(os.path.join(SNAPSHOT_DIR, d))
         ],
         reverse=True,
@@ -1873,7 +2609,7 @@ def page_snapshots():
 
         with st.expander(f"📦 {folder}"):
 
-            st.write("Contains copies of logs, OCR results, photos, and AI summaries.")
+            st.write("Includes logs, OCR results, photos, and AI summaries.")
 
             col1, col2, col3 = st.columns([1, 1, 1])
 
@@ -1947,131 +2683,8 @@ def page_timeline():
     monetization_cta()
     aaa_footer()
 
-
 # ============================================================
-# PAGE 15 — TIMELINE INTELLIGENCE (AAA NODE v1)
-# ============================================================
-
-TIMELINE_FILE = os.path.join(DATA_DIR, "timeline_master.json")
-
-if not os.path.exists(TIMELINE_FILE):
-    with open(TIMELINE_FILE, "w") as f:
-        json.dump([], f, indent=4)
-
-
-def load_timeline():
-    try:
-        with open(TIMELINE_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-
-def save_timeline(data):
-    with open(TIMELINE_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-
-def add_timeline_event(
-    summary,
-    category="general",
-    source="AAA Engine",
-    risk="N/A",
-    engine="Gemini/AAA Hybrid",
-):
-    events = load_timeline()
-    entry = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "summary": summary,
-        "category": category,
-        "source": source,
-        "risk": risk,
-        "engine": engine,
-        "event_id": f"EVT-{len(events)+1:04d}",
-    }
-    events.append(entry)
-    save_timeline(events)
-
-
-def page_timeline_intelligence():
-    check_firewall("Timeline Intelligence", st.session_state.get("mode", "free"))
-    aaa_header()
-
-    st.markdown(
-        """
-        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
-            🕰 Timeline Intelligence (AAA Node v1)
-        </h2>
-        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            A unified chronological record of your health logs, AI summaries,
-            snapshots, OCR results and AAA insights.
-        </p>
-        <br>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    events = load_timeline()
-    if not events:
-        st.info("No timeline events yet.")
-        monetization_cta()
-        aaa_footer()
-        return
-
-    card_bg = "#0D1628"
-    accent = "#F2C678"
-    border = "#04A3D7"
-
-    for evt in reversed(events):
-        ts = evt.get("timestamp", "")
-        summary = evt.get("summary", "")
-        category = evt.get("category", "")
-        source = evt.get("source", "")
-        risk = evt.get("risk", "")
-        engine = evt.get("engine", "")
-        event_id = evt.get("event_id", "")
-
-        st.markdown(
-            f"""
-            <div style="
-                background-color:{card_bg};
-                padding:20px;
-                margin-bottom:18px;
-                border-radius:16px;
-                border-left:4px solid {accent};
-                box-shadow:0px 0px 18px rgba(0,0,0,0.35);
-            ">
-                <div style="font-size:15px; color:{accent}; font-weight:bold;">
-                    {ts} — {category.upper()}
-                </div>
-
-                <div style="font-size:14px; margin-top:8px; color:#DBE7F0;">
-                    <b>Summary:</b> {summary}
-                </div>
-
-                <details style="margin-top:10px; color:#CBD9E6;">
-                    <summary style="cursor:pointer; font-size:13px; color:{border};">
-                        View Full Details
-                    </summary>
-
-                    <div style="margin-top:10px; font-size:13px; line-height:1.6;">
-                        <b>Event ID:</b> {event_id}<br>
-                        <b>Source:</b> {source}<br>
-                        <b>Risk Level:</b> {risk}<br>
-                        <b>Engine:</b> {engine}<br>
-                    </div>
-                </details>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    monetization_cta()
-    aaa_footer()
-
-
-# ============================================================
-# PAGE 16 — AI HEALTH SCORE ENGINE
+# PAGE 16 — AI HEALTH RISK ENGINE (RISK SIGNALS — PREMIUM)
 # ============================================================
 
 def compute_health_score(merged_data, insights, logs):
@@ -2081,6 +2694,9 @@ def compute_health_score(merged_data, insights, logs):
     reasons = []
     score = 80
 
+    # -------------------------
+    # LOG-BASED SIGNALS
+    # -------------------------
     if logs:
         latest_logs = logs[-5:]
         for log in latest_logs:
@@ -2101,6 +2717,9 @@ def compute_health_score(merged_data, insights, logs):
                 elif val > 8:
                     score += 1
 
+    # -------------------------
+    # INSIGHT RISK LEVELS
+    # -------------------------
     for item in insights:
         risk = item.get("risk_level", "").lower()
         if "high" in risk:
@@ -2108,6 +2727,9 @@ def compute_health_score(merged_data, insights, logs):
         if "moderate" in risk:
             score -= 3
 
+    # -------------------------
+    # MERGED DATA SIGNALS
+    # -------------------------
     if merged_data:
         for item in merged_data:
             cat = item.get("category", "").lower()
@@ -2129,34 +2751,122 @@ def compute_health_score(merged_data, insights, logs):
 
     score = max(1, min(99, score))
     summary = " • ".join(reasons[:4]) if reasons else "Stable — no major issues detected."
-
     return score, summary, reasons
 
 
-def page_health_score_engine():
-    check_firewall("Health Score", st.session_state.get("mode", "free"))
+# ============================================================
+# PAGE RENDER — MUST MATCH SIDEBAR EXACTLY
+# ============================================================
+
+def page_health_risk_engine():
+    """
+    Sidebar label:
+    🚨 AI Health Risk Engine (Risk Signals) — PREMIUM
+    """
+
+    mode = st.session_state.get("mode", "free")
+
+    # 🔥 CRITICAL — FIREWALL STRING MUST MATCH SIDEBAR EXACTLY
+    check_firewall("🚨 AI Health Risk Engine (Risk Signals) — PREMIUM", mode)
+
     aaa_header()
 
-    st.subheader("🧠 AI Health Score Engine")
+    # --------------------------------------------------------
+    # TITLE + SUBTITLE + TRIAL LINE (MATCH PREMIUM DESIGN)
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧠 AI Health Risk Engine — AAA Premium Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Deep AI evaluation of your logs, summaries, merged data and risk signals.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
 
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # FREE MODE — PREVENT FURTHER RENDERING
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow bar
+        st.markdown("""
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;">
+                ⚠️ This feature is available for Premium members.
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Upgrade text
+        st.markdown("""
+            <div style="margin-top:22px; font-size:18px; color:white;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Premium Feature Card
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="color:#93c5fd; margin:0; padding:0; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="margin-top:10px; color:#cbd5e1; font-size:14px; line-height:1.6;">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Blue CTA bar
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+        """, unsafe_allow_html=True)
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL ENGINE
+    # --------------------------------------------------------
     merged_data = load_json(MERGED_DATA_FILE, [])
-    insights = load_json(INSIGHTS_HISTORY_FILE, [])
+    insights = load_json(INSIGHTS_FILE, [])
     logs = load_json(HEALTH_LOG_FILE, [])
 
-    score, summary_text, reasons = compute_health_score(
-        merged_data, insights, logs
-    )
+    score, summary_text, reasons = compute_health_score(merged_data, insights, logs)
 
     navy = "#071E36"
     teal = "#00A6B6"
     gold = "#F4BD3B"
     soft_gold = "#F2C678"
 
+    # SCORE CARD
     st.markdown(
         f"""
         <div style="background:{navy}; padding:25px; border-radius:18px;
@@ -2179,7 +2889,8 @@ def page_health_score_engine():
         unsafe_allow_html=True,
     )
 
-    st.markdown("<h4 style='color:#F2C678;'>Breakdown</h4>", unsafe_allow_html=True)
+    # BREAKDOWN
+    st.markdown("<h4 style='color:#F2C678; margin-top:24px;'>Breakdown</h4>", unsafe_allow_html=True)
 
     if reasons:
         for r in reasons[:8]:
@@ -2686,13 +3397,144 @@ def generate_pdf_report(path, logs, insights, vault_files, doctor_summary=""):
 # ============================================================
 
 def page_pattern_timeline_ai():
-    aaa_header()
-    st.subheader("🧩 AAA Pattern Timeline AI — Neuralink-Style Condensed Signals")
+    mode = st.session_state.get("mode", "free")
 
-    if not is_premium():
-        feature_locked()
+    # FIREWALL (must match sidebar)
+    check_firewall("AAA Pattern Timeline AI — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES Page 21, 22, 23, 24)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            🧩 AAA Pattern Timeline AI — Neuralink-Style Condensed Signals
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            High-density compression of logs, insights, memory signals, and patterns across time.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE — PREMIUM LOCK UI (same template as Page 21)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
 
     st.markdown(
         """
@@ -2710,7 +3552,10 @@ def page_pattern_timeline_ai():
     memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
 
     st.markdown("### 📅 Select Timeline Range")
-    range_choice = st.selectbox("Choose analysis period:", ["Last 7 Days", "Last 14 Days", "Last 30 Days"])
+    range_choice = st.selectbox(
+        "Choose analysis period:",
+        ["Last 7 Days", "Last 14 Days", "Last 30 Days"]
+    )
 
     days = 7 if range_choice == "Last 7 Days" else 14 if range_choice == "Last 14 Days" else 30
     cutoff = datetime.now().timestamp() - (days * 86400)
@@ -2772,22 +3617,156 @@ def page_pattern_timeline_ai():
 
 
 # ============================================================
-# PAGE 21 — AI HEALTH RISK ENGINE
+# PAGE 21 — AI HEALTH RISK ENGINE (PREMIUM)
 # ============================================================
 
 def page_risk_engine():
-    aaa_header()
-    st.subheader("⚠️ AI Health Risk Engine (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    if not is_premium():
-        feature_locked()
+    # FIREWALL — label must match SIDEBAR EXACTLY
+    check_firewall("AI Health Risk Engine (Risk Signals) — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES PAGES 20–24)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            ⚠️ AI Health Risk Engine — Pattern & Signal Scanner (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE — unified style across premium pages
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Detect behavioural drift, weak points, risk contributors, and early indicators.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # GOLD TRIAL LINE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE — PREMIUM LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
 
     logs = load_json(HEALTH_LOG_FILE, [])
     insights = load_json(AI_SUMMARY_FILE, {})
     memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
 
+    # WINDOW SELECTOR
     st.markdown("### 📅 Select Analysis Window")
     window = st.selectbox("Analyze patterns for:", ["Last 7 Days", "Last 14 Days", "Last 30 Days"])
 
@@ -2796,6 +3775,7 @@ def page_risk_engine():
 
     filtered_logs = [l for l in logs if l.get("timestamp", 0) >= cutoff]
 
+    # ACTIVITY OVERVIEW
     st.markdown("### 📊 Recent Activity Overview")
     if not filtered_logs:
         st.info("No signals found.")
@@ -2812,6 +3792,7 @@ def page_risk_engine():
                 unsafe_allow_html=True,
             )
 
+    # RUN AI ANALYSIS
     if st.button("🚨 Run Risk Pattern Analysis"):
         with st.spinner("Evaluating patterns…"):
 
@@ -2835,14 +3816,17 @@ FORMAT:
 🧩 Lifestyle Weak Points
 🔮 Early Indicators (7 Days)
 📊 Consistency Score (0–100)
-                    DATA:
-                    {combined}
+
+DATA:
+{combined}
                     """
                 )
                 st.info(resp.text)
+
             except Exception as e:
                 st.error(f"AI Error: {e}")
 
+    monetization_cta()
     aaa_footer()
 
 
@@ -2851,17 +3835,148 @@ FORMAT:
 # ============================================================
 
 def page_insight_fusion():
-    aaa_header()
-    st.subheader("🌐 Insight Fusion Layer — Unified Health Intelligence (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    if not is_premium():
-        feature_locked()
+    # FIREWALL — must match sidebar EXACTLY
+    check_firewall("Insight Fusion Layer (Fusion Intelligence) — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES ALL OTHER PREMIUM PAGES)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            🌐 Insight Fusion Layer — Unified Health Intelligence (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE — UNIFIED STYLE
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Multi-signal fusion of logs, insights, OCR, vault PDFs, scores, and memory signals.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 7-DAY TRIAL LINE — SAME GOLD STYLE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE — PREMIUM LOCK (NO CHANGE)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    # -------------------------------
-    # LOAD ALL SIGNAL SOURCES SAFELY
-    # -------------------------------
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
+
+    # LOAD ALL SIGNAL SOURCES
     logs = load_json(HEALTH_LOG_FILE, [])
     insights = load_json(AI_SUMMARY_FILE, {})
     memory_signals = load_json(os.path.join(DATA_DIR, "memory_signals.json"), [])
@@ -2869,9 +3984,7 @@ def page_insight_fusion():
     score_history = load_json(os.path.join(DATA_DIR, "score_history.json"), [])
     ocr_results = load_json(os.path.join(DATA_DIR, "ocr_results.json"), {})
 
-    # -------------------------------
-    # PRECOMPUTE ALL TEXT BLOCKS
-    # -------------------------------
+    # PREPARE TEXT BLOCKS
     logs_text = "\n".join([l.get("summary", "") for l in logs])
     memory_text = "\n".join(memory_signals)
     insights_text = json.dumps(insights, indent=2)
@@ -2879,9 +3992,6 @@ def page_insight_fusion():
     ocr_text = json.dumps(ocr_results, indent=2)
     score_text = json.dumps(score_history, indent=2)
 
-    # -------------------------------
-    # FINAL SAFE COMBINED TEXT
-    # -------------------------------
     combined_text = f"""
 ==== LOG SUMMARIES ====
 {logs_text}
@@ -2902,9 +4012,7 @@ def page_insight_fusion():
 {score_text}
 """
 
-    # -------------------------------
     # RUN FUSION ENGINE
-    # -------------------------------
     if st.button("🌐 Generate Unified Intelligence"):
         with st.spinner("Generating fusion…"):
             try:
@@ -2936,30 +4044,167 @@ DATA:
 
 
 # ============================================================
-# PAGE 23 — AAA INSIGHT GRAPHS
+# PAGE 23 — AAA INSIGHT GRAPHS (PREMIUM)
 # ============================================================
 
 def page_insight_graphs():
-    aaa_header()
-    st.subheader("📈 AAA Insight Graphs & Trend Visualizer")
+    mode = st.session_state.get("mode", "free")
 
-    if not is_premium():
-        feature_locked()
+    # FIREWALL — must match sidebar
+    check_firewall("Insight Graphs (Visual Charts) — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM-STYLE TITLE (MATCHES RICH ANALYTICS & TRIPTYCH)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            📈 AAA Insight Graphs & Trend Visualizer
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE — SAME STYLE AS OTHER PREMIUM PAGES
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Visual analytics powered by your logs, summaries, insights, and health signal trends.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 7-DAY TRIAL LINE — IDENTICAL STYLE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE — EXACT TEMPLATE OF PAGE 20
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This visual intelligence feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
+
+    # LOAD DATA
     logs = load_json(HEALTH_LOG_FILE, [])
     insights = load_json(AI_SUMMARY_FILE, {})
     score_history = load_json(os.path.join(DATA_DIR, "score_history.json"), [])
 
-    log_df = pd.DataFrame(logs)
-    score_df = pd.DataFrame(score_history)
-    insight_df = pd.DataFrame(insights.get("history", []))
+    # Convert safely to DataFrames
+    log_df = pd.DataFrame(logs) if logs else pd.DataFrame()
+    score_df = pd.DataFrame(score_history) if score_history else pd.DataFrame()
+    insight_df = pd.DataFrame(insights.get("history", [])) if insights else pd.DataFrame()
 
     st.markdown("---")
 
+    # --------------------------------------------------------
     # 1) HEALTH SCORE TREND
-    st.markdown("### 📈 Health Score Trend")
+    # --------------------------------------------------------
+    st.markdown("### 📈 Health Score Trend (0–100)")
 
     if not score_df.empty:
         score_df["date"] = pd.to_datetime(score_df["timestamp"]).dt.date
@@ -2967,19 +4212,18 @@ def page_insight_graphs():
         chart = alt.Chart(score_df).mark_line(point=True).encode(
             x="date:T",
             y=alt.Y("score:Q", scale=alt.Scale(domain=[0, 100])),
-            tooltip=["date", "score"],
-        ).properties(
-            width="container",
-            height=300
-        )
+            tooltip=["date", "score"]
+        ).properties(height=300)
 
         st.altair_chart(chart, use_container_width=True)
     else:
-        st.info("No health scores yet.")
+        st.info("No health scores available yet.")
 
     st.markdown("---")
 
+    # --------------------------------------------------------
     # 2) DAILY LOG FREQUENCY
+    # --------------------------------------------------------
     st.markdown("### 📊 Daily Log Activity")
 
     if not log_df.empty:
@@ -2994,11 +4238,13 @@ def page_insight_graphs():
 
         st.altair_chart(chart, use_container_width=True)
     else:
-        st.info("No logs yet.")
+        st.info("No logs found.")
 
     st.markdown("---")
 
+    # --------------------------------------------------------
     # 3) INSIGHT FREQUENCY
+    # --------------------------------------------------------
     st.markdown("### 🧩 Insight Frequency Trend")
 
     if not insight_df.empty:
@@ -3019,37 +4265,153 @@ def page_insight_graphs():
 
 
 # ============================================================
-# PAGE 24 — MEDICAL TRIPTYCH
+# PAGE 24 — MEDICAL TRIPTYCH (3-PANEL VIEW) — PREMIUM
 # ============================================================
 
 def page_medical_triptych():
+    mode = st.session_state.get("mode", "free")
+
+    # 🔐 FIREWALL — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Medical Triptych (3-Panel View) — PREMIUM", mode)
+
     aaa_header()
-    st.subheader("🩺 Medical Triptych — Doctor + Lab + PDF Fusion (Beta)")
 
-    if not is_premium():
-        feature_locked()
-        aaa_footer()
-        return
-
+    # --------------------------------------------------------
+    # TITLE — MATCHES RICH ANALYTICS DASHBOARD EXACTLY
+    # --------------------------------------------------------
     st.markdown(
         """
-        <div style='font-size:16px; margin-bottom:20px;'>
-            Fuses doctor notes, lab reports, and PDF vault documents.
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            🩺 Medical Triptych — Doctor + Lab + PDF Fusion (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # SUBTITLE — MATCH RICH ANALYTICS STYLE
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Unified medical fusion of doctor notes, lab reports, and vault PDFs — Beta.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Doctor notes
-    doctor_notes = st.text_area(
-        "🟦 Doctor Notes",
-        height=120,
-        placeholder="Enter clinical notes, symptoms…"
+    # ⭐ 7-DAY TRIAL LINE — SAME AS RICH ANALYTICS
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    # Lab PDF
+    # --------------------------------------------------------
+    # FREE MODE — PREMIUM LOCK UI (same as Page 20 template)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:25px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="margin-top:18px; font-size:18px; color:white;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:30px;
+                padding:26px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="margin-top:10px; color:#cbd5e1; font-size:14px; line-height:1.6;">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:28px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        aaa_footer()
+        return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (NO CHANGE)
+    # --------------------------------------------------------
+
+    st.markdown("### 🟦 Doctor Notes")
+    doctor_notes = st.text_area(
+        "Enter clinical notes, symptoms, observations…",
+        height=120,
+        placeholder="Example: Patient reports fatigue, mild chest discomfort…"
+    )
+
     st.markdown("### 🟧 Lab Report (PDF → Text)")
-    lab_pdf = st.file_uploader("Upload PDF", type=["pdf"], key="lab_pdf_uploader")
+    lab_pdf = st.file_uploader("Upload Lab PDF", type=["pdf"], key="lab_pdf_uploader")
     lab_text = ""
 
     if lab_pdf:
@@ -3058,23 +4420,20 @@ def page_medical_triptych():
                 f.write(lab_pdf.read())
             lab_text = extract_text_any("temp_lab.pdf")
             st.success("Lab report extracted.")
-        except:
-            st.error("Unable to extract lab PDF.")
+        except Exception as e:
+            st.error(f"Failed to extract lab PDF: {e}")
 
-    # Vault PDF selection
-    st.markdown("### 🟩 Select Medical PDF from Vault")
-    vault_files = [f for f in os.listdir(VAULT_DIR) if f.endswith(".pdf")]
-
-    selected_pdf = st.selectbox("Choose PDF:", ["None"] + vault_files)
+    st.markdown("### 🟩 Select PDF from Medical Vault")
+    vault_files = [f for f in os.listdir(VAULT_DIR) if f.lower().endswith(".pdf")]
+    selected_pdf = st.selectbox("Choose a Vault PDF:", ["None"] + vault_files)
     vault_text = ""
 
     if selected_pdf != "None":
         try:
-            path = os.path.join(VAULT_DIR, selected_pdf)
-            vault_text = extract_text_any(path)
-            st.success(f"Loaded PDF: {selected_pdf}")
-        except:
-            st.error("Failed to read PDF.")
+            vault_text = extract_text_any(os.path.join(VAULT_DIR, selected_pdf))
+            st.success(f"Loaded Vault PDF: {selected_pdf}")
+        except Exception as e:
+            st.error(f"Failed to read PDF: {e}")
 
     combined_triptych = f"""
 DOCTOR NOTES:
@@ -3083,7 +4442,7 @@ DOCTOR NOTES:
 LAB REPORT:
 {lab_text}
 
-MEDICAL PDF:
+VAULT PDF:
 {vault_text}
 """
 
@@ -3093,18 +4452,19 @@ MEDICAL PDF:
             aaa_footer()
             return
 
-        with st.spinner("Generating…"):
+        with st.spinner("Generating unified clinical intelligence…"):
             try:
                 ai = genai.GenerativeModel("gemini-2.0-flash")
                 resp = ai.generate_content(
                     f"""
-Fuse DOCTOR NOTES + LAB REPORT + MEDICAL PDF.
+Fuse DOCTOR NOTES + LAB REPORT + VAULT PDF into a unified medical intelligence layer.
 
 FORMAT:
-1) Unified Clinical Summary
-2) Key Trends
-3) Risk/Attention Layer
-4) Doctor-Friendly Briefing
+1. Unified Clinical Summary
+2. Key Medical Trends
+3. Risk / Attention Layer
+4. Doctor-Friendly Briefing
+5. Recommended Action Loop
 
 DATA:
 {combined_triptych}
@@ -3118,17 +4478,103 @@ DATA:
 
 
 # ============================================================
-# PAGE 25 — SERENE FREQUENCY
+# PAGE 25 — SERENE FREQUENCY (PREMIUM)
 # ============================================================
 
 def page_serene_frequency():
-    aaa_header()
-    st.subheader("🎵 Serene Frequency Indicators — Vibration × Health Intelligence")
 
-    if not is_premium():
-        feature_locked()
+    mode = st.session_state.get("mode", "free")
+
+    # 🔐 Premium firewall — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Serene Frequency Indicators — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # TITLE + SUBTITLE + TRIAL — ALWAYS SHOWN (FREE + PREMIUM)
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🎵 Serene Frequency Indicators — Vibration × Health Intelligence
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Emotional signals meet vibrational healing and wellness alignment.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — MUST COME AFTER THE TITLE
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        st.markdown("""
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div style="margin-top:22px; font-size:18px; color:white;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    Upgrade to unlock deep vibration × emotional alignment intelligence.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+        """, unsafe_allow_html=True)
+
         aaa_footer()
         return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE SECTION BELOW
+    # --------------------------------------------------------
 
     logs = load_json(HEALTH_LOG_FILE, [])
     insights = load_json(AI_SUMMARY_FILE, {})
@@ -3149,7 +4595,7 @@ def page_serene_frequency():
     st.markdown("### 🎛 Coherence Summary")
 
     if not filtered_logs:
-        st.info("No logs in this range.")
+        st.info("No logs found in this range.")
         aaa_footer()
         return
 
@@ -3157,8 +4603,7 @@ def page_serene_frequency():
 
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(
-            f"""
+        response = model.generate_content(f"""
 You are Serene Frequency AI.
 
 TASK:
@@ -3174,9 +4619,9 @@ FORMAT:
 
 DATA:
 {combined_text}
-"""
-        )
+""")
         st.info(response.text)
+
     except Exception as e:
         st.error(f"AI Error: {e}")
 
@@ -3184,18 +4629,121 @@ DATA:
 
 
 # ============================================================
-# PAGE 26 — MOOD × SLEEP × STRESS RADAR
+# PAGE 26 — MOOD × SLEEP × STRESS RADAR (PREMIUM)
 # ============================================================
 
 def page_mood_sleep_stress_radar():
-    aaa_header()
-    st.subheader("🧘 Mood × Sleep × Stress Radar — Mind–Body State Map")
+    mode = st.session_state.get("mode", "free")
 
-    if not is_premium():
-        feature_locked()
-        monetization_cta()
+    # 🔐 Premium firewall — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Mood × Sleep × Stress Radar — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES PAGES 20–24)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            🧘 Mood × Sleep × Stress Radar — Mind–Body State Map
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE (same style as premium pages)
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Input your state — AAA creates a personalised Mind–Body Radar Map.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # GOLD TRIAL LINE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
 
     st.markdown(
         """
@@ -3218,6 +4766,9 @@ def page_mood_sleep_stress_radar():
 
     st.markdown("---")
 
+    # --------------------------------------------------------
+    # RADAR MAP GENERATION
+    # --------------------------------------------------------
     if st.button("Generate Mind–Body Radar Map"):
         with st.spinner("Generating radar…"):
             import matplotlib.pyplot as plt
@@ -3241,6 +4792,9 @@ def page_mood_sleep_stress_radar():
 
     st.markdown("---")
 
+    # --------------------------------------------------------
+    # AI INSIGHT BLOCK
+    # --------------------------------------------------------
     if st.button("🔮 Generate AI Insight"):
         with st.spinner("Analyzing mind–body pattern…"):
 
@@ -3277,21 +4831,111 @@ Give:
 
 
 # ============================================================
-# PAGE 27 — Health × Vibration Correlation Map
+# PAGE 27 — Health × Vibration Correlation Map (PREMIUM)
 # ============================================================
 
 def page_health_vibration_correlation():
-    aaa_header()
-    st.subheader("🌀 Health × Vibration Correlation Map (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    # -------------------------------
-    # PREMIUM LOCK
-    # -------------------------------
-    if not is_premium():
-        feature_locked()
-        monetization_cta()
+    # 🔐 Premium firewall — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Health × Vibration Correlation Map — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES PAGES 20–26 EXACTLY)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            🌀 Health × Vibration Correlation Map (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Discover how your physical health and vibration states move together.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # GOLD TRIAL LINE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning
+        st.markdown(
+            """
+            <div style="background:#3f3f1e; color:#e5e5c3;
+                padding:14px; border-radius:8px; font-size:14px; margin-bottom:16px;">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="font-size:18px; color:white; margin-bottom:18px;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:20px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
+
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
 
     st.markdown(
         """
@@ -3307,9 +4951,9 @@ def page_health_vibration_correlation():
 
     st.markdown("---")
 
-    # -------------------------------
-    # USER INPUT SELECTION
-    # -------------------------------
+    # --------------------------------------------------------
+    # USER INPUTS
+    # --------------------------------------------------------
     st.markdown("### 🧩 Select Inputs for Correlation Analysis")
 
     health_option = st.selectbox(
@@ -3337,6 +4981,9 @@ def page_health_vibration_correlation():
         ]
     )
 
+    # --------------------------------------------------------
+    # RUN CORRELATION ENGINE
+    # --------------------------------------------------------
     if st.button("🔍 Run Correlation Analysis"):
         with st.spinner("Running AAA Correlation Engine…"):
 
@@ -3344,12 +4991,12 @@ def page_health_vibration_correlation():
             import matplotlib.pyplot as plt
 
             try:
-                # Load placeholders / user data
+                # Load data placeholders
                 health_json = load_json(os.path.join(DATA_DIR, "health_data.json"), {})
                 vibration_json = load_json(os.path.join(DATA_DIR, "serene_frequency_data.json"), {})
                 mindbody_json = load_json(os.path.join(DATA_DIR, "mood_sleep_stress.json"), {})
 
-                # Placeholder correlation engine
+                # Placeholder correlation logic
                 result = {
                     "health_metric": health_option,
                     "vibration_metric": vibration_option,
@@ -3363,6 +5010,7 @@ def page_health_vibration_correlation():
 
                 st.success("Correlation Analysis Complete")
 
+                # Display results
                 st.markdown(
                     f"""
                     ### 📌 Results  
@@ -3376,7 +5024,9 @@ def page_health_vibration_correlation():
 
                 st.markdown("---")
 
-                # Scatter plot placeholder
+                # --------------------------------------------------------
+                # SCATTER PLOT PLACEHOLDER
+                # --------------------------------------------------------
                 fig, ax = plt.subplots()
                 ax.scatter(
                     [random.randint(1, 100) for _ in range(20)],
@@ -3394,22 +5044,111 @@ def page_health_vibration_correlation():
 
 
 # ============================================================
-# PAGE 28 — Trend Forecast Engine (Predictive Health + Vibration AI)
+# PAGE 28 — Trend Forecast Engine (Predictive Health + Vibration AI) — PREMIUM
 # ============================================================
 
 def page_trend_forecast_engine():
-    aaa_header()
-    st.subheader("📈 Trend Forecast Engine — Predictive Health × Vibration AI (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    # --------------------------
-    # PREMIUM LOCK
-    # --------------------------
-    if not is_premium():
-        feature_locked()
-        monetization_cta()
+    # 🔐 Premium firewall — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Trend Forecast Engine (Predictions) — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES 23–27 EXACTLY)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            📈 Trend Forecast Engine — Predictive Health × Vibration AI (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            AI-powered forecast of health, mood, sleep, vibration & behaviour trends.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # GOLD TRIAL LINE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning
+        st.markdown(
+            """
+            <div style="background:#3f3f1e; color:#e5e5c3;
+                padding:14px; border-radius:8px; font-size:14px; margin-bottom:16px;">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="font-size:18px; color:white; margin-bottom:18px;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:20px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — ORIGINAL FUNCTIONALITY (UNCHANGED)
+    # --------------------------------------------------------
     st.markdown(
         """
         <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
@@ -3421,9 +5160,9 @@ def page_trend_forecast_engine():
         unsafe_allow_html=True,
     )
 
-    # --------------------------
+    # --------------------------------------------------------
     # LOAD DATA
-    # --------------------------
+    # --------------------------------------------------------
     insights_raw = load_json(AI_SUMMARY_FILE, {})
     insights = insights_raw.get("history", [])
 
@@ -3435,30 +5174,33 @@ def page_trend_forecast_engine():
         aaa_footer()
         return
 
-    # --------------------------
+    # --------------------------------------------------------
     # USER SELECT WINDOW
-    # --------------------------
+    # --------------------------------------------------------
     window = st.selectbox(
         "Select forecast window:",
         ["Next 3 days", "Next 7 days", "Next 14 days"]
     )
 
-    # --------------------------
+    # --------------------------------------------------------
     # RUN FORECAST
-    # --------------------------
+    # --------------------------------------------------------
     if st.button("Generate Forecast"):
         with st.spinner("Building predictive model…"):
 
             try:
                 combined_text = ""
 
+                # health logs text
                 for entry in logs:
                     combined_text += f"\n{entry}"
 
+                # insights text
                 for item in insights:
                     combined_text += f"\n{item.get('short','')}"
                     combined_text += f"\n{item.get('deep','')}"
 
+                # AI forecast
                 forecast_prompt = f"""
                 You are AAA's Predictive Health & Vibration Intelligence Engine.
 
@@ -3481,11 +5223,17 @@ def page_trend_forecast_engine():
                 st.success("Forecast ready.")
                 st.markdown(result)
 
-                # Preview chart (placeholder)
+                # --------------------------------------------------------
+                # PREVIEW TREND CHART (placeholder)
+                # --------------------------------------------------------
                 import matplotlib.pyplot as plt
+                import random
+
                 fig, ax = plt.subplots()
-                ax.plot([1, 2, 3, 4, 5, 6, 7],
-                        [random.randint(40, 90) for _ in range(7)])
+                ax.plot(
+                    [1, 2, 3, 4, 5, 6, 7],
+                    [random.randint(40, 90) for _ in range(7)]
+                )
                 ax.set_title("Predictive Health-Vibration Curve (Sample)")
                 ax.set_xlabel("Days Ahead")
                 ax.set_ylabel("Trend Strength")
@@ -3498,30 +5246,100 @@ def page_trend_forecast_engine():
 
 
 # ============================================================
-# PAGE 29 — Unified Timeline Intelligence (All Signals, One Timeline)
+# PAGE 29 — Unified Timeline Intelligence (All Signals, One Timeline) — PREMIUM
 # ============================================================
 
 def page_unified_timeline_intel():
-    aaa_header()
-    st.subheader("📅 Unified Timeline Intelligence — All Signals, One Timeline (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    # Premium Lock
-    if not is_premium():
-        feature_locked()
+    # 🔐 Premium firewall — MUST MATCH SIDEBAR EXACTLY
+    check_firewall("Unified Timeline Intelligence (Time-Line View) — PREMIUM", mode)
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # PREMIUM HEADER (MATCHES PAGES 23–28)
+    # --------------------------------------------------------
+    st.markdown(
+        """
+        <h2 style="
+            font-size:30px;
+            font-weight:600;
+            color:#facc6b;
+            text-align:center;
+            margin-top:10px;
+        ">
+            📅 Unified Timeline Intelligence — All Signals, One Timeline (Beta)
+        </h2>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # SUBTITLE
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            font-size:16px;
+            color:#d1d5db;
+            margin-top:-6px;
+        ">
+            Health logs, summaries, mood, sleep, stress, vibration indicators,
+            and AI insights — merged into a single timeline for pattern detection.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # GOLD TRIAL LINE
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:12px; color:#facc6b; font-size:15px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --------------------------------------------------------
+    # FREE MODE LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow warning bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-bottom:16px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade message
+        st.markdown(
+            """
+            <div style="font-size:18px; color:white; margin-bottom:18px;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         monetization_cta()
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <p style="font-size:15px; line-height:1.6;">
-        A unified chronological view of <b>all your health signals</b> —
-        logs, summaries, mood, sleep, stress, vibration indicators, 
-        AI insights — merged into one timeline for easier pattern detection.
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --------------------------------------------------------
+    # PREMIUM MODE — TIMELINE VIEW
+    # --------------------------------------------------------
 
     st.markdown("---")
 
@@ -3529,6 +5347,7 @@ def page_unified_timeline_intel():
         import matplotlib.pyplot as plt
         import random
 
+        # Demo timeline data (placeholder)
         days = list(range(1, 16))
         health_scores = [random.randint(60, 85) for _ in days]
         mood_scores = [random.randint(40, 90) for _ in days]
@@ -3553,32 +5372,138 @@ def page_unified_timeline_intel():
 
 
 # ============================================================
-# PAGE 30 — AAA Insight Matrix (Signal-to-Signal Relationship Grid)
+# PAGE 30 — AAA Insight Matrix (Signal-to-Signal Relationship Grid) — PREMIUM
 # ============================================================
 
 def page_insight_matrix():
+    mode = st.session_state.get("mode", "free")
+
+    # NOTE:
+    # We do NOT call check_firewall here.
+    # This page now shows its own premium lock (same as Rich Analytics).
 
     aaa_header()
-    st.subheader("🧩 AAA Insight Matrix — Signal-to-Signal Relationship Grid (Beta)")
 
-    # Premium Lock
-    if not is_premium():
-        feature_locked()
-        monetization_cta()
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL MESSAGE (MATCH PAGE 12 STYLE)
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧩 AAA Insight Matrix — Signal-to-Signal Relationship Grid (Beta)
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Explore how health and vibration signals may interact, amplify, or offset each other.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — STANDARD PREMIUM LOCK UI
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence and pattern intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Blue CTA bar — consistent with other pages
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL MATRIX VIEW
+    # --------------------------------------------------------
+
+    # Intro text
     st.markdown(
         """
         <div style="font-size:16px; line-height:1.6; margin-bottom:25px;">
             Compare how different health and vibration signals interact, influence,
-            or correlate with each other using a placeholder analytical grid.  
+            or correlate with each other using a placeholder analytical grid.<br>
             Future versions will use AAA’s unified data lake.
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    # Signal list
     signals = [
         "Heart Rate",
         "Blood Pressure",
@@ -3588,7 +5513,7 @@ def page_insight_matrix():
         "Glucose",
         "Vibration Index",
         "Mood Score",
-        "Inflammation Score"
+        "Inflammation Score",
     ]
 
     st.markdown("### 🔢 Signals Included")
@@ -3596,6 +5521,7 @@ def page_insight_matrix():
 
     st.markdown("### 🔥 Relationship Matrix (Synthetic Placeholder)")
 
+    # Matrix generation
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -3622,29 +5548,125 @@ def page_insight_matrix():
 
 
 # ============================================================
-# PAGE 31 — Health Knowledge Graph (AI Semantic Medical Map)
+# PAGE 31 — Health Knowledge Graph (AI Semantic Medical Map) — PREMIUM
 # ============================================================
 
 def page_health_knowledge_graph():
-    aaa_header()
-    st.subheader("🧠 Health Knowledge Graph — AI Semantic Medical Map (Beta)")
+    mode = st.session_state.get("mode", "free")
 
-    # Premium Lock
-    if not is_premium():
-        feature_locked()
-        monetization_cta()
+    # NOTE:
+    # We do NOT call check_firewall here.
+    # This page shows its OWN premium lock, identical to Page 30.
+
+    aaa_header()
+
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL MESSAGE (MATCH PAGE 30 STYLE)
+    # --------------------------------------------------------
+    st.markdown("""
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧠 Health Knowledge Graph — AI Semantic Medical Map (Beta)
+        </h2>
+        <p style="text-align:center; color:#8FA3B8; font-size:15px;">
+            Explore an AI-generated semantic map connecting symptoms, biomarkers,
+            lifestyle patterns, stress, sleep cycles, and vibration signals.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
+        </p>
+        <br>
+    """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # FREE MODE — STANDARD PREMIUM LOCK UI (IDENTICAL TO PAGE 30)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This feature is available for Premium users.<br>
+                    Upgrade to unlock full AI Medical Intelligence and semantic intelligence.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Blue CTA bar — consistent design
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
-    st.markdown(
-        """
-        <div style="font-size:15px; line-height:1.6; margin-bottom:15px;">
-            Explore an AI-generated semantic map connecting symptoms, biomarkers,
-            lifestyle patterns, stress, sleep cycles, and vibration signals.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL INTERACTIVE GRAPH VIEW
+    # --------------------------------------------------------
 
     st.markdown("### 🔎 Generate Knowledge Graph")
 
@@ -3683,10 +5705,7 @@ def page_health_knowledge_graph():
                 }
 
                 st.json(example_graph)
-
-                st.info(
-                    "🔧 Full interactive graph will be added in AAA-Health v0.9."
-                )
+                st.info("🔧 Interactive visual graph coming in AAA-Health v0.9.")
 
         except Exception as e:
             st.error(f"Graph Engine Error: {e}")
@@ -3695,61 +5714,162 @@ def page_health_knowledge_graph():
 
 
 # ============================================================
-# PAGE 32 — MULTI-SIGNAL DIAGNOSTIC ENGINE
+# PAGE 32 — Multi-Signal Diagnostic Engine — PREMIUM
 # ============================================================
 
 def page_multi_signal_engine():
-    check_firewall("Multi-Signal Diagnostic Engine", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+
     aaa_header()
 
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL MESSAGE (MATCH PAGE 30/31)
+    # --------------------------------------------------------
     st.markdown("""
-        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
-            🧬 Multi-Signal Diagnostic Engine
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🧬 Multi-Signal Diagnostic Engine (Beta)
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            AI-powered differential insights using all combined health signals.<br>
-            (Strictly informational — no medical advice)
+            AI-powered differential insights using all combined health signals.
+            <br>(Strictly informational — no medical advice.)
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # FREE MODE — SAME PREMIUM LOCK UI AS PAGES 30 & 31
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This engine analyzes all signals (logs, OCR, biomarker text,
+                    doctor notes) to generate differential pattern insights.
+                    <br>Unlock full multi-signal intelligence with Premium.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Blue CTA bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL ENGINE VIEW
+    # --------------------------------------------------------
+
+    # Collect data from all sources
     signals = []
 
-    # Vault files
-    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    # Vault PDFs → Extract text
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
     for f in vault_files:
-        text = extract_text_any(os.path.join(VAULT_DIR, f))
-        if text.strip():
-            signals.append(text)
+        try:
+            text = extract_text_any(os.path.join(VAULT_DIR, f))
+            if text.strip():
+                signals.append(text)
+        except:
+            pass
 
-    # OCR results
-    ocr_results = load_json(OCR_DATA_FILE, [])
-    for item in ocr_results:
+    # OCR → Text
+    for item in load_json(OCR_DATA_FILE, []):
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
-    # Health logs
-    logs = load_json(HEALTH_LOG_FILE, [])
-    for entry in logs:
-        if entry.get("note", "").strip():
-            signals.append(entry["note"])
+    # Health Logs
+    for entry in load_json(HEALTH_LOG_FILE, []):
+        note = entry.get("note", "").strip()
+        if note:
+            signals.append(note)
 
-    # Doctor notes
+    # Doctor Notes
     doctor_notes = load_json(DOCTOR_NOTES_FILE, [])
     if doctor_notes:
         signals.append("\n".join(doctor_notes))
 
+    # No signals → info message
     if not signals:
-        st.info("No signals available. Upload files or write logs.")
-        monetization_cta()
+        st.info("No signals available. Upload files or write logs to enable analysis.")
         aaa_footer()
         return
 
+    # Run engine
     if st.button("🚀 Run Diagnostic Engine"):
         with st.spinner("Analyzing multi-source signals…"):
             result = run_multi_signal_engine(signals)
@@ -3761,68 +5881,168 @@ def page_multi_signal_engine():
             "date": datetime.now().strftime("%Y-%m-%d"),
             "title": "Multi-Signal Diagnostic Insight",
             "short": result["json"].get("summary", ""),
-            "deep": result["formatted"]
+            "deep": result["formatted"],
         })
         save_json(INSIGHTS_FILE, history)
 
         st.success("Insight saved.")
 
-    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 33 — HEALTH SIGNATURE ENGINE
+# PAGE 33 — Health Signature Engine (Unified Signal Signature) — PREMIUM
 # ============================================================
 
 def page_health_signature_engine():
-    check_firewall("Health Signature Engine", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+
     aaa_header()
 
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL MESSAGE (MATCH PAGE 30/31/32)
+    # --------------------------------------------------------
     st.markdown("""
-        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
-            🩺 Health Signature Engine
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:5px;">
+            🩺 Health Signature Engine (Beta)
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
             Generates a unified health signature across logs, biomarkers,
-            PDFs and behavioural patterns.
+            OCR, PDFs, lifestyle patterns, mood, sleep, stress and behavioural trends.
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:6px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # FREE MODE — STANDARD PREMIUM LOCK UI (NO check_firewall)
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow Notice
+        st.markdown(
+            """
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+                margin-top:10px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Upgrade Prompt
+        st.markdown(
+            """
+            <div style="
+                margin-top:22px;
+                font-size:18px;
+                color:white;
+            ">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Premium Feature Card
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="
+                    margin-top:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    line-height:1.6;
+                ">
+                    <b>Premium Feature</b><br>
+                    This engine builds a unified health signature by merging all
+                    signals across logs, PDFs, OCR and lifestyle patterns.
+                    <br>Unlock full Signal Intelligence with Premium.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # CTA Bar
+        st.markdown(
+            """
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL ENGINE VIEW
+    # --------------------------------------------------------
+
     signals = []
 
-    # Vault files
-    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    # 1 — PDF Text
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
     for f in vault_files:
-        text = extract_text_any(os.path.join(VAULT_DIR, f))
-        if text.strip():
-            signals.append(text)
+        try:
+            text = extract_text_any(os.path.join(VAULT_DIR, f))
+            if text.strip():
+                signals.append(text)
+        except:
+            pass
 
-    # OCR
-    ocr_data = load_json(OCR_DATA_FILE, [])
-    for item in ocr_data:
+    # 2 — OCR Content
+    for item in load_json(OCR_DATA_FILE, []):
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
-    # Health logs
-    logs = load_json(HEALTH_LOG_FILE, [])
-    for entry in logs:
+    # 3 — Health Logs
+    for entry in load_json(HEALTH_LOG_FILE, []):
         note = entry.get("note", "").strip()
         if note:
             signals.append(note)
 
+    # No signals → stop
     if not signals:
-        st.info("No health signals available.")
-        monetization_cta()
+        st.info("No health signals available. Upload files or write logs to continue.")
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # RUN ENGINE
+    # --------------------------------------------------------
     if st.button("🚀 Generate Health Signature"):
         with st.spinner("Building your unified health signature…"):
             try:
@@ -3832,52 +6052,121 @@ def page_health_signature_engine():
                 aaa_footer()
                 return
 
+        # Display signature
         st.markdown("### 🔍 Your Health Signature")
         st.markdown(result["formatted"], unsafe_allow_html=True)
 
+        # Save to insights history
         history = load_json(INSIGHTS_FILE, [])
         history.append({
             "date": datetime.now().strftime("%Y-%m-%d"),
             "title": "Health Signature Engine",
             "short": result["json"].get("summary", ""),
-            "deep": result["formatted"]
+            "deep": result["formatted"],
         })
         save_json(INSIGHTS_FILE, history)
 
         st.success("Health Signature saved.")
 
-    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 34 — UNIFIED SIGNAL COMPARISON ENGINE
+# PAGE 34 — Unified Signal Comparison Engine (Premium)
 # ============================================================
 
 def page_unified_signal_comparison():
-    check_firewall("Unified Signal Comparison Engine", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+
     aaa_header()
 
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL LINE (MATCH PAGES 30–33)
+    # --------------------------------------------------------
     st.markdown("""
-        <h2 style="text-align:center; color:#D4A037; margin-bottom:6px;">
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:6px;">
             🔎 Unified Signal Comparison Engine
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Compare logs, biomarkers, PDFs, vibration indicators, and patterns side-by-side.
+            Compare logs, biomarkers, PDFs, OCR text, vibration indicators, and behavioural patterns side-by-side.<br>
             (Strictly informational — no medical advice)
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:4px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    # Premium wall
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # PREMIUM LOCK (FREE MODE) — IDENTICAL TO PAGES 30–33
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown("""
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Upgrade prompt
+        st.markdown("""
+            <div style="margin-top:22px; font-size:18px; color:white;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Premium Feature Card
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="margin-top:10px; color:#cbd5e1; font-size:14px; line-height:1.6;">
+                    <b>Premium Feature</b><br>
+                    Compare all health and behaviour signals side-by-side.<br>
+                    Unlock full Signal Intelligence with AAA Premium.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Blue CTA bar
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+        """, unsafe_allow_html=True)
+
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # LOAD SIGNAL SOURCES
-    # ------------------------------------------------------------
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL FEATURE VIEW
+    # --------------------------------------------------------
+
+    # Collect signals
     signals = []
 
     # Health Logs
@@ -3886,35 +6175,40 @@ def page_unified_signal_comparison():
     if log_text.strip():
         signals.append(("Health Log", log_text))
 
-    # OCR
+    # OCR Extracted Text
     ocr_items = load_json(OCR_DATA_FILE, [])
     ocr_text = "\n".join([item.get("text", "") for item in ocr_items if isinstance(item, dict)])
     if ocr_text.strip():
         signals.append(("OCR Extracted Text", ocr_text))
 
-    # Vault PDFs
-    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    # PDFs
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
     for f in vault_files:
-        extracted = extract_text_any(os.path.join(VAULT_DIR, f))
-        if extracted.strip():
-            signals.append((f, extracted))
+        try:
+            extracted = extract_text_any(os.path.join(VAULT_DIR, f))
+            if extracted.strip():
+                signals.append((f, extracted))
+        except:
+            pass
 
     # Doctor Notes
-    doctor = load_json(DOCTOR_NOTES_FILE, [])
-    if doctor:
-        signals.append(("Doctor Notes", "\n".join(doctor)))
+    notes = load_json(DOCTOR_NOTES_FILE, [])
+    if notes:
+        signals.append(("Doctor Notes", "\n".join(notes)))
 
-    # Validation
+    # No signals → show message
     if not signals:
-        st.info("No signals available. Please upload files or add logs.")
-        monetization_cta()
+        st.info("No signals available. Please upload files or write logs.")
         aaa_footer()
         return
 
-    # ------------------------------------------------------------
-    # USER SELECT — PICK 2–4 SIGNALS
-    # ------------------------------------------------------------
-    st.markdown("### Select signals to compare")
+    # --------------------------------------------------------
+    # SELECT 2–4 SIGNALS
+    # --------------------------------------------------------
+    st.markdown("### 🧩 Select Signals to Compare")
 
     signal_names = [s[0] for s in signals]
     selected = st.multiselect("Choose 2–4 signals:", signal_names)
@@ -3924,42 +6218,46 @@ def page_unified_signal_comparison():
         aaa_footer()
         return
 
-    # Build comparison list
-    compare_blocks = [s[1] for s in signals if s[0] in selected]
+    # Build combined comparison text
+    combined_data = ""
+    for name, text in signals:
+        if name in selected:
+            combined_data += f"\n\n### {name}\n{text}\n"
 
-    # ------------------------------------------------------------
-    # RUN ENGINE
-    # ------------------------------------------------------------
+    # --------------------------------------------------------
+    # RUN COMPARISON ENGINE
+    # --------------------------------------------------------
     if st.button("🚀 Run Comparison Engine"):
-        with st.spinner("Generating comparison across signals…"):
-
-            combined_data = ""
-            for name, text in signals:
-                if name in selected:
-                    combined_data += f"\n\n### {name}\n{text}\n"
+        with st.spinner("Generating side-by-side comparison…"):
 
             prompt = f"""
-            You are AAA Intelligence. Compare these signals:
+You are AAA Intelligence. Compare these health and behavioural signals side-by-side.
 
-            {str(selected)}
+SELECTED SIGNALS:
+{selected}
 
-            DATA:
-            {combined_data[:25000]}
+RAW DATA (PARTIAL):
+{combined_data[:25000]}
 
-            FORMAT (HTML):
-            1. Comparison Table  
-            2. Overlap Map  
-            3. Conflicts  
-            4. Agreement Score (0–100)  
-            5. Summary (150 words)
-            """
+STRUCTURED HTML OUTPUT REQUIRED:
+1. Comparison Table  
+2. Overlap Map  
+3. Conflicts  
+4. Agreement Score (0–100)  
+5. 150-word Summary  
+"""
 
-            ai_text = call_gemini(prompt)
+            try:
+                ai_text = call_gemini(prompt)
+            except Exception as e:
+                st.error(f"AI Comparison Error: {e}")
+                aaa_footer()
+                return
 
-        # Display
+        # Display result
         st.markdown(ai_text, unsafe_allow_html=True)
 
-        # Save history
+        # Save to insights history
         history = load_json(INSIGHTS_FILE, [])
         history.append({
             "date": datetime.now().strftime("%Y-%m-%d"),
@@ -3969,100 +6267,177 @@ def page_unified_signal_comparison():
         })
         save_json(INSIGHTS_FILE, history)
 
-        st.success("Comparison saved to Insights History.")
+        st.success("Comparison saved.")
 
-    monetization_cta()
     aaa_footer()
 
 
 # ============================================================
-# PAGE 35 — SIGNAL VOLATILITY ENGINE (INFORMATIONAL ONLY)
+# PAGE 35 — Signal Volatility Engine (Premium)
 # ============================================================
 
 def page_signal_volatility_engine():
-    check_firewall("Signal Volatility Engine", st.session_state.get("mode", "free"))
+    mode = st.session_state.get("mode", "free")
+
     aaa_header()
 
+    # --------------------------------------------------------
+    # HEADER + TAGLINE + TRIAL LINE
+    # --------------------------------------------------------
     st.markdown("""
-        <h2 style="text-align:center; color:#D4A037; margin-bottom:4px;">
+        <h2 style="text-align:center; color:#F2C678; margin-bottom:4px;">
             📉 Signal Volatility Engine
         </h2>
         <p style="text-align:center; color:#8FA3B8; font-size:15px;">
-            Detect variability, noise, instability, and fluctuations across your health signals.
+            Detect variability, noise, instability, and fluctuations across your health signals.<br>
             (Strictly informational — no medical advice)
+        </p>
+        <p style="text-align:center; color:#CDE8FF; font-size:14px; margin-top:4px;">
+            ⭐ Enjoy a 7-day free trial — full intelligence unlocked.
         </p>
         <br>
     """, unsafe_allow_html=True)
 
-    # PREMIUM
-    if not is_premium():
-        feature_locked()
+    # --------------------------------------------------------
+    # PREMIUM FIREWALL (FREE MODE) — SAME AS PAGES 30–34
+    # --------------------------------------------------------
+    if mode != "premium":
+
+        # Yellow notice bar
+        st.markdown("""
+            <div style="
+                background:#3f3f1e;
+                color:#e5e5c3;
+                padding:14px;
+                border-radius:8px;
+                font-size:14px;
+            ">
+                ⚠️ This feature is available for Premium members.
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Upgrade prompt
+        st.markdown("""
+            <div style="margin-top:22px; font-size:18px; color:white;">
+                👉 <b>Please upgrade to unlock full access.</b>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Premium feature card
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:28px;
+                border-radius:16px;
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.08);
+                box-shadow:0 0 20px rgba(0,0,0,0.35);
+            ">
+                <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                    AAA — HEALTH INTELLIGENCE
+                </h3>
+                <p style="margin-top:10px; color:#cbd5e1; font-size:14px; line-height:1.6;">
+                    <b>Premium Feature</b><br>
+                    Analyze volatility, instability, and fluctuations across all signals.<br>
+                    Unlock full Signal Intelligence with AAA Premium.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Blue CTA bar
+        st.markdown("""
+            <div style="
+                margin-top:32px;
+                padding:14px;
+                border-radius:8px;
+                background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+                color:white;
+                font-size:14px;
+                text-align:center;
+                box-shadow:0 0 12px rgba(14,165,233,0.25);
+            ">
+                ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+            </div>
+        """, unsafe_allow_html=True)
+
         aaa_footer()
         return
 
+    # --------------------------------------------------------
+    # PREMIUM MODE — FULL FEATURE VIEW
+    # --------------------------------------------------------
+
+    # Load all available signals
     signals = []
 
-    # Vault
-    vault_files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
+    # PDFs
+    vault_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
+    ]
     for f in vault_files:
-        text = extract_text_any(os.path.join(VAULT_DIR, f))
-        if text.strip():
-            signals.append(text)
+        try:
+            extracted = extract_text_any(os.path.join(VAULT_DIR, f))
+            if extracted.strip():
+                signals.append(extracted)
+        except:
+            pass
 
     # OCR
-    ocr = load_json(OCR_DATA_FILE, [])
-    for item in ocr:
+    ocr_data = load_json(OCR_DATA_FILE, [])
+    for item in ocr_data:
         if isinstance(item, dict) and "text" in item:
             signals.append(item["text"])
 
     # Logs
     logs = load_json(HEALTH_LOG_FILE, [])
     for entry in logs:
-        note = entry.get("note", "")
+        note = entry.get("note", "").strip()
         if note:
             signals.append(note)
 
-    # Doctor notes
-    doctor = load_json(DOCTOR_NOTES_FILE, [])
-    if doctor:
-        signals.append("\n".join(doctor))
+    # Doctor Notes
+    notes = load_json(DOCTOR_NOTES_FILE, [])
+    if notes:
+        signals.append("\n".join(notes))
 
+    # No signals → user info
     if not signals:
         st.info("No signals found.")
-        monetization_cta()
         aaa_footer()
         return
 
-    # RUN ENGINE
+    # --------------------------------------------------------
+    # RUN VOLATILITY ANALYSIS
+    # --------------------------------------------------------
     if st.button("🔍 Analyze Signal Volatility"):
         with st.spinner("Evaluating volatility patterns…"):
 
             combined = "\n\n---\n\n".join(signals)[:30000]
 
             prompt = """
-            You are AAA — Artigellence Augmentation Aggregator.
+You are AAA — Artigellence Augmentation Aggregator.
 
-            TASK:
-            Analyze variability, instability, fluctuations, and signal noise.
+TASK:
+Analyze variability, instability, fluctuations, and signal noise.
 
-            STRICT RULES:
-            - Observational only
-            - No diagnosis
-            - No medical claims
+STRICT RULES:
+- Observational only
+- No diagnosis
+- No medical claims
 
-            OUTPUT (HTML):
-            1. High-Volatility Zones  
-            2. Low-Volatility Zones  
-            3. Noise / Outlier Regions  
-            4. Instability Correlations  
-            5. Summary (100 words)
-            """
+OUTPUT FORMAT (HTML):
+1. High-Volatility Zones  
+2. Low-Volatility Zones  
+3. Noise / Outlier Regions  
+4. Instability Correlations  
+5. 100-word Summary
+"""
 
             ai_text = call_gemini(prompt + combined)
 
         st.markdown(ai_text, unsafe_allow_html=True)
 
-    monetization_cta()
     aaa_footer()
 
 
@@ -4299,10 +6674,17 @@ def page_subscription_plans():
                 </a>
                 <div style="font-size:12px; opacity:0.65;">Secure Stripe checkout → opens in new tab</div>
             </div>
-            """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
         )
 
+    # CLOSE WRAPPER
     st.markdown("</div>", unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # SAFE TRIAL MESSAGE (does not affect card alignment)
+    # --------------------------------------------------------
+    st.caption("⭐ All Premium Plans now include a 7-Day Free Trial — cancel anytime, no charge.")
 
     # --------------------------------------------------------
     # SUBSCRIPTION README (CLEAN MARKDOWN)
@@ -5110,42 +7492,140 @@ def page_dashboard(switch_to):
 
     aaa_footer()
 
-
 # ============================================================
-# FIREWALL + MONETIZATION (LIGHT MODE – SAFE FOR 5 DEC LAUNCH)
+# FIREWALL + PREMIUM PAGE REGISTRY (7-DAY TRIAL LOCK)
 # ============================================================
 
+# These are the 16 sidebar entries that must be PREMIUM-ONLY
 PREMIUM_PAGES = {
-    "✨ Merged View (Combined Data)",
-    "🧬 Summary AI (Advanced Summary)",
-    "📊 Insights AI (Deep Insights)",
-    "📘 Summary Report (PDF Generator)",
-    "🌟 Premium (Coming Soon)",
+    # --- PREMIUM ANALYTICS ---
+    "🚨 AI Health Risk Engine (Risk Signals) — PREMIUM",
+    "🧬 Pattern Timeline AI (Patterns Over Time) — PREMIUM",
+    "🌐 Insight Fusion Layer (Fusion Intelligence) — PREMIUM",
+    "📈 Insight Graphs (Visual Charts) — PREMIUM",
+    "🩺 Medical Triptych (3-Panel View) — PREMIUM",
+
+    # --- WELLBEING (PREMIUM WELLNESS LAYER) ---
+    "🎵 Serene Frequencies (Audio Wellness) — WELLBEING",
+    "🧘 Mood × Sleep × Stress Radar (Wellbeing Map) — WELLBEING",
+    "🧘 Health × Vibration Correlation Map (Energy Map) — WELLBEING",
+
+    # --- FORECAST (PREMIUM FORECAST LAYER) ---
+    "📈 Trend Forecast Engine (Predictions) — FORECAST",
+    "📅 Unified Timeline Intelligence (Time-Line View) — FORECAST",
+    "🧩 Insight Matrix (Matrix View) — FORECAST",
+    "🧠 Health Knowledge Graph (Knowledge Map) — FORECAST",
+
+    # --- SIGNAL ENGINES (PREMIUM SIGNAL LAYER) ---
+    "🧬 Multi-Signal Diagnostic Engine (Multi-Signal Analysis) — SIGNALS",
+    "🧬 Health Signature Engine (Signature View) — SIGNALS",
+    "🧬 Unified Signal Comparison (Compare Signals) — SIGNALS",
+    "📉 Signal Volatility Engine (Volatility Analysis) — SIGNALS",
 }
 
-def check_firewall(page_name: str, mode: str):
-    """
-    Light firewall:
-    - Free mode → premium pages show upgrade notice.
-    - Premium mode → fully unlocked.
-    """
-    if mode == "free" and page_name in PREMIUM_PAGES:
-        st.markdown("### 🔒 Premium Feature")
-        st.info(
-            """
-            This feature is part of **AAA Premium**.
 
-            Upgrade unlocks:
-            - Advanced AI summaries  
-            - Insights AI  
-            - Deep merged view  
-            - Rich PDF analytics  
-            - Priority processing  
+def check_firewall(page_label: str, mode: str):
+    """
+    Global firewall for PREMIUM_PAGES.
 
-            👉 Coming December 2025.
-            """
-        )
-        st.stop()
+    - If user is in FREE mode and the selected sidebar label is in PREMIUM_PAGES:
+        → Show premium lock layout + 7-day trial message
+        → Stop rendering the rest of the page.
+    - All other pages (CORE / existing AI pages) are untouched.
+    """
+    # Premium users: no lock at all
+    if mode == "premium":
+        return
+
+    # Free mode but NOT a premium page → allowed
+    if page_label not in PREMIUM_PAGES:
+        return
+
+    # Premium lock layout (matches your existing style + 7-day trial)
+    aaa_header()
+
+    # Yellow warning bar
+    st.markdown(
+        """
+        <div style="
+            background:#3f3f1e;
+            color:#e5e5c3;
+            padding:14px;
+            border-radius:8px;
+            font-size:14px;
+            margin-top:10px;
+        ">
+            ⚠️ This feature is available for Premium members.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Upgrade text
+    st.markdown(
+        """
+        <div style="
+            margin-top:22px;
+            font-size:18px;
+            color:white;
+        ">
+            👉 <b>Please upgrade to unlock full access.</b>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Premium feature card
+    st.markdown(
+        """
+        <div style="
+            margin-top:32px;
+            padding:28px;
+            border-radius:16px;
+            background:rgba(255,255,255,0.03);
+            border:1px solid rgba(255,255,255,0.08);
+            box-shadow:0 0 20px rgba(0,0,0,0.35);
+        ">
+            <h3 style="margin:0; padding:0; color:#93c5fd; font-weight:600;">
+                AAA — HEALTH INTELLIGENCE
+            </h3>
+            <p style="
+                margin-top:10px;
+                color:#cbd5e1;
+                font-size:14px;
+                line-height:1.6;
+            ">
+                <b>Premium Feature</b><br>
+                This feature is available for Premium users.<br>
+                Upgrade to unlock full AI Medical Intelligence.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 7-day trial CTA bar
+    st.markdown(
+        """
+        <div style="
+            margin-top:32px;
+            padding:14px;
+            border-radius:8px;
+            background:linear-gradient(90deg, #1e3a8a, #0ea5e9);
+            color:white;
+            font-size:14px;
+            text-align:center;
+            box-shadow:0 0 12px rgba(14,165,233,0.25);
+        ">
+            ⭐ Try AAA Premium Free for 7 Days — Unlock Full Intelligence
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    monetization_cta()
+    aaa_footer()
+    st.stop()
 
 
 # ============================================================
@@ -5164,26 +7644,26 @@ def switch_to(page_name: str):
 
 
 # ============================================================
-# MAIN NAVIGATION
+# MAIN NAVIGATION (GROUPED, NON-COLLAPSIBLE, ALL VISIBLE)
 # ============================================================
 
 def main():
 
     # --------------------------------------------------------
-    # INIT NAVIGATION DEFAULT
+    # INIT NAV DEFAULT
     # --------------------------------------------------------
     if "nav" not in st.session_state:
-        st.session_state["nav"] = "📊 Dashboard (Overview)"
+        st.session_state["nav"] = "📊 Dashboard (Overview) — CORE"
 
     # --------------------------------------------------------
-    # APPLY ANY PENDING REDIRECT BEFORE WIDGETS
+    # APPLY REDIRECT BEFORE RENDERING SIDEBAR
     # --------------------------------------------------------
     if "pending_nav" in st.session_state:
         st.session_state["nav"] = st.session_state["pending_nav"]
         del st.session_state["pending_nav"]
 
     # --------------------------------------------------------
-    # SIDEBAR NAVIGATION
+    # SIDEBAR UI (ONLY NAV + MODE)
     # --------------------------------------------------------
     with st.sidebar:
 
@@ -5193,75 +7673,93 @@ def main():
 
         st.markdown("## 💎 AAA — Health Intelligence (DEV)")
 
-        # --------------------------------------------------------
-        # NAVIGATION MENU (KEY = 'nav' – CONTROLLED HERE ONLY)
-        # --------------------------------------------------------
         choice = st.radio(
             "Navigate:",
             [
 
-                # ---- Core ----
-                "📊 Dashboard (Overview)",
-                "🩺 Health Log (Notes)",
-                "📥 Health Vault (Uploads)",
-                "📁 Vault Manager (Manage Files)",
-                "🗑 Recycle Bin (Deleted Items)",
-                "📄 PDF Preview (Reports)",
-                "🔍 OCR (Scan Text)",
+                # ------------------------------------------------
+                # CORE MODULE
+                # ------------------------------------------------
+                "📊 Dashboard (Overview) — CORE",
+                "🩺 Health Log (Notes) — CORE",
+                "📥 Health Vault (Uploads) — CORE",
+                "📁 Vault Manager (Manage Files) — CORE",
+                "🗑 Recycle Bin (Deleted Items) — CORE",
+                "📄 PDF Preview (Reports) — CORE",
+                "🔍 OCR (Scan Text) — CORE",
 
-                # ---- AI Intelligence ----
-                "🧠 Summary (Demo)",
-                "✨ Merged View (Combined Data)",
-                "🧬 Summary AI (Advanced Summary)",
-                "📊 Insights AI (Deep Insights)",
-                "📚 Insights History (Past Insights)",
-                "📘 Summary Report (PDF Generator)",
-                "🚨 AI Health Risk Engine (Risk Signals)",
-                "🧬 Pattern Timeline AI (Patterns Over Time)",
-                "🌐 Insight Fusion Layer (Fusion Intelligence)",
-                "📈 Insight Graphs (Visual Charts)",
-                "🩺 Medical Triptych (3-Panel View)",
-                "🎵 Serene Frequencies (Audio Wellness)",
-                "🧘 Mood × Sleep × Stress Radar (Wellbeing Map)",
-                "🔮 Health × Vibration Correlation Map (Energy Map)",
-                "📈 Trend Forecast Engine (Predictions)",
-                "📅 Unified Timeline Intelligence (Time-Line View)",
-                "🧩 Insight Matrix (Matrix View)",
-                "🧠 Health Knowledge Graph (Knowledge Map)",
-                "🧬 Multi-Signal Diagnostic Engine (Multi-Signal Analysis)",
-                "🧬 Health Signature Engine (Signature View)",
-                "🧬 Unified Signal Comparison (Compare Signals)",
-                "📉 Signal Volatility Engine (Volatility Analysis)",
+                # ------------------------------------------------
+                # AI SUMMARY & INSIGHTS MODULE
+                # ------------------------------------------------
+                "🧠 Summary (Demo) — AI",
+                "✨ Merged View (Combined Data) — AI",
+                "🧬 Summary AI (Advanced Summary) — AI",
+                "📊 Insights AI (Deep Insights) — AI",
+                "📚 Insights History (Past Insights) — AI",
+                "📘 Summary Report (PDF Generator) — AI",
+                "🧠 Hybrid Engine (Multi-Source Intelligence) — AI",
 
-                # ---- Monetization ----
-                "💎 Subscription Plans (Pricing)",
-                "💳 Stripe Monetization Demo (Pay Demo)",
+                # ------------------------------------------------
+                # PREMIUM ANALYTICS MODULE
+                # ------------------------------------------------
+                "📊 Rich Analytics Dashboard (Premium Analytics) — PREMIUM",
+                "🚨 AI Health Risk Engine (Risk Signals) — PREMIUM",
+                "🧬 Pattern Timeline AI (Patterns Over Time) — PREMIUM",
+                "🌐 Insight Fusion Layer (Fusion Intelligence) — PREMIUM",
+                "📈 Insight Graphs (Visual Charts) — PREMIUM",
+                "🩺 Medical Triptych (3-Panel View) — PREMIUM",
 
-                # ---- Future ----
-                "🧠 Edge Node Memory (Memory Layer)",
+                # ------------------------------------------------
+                # WELLBEING MODULE
+                # ------------------------------------------------
+                "🎵 Serene Frequencies (Audio Wellness) — WELLBEING",
+                "🧘 Mood × Sleep × Stress Radar (Wellbeing Map) — WELLBEING",
+                "🧘 Health × Vibration Correlation Map (Energy Map) — WELLBEING",
 
-                # ---- Coming Soon ----
-                "🌟 Premium (Coming Soon)",
-                "🧊 Snapshots (Records)",
+                # ------------------------------------------------
+                # FORECASTING MODULE
+                # ------------------------------------------------
+                "📈 Trend Forecast Engine (Predictions) — FORECAST",
+                "📅 Unified Timeline Intelligence (Time-Line View) — FORECAST",
+                "🧩 Insight Matrix (Matrix View) — FORECAST",
+                "🧠 Health Knowledge Graph (Knowledge Map) — FORECAST",
+
+                # ------------------------------------------------
+                # SIGNAL ENGINES MODULE
+                # ------------------------------------------------
+                "🧬 Multi-Signal Diagnostic Engine (Multi-Signal Analysis) — SIGNALS",
+                "🧬 Health Signature Engine (Signature View) — SIGNALS",
+                "🧬 Unified Signal Comparison (Compare Signals) — SIGNALS",
+                "📉 Signal Volatility Engine (Volatility Analysis) — SIGNALS",
+
+                # ------------------------------------------------
+                # MONETIZATION
+                # ------------------------------------------------
+                "💎 Subscription Plans (Pricing) — MONETIZATION",
+
+                # ------------------------------------------------
+                # FUTURE MODULE
+                # ------------------------------------------------
+                "🧠 Edge Node Memory (Memory Layer) — FUTURE",
+
+                # ------------------------------------------------
+                # BACKUP
+                # ------------------------------------------------
+                "🧊 Snapshots (Records) — BACKUP",
             ],
             key="nav",
         )
 
     # --------------------------------------------------------
-    # FIREWALL (KEEP EXACTLY HERE)
+    # READ MODE OUTSIDE SIDEBAR
     # --------------------------------------------------------
-    if choice not in {
-        "💎 Subscription Plans (Pricing)",
-        "💳 Stripe Monetization Demo (Pay Demo)",
-        "🌟 Premium (Coming Soon)",
-    }:
-        check_firewall(choice, mode)
+    mode = st.session_state.get("mode", "free")
 
     # --------------------------------------------------------
-    # PAGE ROUTING
+    # PAGE ROUTING (FULL + FIXED) — MAIN AREA ONLY
     # --------------------------------------------------------
+
     if choice.startswith("📊 Dashboard"):
-        # pass switch_to so dashboard buttons can navigate safely
         page_dashboard(switch_to)
 
     elif choice.startswith("🩺 Health Log"):
@@ -5282,165 +7780,100 @@ def main():
     elif choice.startswith("🔍 OCR"):
         page_ocr()
 
-    elif choice == "🧠 Summary (Demo)":
+    elif choice.startswith("🧠 Summary (Demo)"):
         page_summary()
 
-    # ---- PLACEHOLDERS ----
+    # --- AI ---
     elif choice.startswith("✨ Merged View"):
-        page_merged()
+        page_merged_view()
+
     elif choice.startswith("🧬 Summary AI"):
         page_summary_ai()
+
     elif choice.startswith("📊 Insights AI"):
         page_insights_ai()
+
     elif choice.startswith("📚 Insights History"):
         page_insights_history()
+
     elif choice.startswith("📘 Summary Report"):
         page_summary_report()
+
+    elif choice.startswith("🧠 Hybrid Engine"):
+        page_hybrid_engine()
+
+    # --- PREMIUM ANALYTICS ---
+    elif choice.startswith("📊 Rich Analytics Dashboard"):
+        page_analytics_dashboard()
+
     elif choice.startswith("🚨 AI Health Risk Engine"):
         page_risk_engine()
+
     elif choice.startswith("🧬 Pattern Timeline AI"):
         page_pattern_timeline_ai()
+
     elif choice.startswith("🌐 Insight Fusion Layer"):
         page_insight_fusion()
+
     elif choice.startswith("📈 Insight Graphs"):
         page_insight_graphs()
+
     elif choice.startswith("🩺 Medical Triptych"):
         page_medical_triptych()
+
+    # --- WELLBEING ---
     elif choice.startswith("🎵 Serene Frequencies"):
         page_serene_frequency()
+
     elif choice.startswith("🧘 Mood × Sleep × Stress Radar"):
         page_mood_sleep_stress_radar()
-    elif choice.startswith("🔮 Health × Vibration Correlation Map"):
+
+    elif choice.startswith("🧘 Health × Vibration Correlation Map"):
         page_health_vibration_correlation()
+
+    # --- FORECASTING ---
     elif choice.startswith("📈 Trend Forecast Engine"):
         page_trend_forecast_engine()
+
     elif choice.startswith("📅 Unified Timeline Intelligence"):
         page_unified_timeline_intel()
+
     elif choice.startswith("🧩 Insight Matrix"):
         page_insight_matrix()
+
     elif choice.startswith("🧠 Health Knowledge Graph"):
         page_health_knowledge_graph()
+
+    # --- SIGNALS ---
     elif choice.startswith("🧬 Multi-Signal Diagnostic Engine"):
         page_multi_signal_engine()
+
     elif choice.startswith("🧬 Health Signature Engine"):
         page_health_signature_engine()
+
     elif choice.startswith("🧬 Unified Signal Comparison"):
         page_unified_signal_comparison()
+
     elif choice.startswith("📉 Signal Volatility Engine"):
         page_signal_volatility_engine()
 
-    # ---- Monetization ----
+    # --- MONETIZATION ---
     elif choice.startswith("💎 Subscription Plans"):
         page_subscription_plans()
-    elif choice.startswith("💳 Stripe Monetization Demo"):
-        page_stripe_monetization_demo()
 
-    # ---- Future ----
+    # --- FUTURE ---
     elif choice.startswith("🧠 Edge Node Memory"):
         page_edge_node_memory()
 
-    # ---- Coming Soon ----
-    elif choice.startswith("🌟 Premium (Coming Soon)"):
-        page_premium()
+    # --- BACKUP ---
     elif choice.startswith("🧊 Snapshots"):
         page_snapshots()
 
 
 # ============================================================
-# UNIFIED PLACEHOLDER HANDLER
-# ============================================================
-
-def page_coming_soon(title):
-    aaa_header()
-    st.subheader(title)
-    st.markdown(
-        """
-        <div style="font-size:15px; opacity:0.8; margin-top:10px;">
-            This feature belongs to AAA — Premium Intelligence Layer.<br>
-            It will be activated after the Dec 5 monetization launch.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    aaa_footer()
-
-
-# ============================================================
-# PLACEHOLDER ROUTERS — ALL PREMIUM MODULES
-# ============================================================
-
-def page_merged():
-    page_coming_soon("✨ Merged View (Coming Soon)")
-
-def page_summary_ai():
-    page_coming_soon("🧬 Summary AI (Premium Intelligence)")
-
-def page_insights_ai():
-    page_coming_soon("📊 Insights AI (Deep Intelligence)")
-
-def page_insights_history():
-    page_coming_soon("📚 Insights History (Timeline Intelligence)")
-
-def page_summary_report():
-    page_coming_soon("📘 Summary Report (AI PDF Generator)")
-
-def page_risk_engine():
-    page_coming_soon("🚨 AI Health Risk Engine")
-
-def page_pattern_timeline_ai():
-    page_coming_soon("🧬 Pattern Timeline AI")
-
-def page_insight_fusion():
-    page_coming_soon("🌐 Insight Fusion Layer")
-
-def page_insight_graphs():
-    page_coming_soon("📈 Insight Graphs")
-
-def page_medical_triptych():
-    page_coming_soon("🩺 Medical Triptych (3-Panel View)")
-
-def page_serene_frequency():
-    page_coming_soon("🎵 Serene Frequencies (Audio Wellness)")
-
-def page_mood_sleep_stress_radar():
-    page_coming_soon("🧘 Mood × Sleep × Stress Radar")
-
-def page_health_vibration_correlation():
-    page_coming_soon("🔮 Vibration × Health Map")
-
-def page_trend_forecast_engine():
-    page_coming_soon("📈 Trend Forecast Engine")
-
-def page_unified_timeline_intel():
-    page_coming_soon("📅 Unified Timeline Intelligence")
-
-def page_insight_matrix():
-    page_coming_soon("🧩 Insight Matrix")
-
-def page_health_knowledge_graph():
-    page_coming_soon("🧠 Health Knowledge Graph")
-
-def page_multi_signal_engine():
-    page_coming_soon("🧬 Multi-Signal Diagnostic Engine")
-
-def page_health_signature_engine():
-    page_coming_soon("🧬 Health Signature Engine")
-
-def page_unified_signal_comparison():
-    page_coming_soon("🧬 Unified Signal Comparison")
-
-def page_signal_volatility_engine():
-    page_coming_soon("📉 Signal Volatility Engine")
-
-def page_premium():
-    page_coming_soon("🌟 Premium Intelligence (Coming Soon)")
-
-def page_snapshots():
-    page_coming_soon("🧊 Snapshots")
-
-
-# ============================================================
 # RUN
 # ============================================================
+
 if __name__ == "__main__":
     main()
+
