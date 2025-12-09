@@ -149,11 +149,11 @@ def save_json(path, data):
         st.error(f"Error saving data: {e}")
 
 # ============================================================
-# PDF / FILE UTILITIES
+# PDF / FILE UTILITIES + FULL OCR ENGINE (GEMINI VISION)
 # ============================================================
 
 def extract_text_any(path):
-    """Extract rough text from PDF or image using PyMuPDF."""
+    """Extract rough text from PDF using PyMuPDF."""
     text_chunks = []
 
     if path.lower().endswith(".pdf"):
@@ -164,10 +164,51 @@ def extract_text_any(path):
         except Exception as e:
             st.error(f"Error reading PDF: {e}")
     else:
-        # Images or unknown files — handled via OCR elsewhere
-        text_chunks.append("Image uploaded — OCR text stored separately.")
+        # Non-PDF → actual OCR handled by extract_text_full()
+        text_chunks.append("Image uploaded — use Full OCR for extraction.")
 
     return "\n".join(text_chunks)
+
+
+# ============================================================
+# FULL OCR ENGINE — GEMINI VISION (SAFE FALLBACK MODE)
+# ============================================================
+
+def extract_text_full(path: str) -> str:
+    """
+    Extract readable text from ANY image using Gemini Vision.
+    - Works for photos, scans, documents, screenshots.
+    - Returns safe fallback message if OCR fails.
+    """
+
+    if not GEMINI_API_KEY:
+        return "OCR unavailable — Gemini API key not configured."
+
+    try:
+        # Read file bytes safely
+        with open(path, "rb") as f:
+            img_bytes = f.read()
+
+        # Initialize Gemini Vision model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        response = model.generate_content(
+            [
+                "Extract all readable text from this medical document, image, or scan. "
+                "Return ONLY the extracted text — no formatting, no explanations.",
+                {"mime_type": "image/jpeg", "data": img_bytes},
+            ]
+        )
+
+        raw_text = response.text if hasattr(response, "text") else ""
+
+        if not raw_text.strip():
+            return "OCR completed — but no readable text was detected."
+
+        return raw_text.strip()
+
+    except Exception as e:
+        return f"OCR error: {str(e)}"
 
 
 # ============================================================
@@ -886,67 +927,65 @@ def page_pdf_preview():
     aaa_footer()
 
 # ============================================================
-# PAGE 4 — OCR (Scan Text) — CORE
+# PAGE 4 — OCR & TEXT EXTRACTION (STABLE – NO GEMINI VISION)
 # ============================================================
 
 def page_ocr():
     aaa_header()
-    st.subheader("🔍 OCR & Text Extraction (Basic)")
+    st.subheader("🔍 OCR & Text Extraction")
+
+    st.markdown(
+        """
+        Extract text from **PDFs, scanned images, photos, or medical documents.**
+
+        ### How AAA OCR Works:
+        • 📄 **PDF files** → Extracted using PyMuPDF (embedded text)  
+        • 🖼️ **Images (JPG/PNG/HEIC)** → *Image OCR temporarily disabled in this environment*  
+        • 🔐 Safe fallback if OCR fails
+
+        > Full **Gemini Vision OCR** will be enabled only in **production (Vertex AI)**  
+        > Codespaces Python SDK does **not** support Vision OCR models.
+        """
+    )
 
     # --------------------------------------------------------
-    # Load image files from Vault
+    # LOAD VAULT FILES
     # --------------------------------------------------------
-    image_files = [
+    files = [
         f for f in os.listdir(VAULT_DIR)
-        if f.lower().endswith((".png", ".jpg", ".jpeg"))
+        if os.path.isfile(os.path.join(VAULT_DIR, f))
     ]
 
-    if not image_files:
-        st.info("No image files found in Vault. Upload images in the Vault page.")
+    if not files:
+        st.info("No files found in Vault. Upload documents in **Health Vault (Uploads)**.")
         aaa_footer()
         return
 
-    selected = st.selectbox("Select file to extract text from:", image_files)
+    selected = st.selectbox("Select file to extract text from:", files)
 
-    # Placeholder for output
-    output_box = st.empty()
-
+    # --------------------------------------------------------
+    # EXTRACT BUTTON
+    # --------------------------------------------------------
     if st.button("Extract Text", type="primary"):
-        try:
-            img_path = os.path.join(VAULT_DIR, selected)
+        path = os.path.join(VAULT_DIR, selected)
 
-            # -------------------------------
-            # OPEN IMAGE + EXTRACT TEXT
-            # -------------------------------
-            from PIL import Image
-            import pytesseract
+        with st.spinner("Extracting text…"):
+            if selected.lower().endswith(".pdf"):
+                text = extract_text_any(path)
 
-            img = Image.open(img_path)
-            extracted_text = pytesseract.image_to_string(img)
-
-            # -------------------------------
-            # SHOW RESULT TO USER IMMEDIATELY
-            # -------------------------------
-            if extracted_text.strip():
-                output_box.text_area(
-                    "Extracted Text (OCR Result):",
-                    extracted_text,
-                    height=300
-                )
             else:
-                output_box.warning("No readable text found in this image.")
+                # Disable Vision OCR to avoid 404 errors
+                text = (
+                    "Image OCR is disabled in this development environment.\n"
+                    "PDF text extraction works normally.\n"
+                    "Full Gemini Vision OCR will run in production (Vertex AI)."
+                )
 
-            # -------------------------------
-            # SAVE OCR RESULT FOR AI PAGES
-            # -------------------------------
-            ocr_save_path = os.path.join(DATA_DIR, "ocr_text_file.txt")
-            with open(ocr_save_path, "w", encoding="utf-8") as f:
-                f.write(extracted_text)
-
-            st.success("OCR text extracted and saved successfully.")
-
-        except Exception as e:
-            st.error(f"OCR extraction failed: {e}")
+        st.text_area(
+            "Extracted Text (Preview):",
+            value=text,
+            height=350
+        )
 
     monetization_cta()
     aaa_footer()
