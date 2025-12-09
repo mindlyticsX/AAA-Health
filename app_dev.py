@@ -886,24 +886,67 @@ def page_pdf_preview():
     aaa_footer()
 
 # ============================================================
-# PAGE 4 — OCR PLACEHOLDER (BASIC)
+# PAGE 4 — OCR (Scan Text) — CORE
 # ============================================================
 
 def page_ocr():
     aaa_header()
     st.subheader("🔍 OCR & Text Extraction (Basic)")
 
-    files = [f for f in os.listdir(VAULT_DIR) if os.path.isfile(os.path.join(VAULT_DIR, f))]
-    if not files:
-        st.info("No files in Vault.")
+    # --------------------------------------------------------
+    # Load image files from Vault
+    # --------------------------------------------------------
+    image_files = [
+        f for f in os.listdir(VAULT_DIR)
+        if f.lower().endswith((".png", ".jpg", ".jpeg"))
+    ]
+
+    if not image_files:
+        st.info("No image files found in Vault. Upload images in the Vault page.")
         aaa_footer()
         return
 
-    selected = st.selectbox("Select file to extract text from:", files)
-    if st.button("Extract Text"):
-        path = os.path.join(VAULT_DIR, selected)
-        text = extract_text_any(path)
-        st.text_area("Extracted Text (rough):", value=text, height=300)
+    selected = st.selectbox("Select file to extract text from:", image_files)
+
+    # Placeholder for output
+    output_box = st.empty()
+
+    if st.button("Extract Text", type="primary"):
+        try:
+            img_path = os.path.join(VAULT_DIR, selected)
+
+            # -------------------------------
+            # OPEN IMAGE + EXTRACT TEXT
+            # -------------------------------
+            from PIL import Image
+            import pytesseract
+
+            img = Image.open(img_path)
+            extracted_text = pytesseract.image_to_string(img)
+
+            # -------------------------------
+            # SHOW RESULT TO USER IMMEDIATELY
+            # -------------------------------
+            if extracted_text.strip():
+                output_box.text_area(
+                    "Extracted Text (OCR Result):",
+                    extracted_text,
+                    height=300
+                )
+            else:
+                output_box.warning("No readable text found in this image.")
+
+            # -------------------------------
+            # SAVE OCR RESULT FOR AI PAGES
+            # -------------------------------
+            ocr_save_path = os.path.join(DATA_DIR, "ocr_text_file.txt")
+            with open(ocr_save_path, "w", encoding="utf-8") as f:
+                f.write(extracted_text)
+
+            st.success("OCR text extracted and saved successfully.")
+
+        except Exception as e:
+            st.error(f"OCR extraction failed: {e}")
 
     monetization_cta()
     aaa_footer()
